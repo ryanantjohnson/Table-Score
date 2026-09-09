@@ -140,7 +140,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
   <section id="explore" class="screen">
     <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
-    <div class="chips"><button class="chip active">TableScore</button><button class="chip">Top Rated</button><button class="chip">New</button></div>
+    <div class="chips">
+      <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableScore</button>
+      <button id="chipTop" class="chip" onclick="setExploreFilter('top')">Top Rated</button>
+      <button id="chipNew" class="chip" onclick="setExploreFilter('new')">New</button>
+    </div>
     <div class="mapfake card" style="margin-top:12px"></div>
     <div id="exploreList" class="list"></div>
   </section>
@@ -252,6 +256,7 @@ let selectedRestaurantId=null;
 let selectedRestaurantName="";
 let returnValue="";
 let afterAuth=null;
+let exploreFilter="all";
 
 let locationEnabled=localStorage.getItem("ts_location_enabled")==="1";
 let area=localStorage.getItem("ts_area")||"";
@@ -327,12 +332,11 @@ function updateArea(){
 }
 
 async function loadRestaurantStats(){
-  let q=db.from("restaurant_stats").select("*").order("tablescore",{ascending:false,nullsFirst:false}).limit(100);
-  if(area && area!=="Near you"){
-    const cityOnly=area.split(",")[0].trim();
-    if(cityOnly)q=q.ilike("city",cityOnly);
-  }
-  const {data,error}=await q;
+  const {data,error}=await db.from("restaurant_stats")
+    .select("*")
+    .order("tablescore",{ascending:false,nullsFirst:false})
+    .limit(200);
+
   if(error){
     console.error("restaurant_stats:",error);
     restaurantStats=[];
@@ -343,8 +347,28 @@ async function loadRestaurantStats(){
   renderHomeRankings();
 }
 
+function currentCity(){
+  if(!area || area==="Near you") return "";
+  return area.split(",")[0].trim().toLowerCase();
+}
+
+function isLocalRestaurant(r){
+  const city=currentCity();
+  if(!city) return true;
+  return String(r.city||"").trim().toLowerCase()===city;
+}
+
+function setExploreFilter(filter){
+  exploreFilter=filter;
+  document.getElementById("chipAll").classList.toggle("active",filter==="all");
+  document.getElementById("chipTop").classList.toggle("active",filter==="top");
+  document.getElementById("chipNew").classList.toggle("active",filter==="new");
+  renderExplore();
+}
+
 function renderHomeRankings(){
-  const eligible=restaurantStats.filter(r=>r.ranking_eligible&&r.tablescore!==null);
+  const local=restaurantStats.filter(isLocalRestaurant);
+  const eligible=local.filter(r=>r.ranking_eligible&&r.tablescore!==null);
   const top=eligible.slice(0,3);
   const topEl=document.getElementById("topThree");
 
@@ -355,7 +379,7 @@ function renderHomeRankings(){
   }
 
   const hotEl=document.getElementById("hotNow");
-  const rated=restaurantStats.filter(r=>r.rating_count>0&&r.score_30_days!==null)
+  const rated=local.filter(r=>r.rating_count>0&&r.score_30_days!==null)
     .sort((a,b)=>(b.rating_count-a.rating_count)||(Number(b.score_30_days)-Number(a.score_30_days)));
 
   if(!rated.length){
@@ -373,18 +397,47 @@ function renderHomeRankings(){
 
 function renderExplore(){
   const el=document.getElementById("exploreList");
-  if(!restaurantStats.length){
-    el.innerHTML='<div class="card"><div class="section-title">No TableScore restaurants here yet</div><p class="muted" style="font-size:13px">Restaurants will appear after they are added through real TableScore ratings. Live nearby discovery will come when a restaurant data provider is connected.</p></div>';
+  let rows=[...restaurantStats];
+
+  if(exploreFilter==="top"){
+    rows=rows.filter(r=>isLocalRestaurant(r)&&r.ranking_eligible&&r.tablescore!==null);
+  }else if(exploreFilter==="new"){
+    rows=rows.filter(r=>isLocalRestaurant(r)&&!r.ranking_eligible);
+  }else{
+    // Main TableScore tab shows all real TableScore restaurants,
+    // but sorts restaurants in the user's current city first.
+    rows.sort((a,b)=>{
+      const al=isLocalRestaurant(a)?1:0;
+      const bl=isLocalRestaurant(b)?1:0;
+      if(bl!==al)return bl-al;
+      if((b.rating_count||0)!==(a.rating_count||0))return (b.rating_count||0)-(a.rating_count||0);
+      return (Number(b.tablescore)||0)-(Number(a.tablescore)||0);
+    });
+  }
+
+  if(!rows.length){
+    let title="No TableScore restaurants here yet";
+    let body="Restaurants will appear after they are added through real TableScore ratings.";
+    if(exploreFilter==="top"){
+      title="No Top Rated restaurants here yet";
+      body="A restaurant needs at least 10 TableScore ratings before it becomes ranking-eligible.";
+    }else if(exploreFilter==="new"){
+      title="No new TableScore restaurants here yet";
+      body="Restaurants with fewer than 10 ratings will appear here.";
+    }
+    el.innerHTML=`<div class="card"><div class="section-title">${title}</div><p class="muted" style="font-size:13px">${body}</p></div>`;
     return;
   }
-  el.innerHTML=restaurantStats.map(r=>{
+
+  el.innerHTML=rows.map(r=>{
     const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
     const cons=r.consistency_score===null?"Not enough data":Math.round(Number(r.consistency_score))+"% consistent";
     const rank=r.ranking_eligible?"Ranking eligible":"Not ranked yet";
-    return `<div class="row" onclick="openRestaurantById('${r.id}')"><div><div class="row-name">${esc(r.name)}</div><div class="row-meta">${esc(r.cuisine||r.city||"TableScore restaurant")} &middot; ${r.rating_count} rating${r.rating_count===1?"":"s"} &middot; ${cons} &middot; ${rank}</div></div><div class="row-score">${score}</div></div>`;
+    const loc=[r.city,r.state_region].filter(Boolean).join(", ")||"Location not set";
+    const locality=isLocalRestaurant(r)?"":` &middot; ${esc(loc)}`;
+    return `<div class="row" onclick="openRestaurantById('${r.id}')"><div><div class="row-name">${esc(r.name)}</div><div class="row-meta">${r.rating_count} rating${r.rating_count===1?"":"s"} &middot; ${cons} &middot; ${rank}${locality}</div></div><div class="row-score">${score}</div></div>`;
   }).join("");
 }
-
 async function openRestaurantById(id){
   let r=restaurantStats.find(x=>x.id===id);
   if(!r){
