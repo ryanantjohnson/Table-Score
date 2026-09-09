@@ -227,9 +227,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   <div class="sheet">
     <h2>TableScore Account</h2>
     <p class="muted" style="font-size:13px;line-height:1.45">Guests can browse. Sign in or create an account to submit ratings.</p>
-    <div class="field"><label>Name (for new accounts)</label><input id="acctName" autocomplete="name" placeholder="Your name"></div>
+    <div class="field"><label>Name</label><input id="acctName" autocomplete="name" placeholder="Your name"></div>
+    <div class="field"><label>Username</label><input id="acctUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Choose a unique username"></div>
     <div class="field"><label>Email</label><input id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
-    <div class="field"><label>Password</label><input id="acctPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div>
+    <div class="field"><label>Password</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="Create a password"></div>
+    <p class="muted" style="font-size:10px;line-height:1.45;margin:6px 2px 12px">Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.</p>
     <div class="authgrid">
       <button id="signInBtn" class="secondary" onclick="signIn()">Sign In</button>
       <button id="signUpBtn" class="primary" onclick="signUp()">Create Account</button>
@@ -489,15 +491,40 @@ function setAuthBusy(busy){
 
 async function signUp(){
   const name=document.getElementById("acctName").value.trim();
+  const username=document.getElementById("acctUsername").value.trim().toLowerCase();
   const email=document.getElementById("acctEmail").value.trim();
   const password=document.getElementById("acctPassword").value;
-  if(!name||!email||password.length<6)return alert("Enter your name, email, and a password with at least 6 characters.");
+
+  if(!name||!username||!email||!password){
+    return alert("Enter your name, username, email, and password.");
+  }
+  if(!/^[a-z0-9_]{3,30}$/.test(username)){
+    return alert("Username must be 3-30 characters and use only letters, numbers, or underscores.");
+  }
+  if(password.length<8||!/[A-Z]/.test(password)||!/[0-9]/.test(password)||!/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password)){
+    return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
+  }
+
   setAuthBusy(true);
+  const {data:taken,error:checkError}=await db
+    .from("profiles")
+    .select("id")
+    .ilike("username",username)
+    .limit(1);
+  if(checkError){
+    setAuthBusy(false);
+    return alert("Could not check that username. Please try again.");
+  }
+  if(taken&&taken.length){
+    setAuthBusy(false);
+    return alert("That username is already taken. Choose another one.");
+  }
+
   const {data,error}=await db.auth.signUp({
     email,
     password,
     options:{
-      data:{display_name:name},
+      data:{display_name:name,username},
       emailRedirectTo:"https://ryanantjohnson.github.io/Table-Score/"
     }
   });
