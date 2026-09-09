@@ -1,0 +1,391 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="theme-color" content="#f4f1eb">
+<title>TableScore V3</title>
+<style>
+:root{
+  --bg:#f4f1eb; --card:#ffffff; --ink:#171717; --muted:#77736d;
+  --line:#e7e0d5; --accent:#244f43; --accent-soft:#e4efeb;
+  --dark:#161b1f; --gold:#a57a25; --danger:#9b4336;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;background:var(--bg);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif;color:var(--ink)}
+.app{max-width:720px;margin:auto;padding:20px 14px 128px}
+.header{padding:8px 2px 16px}
+.kicker{font-size:12px;letter-spacing:.16em;text-transform:uppercase;font-weight:850;color:var(--muted)}
+h1{font-size:36px;line-height:1;margin:7px 0 7px;letter-spacing:-.045em}
+.sub{font-size:15px;line-height:1.4;color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:17px;margin-bottom:14px;box-shadow:0 8px 26px rgba(35,31,25,.055)}
+.grid2{display:grid;grid-template-columns:1.5fr 1fr;gap:10px}
+label{display:block;font-size:12px;font-weight:850;color:var(--muted);margin-bottom:6px}
+input[type=text],input[type=date],textarea{
+  width:100%;border:1px solid var(--line);border-radius:13px;background:#fff;padding:12px 13px;
+  color:var(--ink);font:inherit;outline:none
+}
+textarea{min-height:80px;resize:vertical}
+.section-title{font-size:18px;font-weight:900;letter-spacing:-.01em;margin-bottom:4px}
+.section-help{font-size:13px;color:var(--muted);line-height:1.4;margin-bottom:7px}
+.thresholds{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.chip{font-size:12px;font-weight:800;padding:7px 10px;border-radius:999px;background:#f2efe9;color:#5c5750}
+
+.rating{padding:16px 0;border-bottom:1px solid var(--line)}
+.rating:last-child{border-bottom:0}
+.rating-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:11px}
+.name{font-size:18px;font-weight:900}
+.score-display{display:flex;align-items:center;gap:5px;background:#f3f0ea;border-radius:13px;padding:6px 9px}
+.score-display input{
+  width:60px;border:0;background:transparent;text-align:right;font-size:21px;font-weight:900;outline:none;color:var(--ink)
+}
+.out10{font-size:12px;color:var(--muted);font-weight:800}
+.number-grid{display:grid;grid-template-columns:repeat(6,1fr);gap:7px}
+.num-btn{
+  min-height:43px;border:1px solid var(--line);background:#faf8f4;border-radius:12px;
+  font-size:15px;font-weight:850;color:#514d47;touch-action:manipulation
+}
+.num-btn.selected{background:var(--accent);border-color:var(--accent);color:#fff}
+.adjust{display:grid;grid-template-columns:1fr 1fr 1.4fr;gap:7px;margin-top:8px}
+.adjust button{
+  min-height:42px;border:1px solid var(--line);background:#fff;border-radius:12px;
+  font-size:14px;font-weight:850;color:#403c36
+}
+.adjust .clear{color:var(--muted)}
+
+.result{background:var(--dark);color:#fff;border-radius:24px;padding:21px;margin-bottom:14px;overflow:hidden;position:relative}
+.result:after{content:"";position:absolute;width:160px;height:160px;border-radius:50%;right:-70px;top:-70px;background:rgba(255,255,255,.05)}
+.result-row{display:flex;justify-content:space-between;align-items:flex-start;gap:14px}
+.big-score{font-size:58px;line-height:.96;font-weight:950;letter-spacing:-.07em}
+.small-out{font-size:18px;color:#b7bec1;font-weight:750}
+.status{background:#283139;border-radius:999px;padding:8px 11px;font-size:12px;font-weight:900;white-space:nowrap}
+.status.good{background:#29493f}.status.great{background:#2f6253}.status.phenom{background:#65501f}
+.result-meta{color:#b7bec1;font-size:13px;margin-top:9px}
+.rank-line{margin-top:12px;font-size:14px;font-weight:800}
+
+.toggle-row{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.toggle{display:flex;background:#f1eee8;border-radius:12px;padding:4px;gap:4px}
+.toggle button{border:0;background:transparent;padding:8px 12px;border-radius:9px;font-weight:850;color:#6b665f}
+.toggle button.active{background:#fff;box-shadow:0 2px 7px rgba(0,0,0,.07);color:var(--accent)}
+
+.podium{display:grid;grid-template-columns:1fr;gap:8px;margin-top:10px}
+.podium-item{display:grid;grid-template-columns:42px 1fr auto;gap:10px;align-items:center;border:1px solid var(--line);border-radius:15px;padding:11px}
+.medal{font-size:24px;text-align:center}
+.pname{font-weight:900}.pdate{font-size:12px;color:var(--muted);margin-top:2px}.pscore{font-size:22px;font-weight:950}
+.history-item{display:grid;grid-template-columns:1fr auto;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.history-item:last-child{border-bottom:0}
+.hname{font-weight:900}.hmeta{font-size:12px;color:var(--muted);margin-top:3px}.hscore{font-size:21px;font-weight:950}
+.empty{font-size:13px;color:var(--muted);padding:9px 0}
+.smallbtn{border:0;border-radius:9px;padding:6px 8px;font-size:11px;font-weight:850;background:#f4ebe8;color:var(--danger)}
+
+.bottom{position:fixed;left:0;right:0;bottom:0;background:rgba(244,241,235,.93);backdrop-filter:blur(18px);border-top:1px solid rgba(0,0,0,.06);padding:10px 14px calc(10px + env(safe-area-inset-bottom));z-index:20}
+.bottom-inner{max-width:720px;margin:auto;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.mainbtn{border:0;border-radius:14px;padding:14px;font-size:15px;font-weight:900}
+.secondary{background:#e7e2da;color:#27231f}.primary{background:var(--accent);color:#fff}
+
+@media(max-width:520px){
+  .grid2{grid-template-columns:1fr}
+  .number-grid{grid-template-columns:repeat(4,1fr)}
+  .big-score{font-size:52px}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="kicker">Restaurant rating journal</div>
+    <h1>TableScore</h1>
+    <div class="sub">Tap a score for every category. Your restaurant average, label, and ranking calculate automatically.</div>
+  </div>
+
+  <div class="card">
+    <div class="grid2">
+      <div>
+        <label for="restaurant">Restaurant</label>
+        <input id="restaurant" type="text" placeholder="Restaurant name">
+      </div>
+      <div>
+        <label for="date">Date</label>
+        <input id="date" type="date">
+      </div>
+    </div>
+    <div class="thresholds">
+      <span class="chip">8.0+ Good pick</span>
+      <span class="chip">8.5+ Great pick</span>
+      <span class="chip">9.0+ Phenomenal</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Rate each category</div>
+    <div class="section-help">Tap a whole number, then use ±0.1 for precision. You can also type an exact score.</div>
+    <div id="ratings"></div>
+  </div>
+
+  <div class="result">
+    <div class="result-row">
+      <div>
+        <div><span id="avg" class="big-score">0.00</span><span class="small-out"> / 10</span></div>
+        <div id="resultMeta" class="result-meta">Rate all 7 categories to get your score.</div>
+      </div>
+      <div id="status" class="status">Not rated</div>
+    </div>
+    <div id="rankLine" class="rank-line"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Meal notes</div>
+    <div class="grid2">
+      <div>
+        <label for="dish">Best dish</label>
+        <input id="dish" type="text" placeholder="What was the standout?">
+      </div>
+      <div>
+        <label>Would you return?</label>
+        <div class="toggle" id="returnToggle">
+          <button type="button" data-v="Yes">Yes</button>
+          <button type="button" data-v="No">No</button>
+        </div>
+      </div>
+    </div>
+    <div style="margin-top:12px">
+      <label for="notes">Notes</label>
+      <textarea id="notes" placeholder="Anything else worth remembering?"></textarea>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">Leaderboard</div>
+    <div class="section-help">Your highest-rated restaurants automatically take the podium.</div>
+    <div id="podium" class="podium"></div>
+  </div>
+
+  <div class="card">
+    <div class="section-title">All saved restaurants</div>
+    <div id="history"></div>
+  </div>
+</div>
+
+<div class="bottom">
+  <div class="bottom-inner">
+    <button class="mainbtn secondary" onclick="newRating()">New rating</button>
+    <button class="mainbtn primary" onclick="saveRating()">Save rating</button>
+  </div>
+</div>
+
+<script>
+const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
+let returnValue="";
+const ratings=document.getElementById("ratings");
+
+cats.forEach((cat,i)=>{
+  const el=document.createElement("div");
+  el.className="rating";
+  el.innerHTML=`
+    <div class="rating-head">
+      <div class="name">${cat}</div>
+      <div class="score-display">
+        <input id="score${i}" type="number" inputmode="decimal" min="0" max="10" step="0.01" placeholder="—">
+        <span class="out10">/10</span>
+      </div>
+    </div>
+    <div class="number-grid" id="grid${i}">
+      ${Array.from({length:11},(_,n)=>`<button type="button" class="num-btn" data-v="${n}">${n}</button>`).join("")}
+    </div>
+    <div class="adjust">
+      <button type="button" onclick="adjust(${i},-0.1)">− 0.1</button>
+      <button type="button" onclick="adjust(${i},0.1)">+ 0.1</button>
+      <button type="button" class="clear" onclick="clearScore(${i})">Clear</button>
+    </div>
+  `;
+  ratings.appendChild(el);
+
+  el.querySelectorAll(".num-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      setScore(i,Number(btn.dataset.v));
+    });
+  });
+
+  document.getElementById(`score${i}`).addEventListener("input",e=>{
+    const raw=e.target.value;
+    if(raw===""){updateSelected(i);calculate();return}
+    let v=parseFloat(raw);
+    if(Number.isFinite(v)){
+      v=Math.max(0,Math.min(10,v));
+      if(v!=raw) e.target.value=v;
+    }
+    updateSelected(i); calculate();
+  });
+});
+
+function setScore(i,v){
+  v=Math.max(0,Math.min(10,Math.round(v*100)/100));
+  document.getElementById(`score${i}`).value=v.toFixed(2);
+  updateSelected(i); calculate();
+}
+function adjust(i,delta){
+  const input=document.getElementById(`score${i}`);
+  let v=parseFloat(input.value);
+  if(!Number.isFinite(v)) v=0;
+  setScore(i,v+delta);
+}
+function clearScore(i){
+  document.getElementById(`score${i}`).value="";
+  updateSelected(i); calculate();
+}
+function updateSelected(i){
+  const v=parseFloat(document.getElementById(`score${i}`).value);
+  document.querySelectorAll(`#grid${i} .num-btn`).forEach(btn=>{
+    btn.classList.toggle("selected",Number.isFinite(v) && Number(btn.dataset.v)===Math.round(v) && Math.abs(v-Math.round(v))<.001);
+  });
+}
+function getScores(){
+  return cats.map((_,i)=>{
+    const v=parseFloat(document.getElementById(`score${i}`).value);
+    return Number.isFinite(v)?Math.max(0,Math.min(10,v)):null;
+  });
+}
+function getAverage(){
+  const s=getScores().filter(v=>v!==null);
+  return s.length?s.reduce((a,b)=>a+b,0)/s.length:0;
+}
+function calculate(){
+  const vals=getScores();
+  const filled=vals.filter(v=>v!==null);
+  const avg=getAverage();
+  document.getElementById("avg").textContent=avg.toFixed(2);
+
+  const status=document.getElementById("status");
+  status.className="status";
+  let label="Not rated";
+  if(filled.length){
+    if(avg>=9){label="Phenomenal";status.classList.add("phenom")}
+    else if(avg>=8.5){label="Great pick";status.classList.add("great")}
+    else if(avg>=8){label="Good pick";status.classList.add("good")}
+    else label="Below 8.0";
+  }
+  status.textContent=label;
+
+  document.getElementById("resultMeta").textContent =
+    filled.length===7 ? "Overall average of all 7 categories." : `${filled.length} of 7 categories rated.`;
+
+  const name=document.getElementById("restaurant").value.trim();
+  const rankLine=document.getElementById("rankLine");
+  if(filled.length===7 && name){
+    const existing=loadItems().filter(x=>x.name.toLowerCase()!==name.toLowerCase());
+    const ahead=existing.filter(x=>x.avg>avg).length;
+    rankLine.textContent=`Current projected rank: #${ahead+1} of ${existing.length+1}`;
+  } else rankLine.textContent="";
+}
+document.getElementById("restaurant").addEventListener("input",calculate);
+
+document.querySelectorAll("#returnToggle button").forEach(btn=>{
+  btn.addEventListener("click",()=>{
+    returnValue=btn.dataset.v;
+    document.querySelectorAll("#returnToggle button").forEach(b=>b.classList.toggle("active",b===btn));
+  });
+});
+
+function loadItems(){
+  try{return JSON.parse(localStorage.getItem("tablescore-v3")||"[]")}catch(e){return[]}
+}
+function saveItems(items){localStorage.setItem("tablescore-v3",JSON.stringify(items))}
+
+function saveRating(){
+  const name=document.getElementById("restaurant").value.trim();
+  const scores=getScores();
+  if(!name){alert("Enter the restaurant name first.");return}
+  if(scores.some(v=>v===null)){alert("Rate all 7 categories before saving.");return}
+
+  const item={
+    id:Date.now(),
+    name,
+    date:document.getElementById("date").value,
+    avg:Number(getAverage().toFixed(2)),
+    scores:Object.fromEntries(cats.map((c,i)=>[c,scores[i]])),
+    dish:document.getElementById("dish").value.trim(),
+    wouldReturn:returnValue,
+    notes:document.getElementById("notes").value.trim()
+  };
+  let items=loadItems();
+  items.unshift(item);
+  saveItems(items.slice(0,300));
+  renderSaved();
+  calculate();
+  alert(`${name} saved at ${item.avg.toFixed(2)}/10`);
+}
+
+function newRating(){
+  document.getElementById("restaurant").value="";
+  document.getElementById("date").value=new Date().toISOString().slice(0,10);
+  document.getElementById("dish").value="";
+  document.getElementById("notes").value="";
+  returnValue="";
+  document.querySelectorAll("#returnToggle button").forEach(b=>b.classList.remove("active"));
+  cats.forEach((_,i)=>clearScore(i));
+  calculate();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function loadRating(id){
+  const x=loadItems().find(a=>a.id===id);
+  if(!x)return;
+  document.getElementById("restaurant").value=x.name;
+  document.getElementById("date").value=x.date||"";
+  document.getElementById("dish").value=x.dish||"";
+  document.getElementById("notes").value=x.notes||"";
+  returnValue=x.wouldReturn||"";
+  document.querySelectorAll("#returnToggle button").forEach(b=>b.classList.toggle("active",b.dataset.v===returnValue));
+  cats.forEach((c,i)=>setScore(i,Number(x.scores[c])));
+  calculate();
+  window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function deleteRating(id){
+  saveItems(loadItems().filter(x=>x.id!==id));
+  renderSaved(); calculate();
+}
+
+function esc(s){
+  return String(s||"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
+
+function renderSaved(){
+  const items=loadItems().slice().sort((a,b)=>b.avg-a.avg);
+  const podium=document.getElementById("podium");
+  const medals=["🥇","🥈","🥉"];
+  if(!items.length){
+    podium.innerHTML='<div class="empty">Save your first restaurant to start the leaderboard.</div>';
+  }else{
+    podium.innerHTML=items.slice(0,3).map((x,i)=>`
+      <div class="podium-item" onclick="loadRating(${x.id})">
+        <div class="medal">${medals[i]}</div>
+        <div><div class="pname">${esc(x.name)}</div><div class="pdate">${esc(x.date||"No date")}</div></div>
+        <div class="pscore">${Number(x.avg).toFixed(2)}</div>
+      </div>`).join("");
+  }
+
+  const history=document.getElementById("history");
+  if(!items.length){
+    history.innerHTML='<div class="empty">No saved restaurants yet.</div>';
+  }else{
+    history.innerHTML=items.map((x,i)=>`
+      <div class="history-item">
+        <div onclick="loadRating(${x.id})" style="cursor:pointer">
+          <div class="hname">#${i+1} · ${esc(x.name)}</div>
+          <div class="hmeta">${esc(x.date||"No date")}${x.wouldReturn?` · Return: ${esc(x.wouldReturn)}`:""}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="hscore">${Number(x.avg).toFixed(2)}</div>
+          <button class="smallbtn" onclick="event.stopPropagation();deleteRating(${x.id})">Delete</button>
+        </div>
+      </div>`).join("");
+  }
+}
+
+document.getElementById("date").value=new Date().toISOString().slice(0,10);
+renderSaved();
+calculate();
+</script>
+</body>
+</html>
