@@ -100,27 +100,28 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 <body>
 <div class="app">
   <div class="topbar">
-    <div><div class="brand">TABLESCORE</div><div id="topLocation" class="loc">ð Set location</div></div>
-    <div id="avatarBtn" class="avatar">ð¤</div>
+    <div><div class="brand">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
+    <div id="avatarBtn" class="avatar">&#128100;</div>
   </div>
 
   <section id="home" class="screen active">
     <div class="hero">
-      <div class="kicker">Good food Â· Better decisions</div>
+      <div class="kicker">Good food &middot; Better decisions</div>
       <h1>Good food.<br>Better decisions.</h1>
       <div class="search"><input id="homeSearch" placeholder="Search restaurants, cuisine, or area"></div>
     </div>
 
     <div id="locationCard" class="card">
-      <div class="section-title">Find whatâs good near you</div>
-      <p class="muted" style="font-size:13px;line-height:1.45">TableScore uses your area to keep rankings relevant. Guests can browse without an account.</p>
-      <button class="primary" onclick="useLocation()">ð Use My Current Location</button>
+      <div class="section-title">Find what's good near you</div>
+      <p class="muted" style="font-size:13px;line-height:1.45">TableScore uses your real location to keep rankings relevant. Guests can browse without an account.</p>
+      <button class="primary" onclick="useLocation()">&#128205; Use My Current Location</button>
       <div class="field"><input id="cityInput" placeholder="Or enter city, state / ZIP"></div>
       <button class="secondary" onclick="saveCity()">Use This Area</button>
+      <p class="muted" style="font-size:10px;margin:10px 0 0">Prototype note: your device location is real; restaurant rankings are still sample data until the live restaurant database is connected.</p>
     </div>
 
     <div class="card">
-      <div class="section-head"><div class="section-title">ð¥ Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all âº</button></div>
+      <div class="section-head"><div class="section-title">&#128293; Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
       <div class="hot" onclick="openRestaurant('InterStellar BBQ')">
         <div class="hot-rank">#1</div>
         <div class="hot-cover">
@@ -133,7 +134,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     </div>
 
     <div class="card">
-      <div class="section-head"><div class="section-title">Top 3 Near You</div><button class="linkbtn" onclick="showScreen('explore')">See all âº</button></div>
+      <div class="section-head"><div class="section-title">Top 3 Near You</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
       <div class="grid3">
         <div class="mini" onclick="openRestaurant('InterStellar BBQ')"><div class="rank">1</div><div class="mini-name">InterStellar BBQ</div><div class="mini-score">9.32</div></div>
         <div class="mini" onclick="openRestaurant('Uchi')"><div class="rank">2</div><div class="mini-name">Uchi</div><div class="mini-score">9.18</div></div>
@@ -141,11 +142,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       </div>
     </div>
 
-    <button class="primary" onclick="startRating()">ï¼ Rate a Restaurant</button>
+    <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
   </section>
 
   <section id="explore" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('home')">â¹</button><div class="page-title" style="margin:0">Explore</div></div>
+    <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
     <div class="chips"><button class="chip active">Nearby</button><button class="chip">Cuisine</button><button class="chip">Price</button><button class="chip">Top Rated</button></div>
     <div class="mapfake card" style="margin-top:12px">
       <div class="pin" style="left:26%;top:31%"><span>9.3</span></div>
@@ -156,26 +157,26 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </section>
 
   <section id="restaurant" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('explore')">â¹</button><div class="muted" style="font-size:12px">Restaurant</div></div>
-    <div class="restaurant-hero"><div><div id="rName" class="hot-title">Restaurant</div><div class="muted" style="font-size:12px;margin-top:4px">Near you Â· Community ratings</div></div></div>
+    <div class="backline"><button class="backbtn" onclick="showScreen('explore')">&lsaquo;</button><div class="muted" style="font-size:12px">Restaurant</div></div>
+    <div class="restaurant-hero"><div><div id="rName" class="hot-title">Restaurant</div><div class="muted" style="font-size:12px;margin-top:4px">Near you &middot; Community ratings</div></div></div>
     <div class="stats2" style="margin-top:10px">
       <div class="stat"><div class="stat-label">TABLESCORE</div><div id="rScore" class="stat-value">9.32</div><div class="muted" style="font-size:11px">community average</div></div>
       <div class="stat"><div class="stat-label">CONSISTENCY</div><div id="rConsistency" class="stat-value cons">94%</div><div class="cons" style="font-size:11px;font-weight:850">Calculated automatically</div></div>
     </div>
     <div class="card">
       <div class="section-title">Trend</div>
-      <div class="grid3" style="margin-top:10px"><div class="mini"><div class="row-meta">30 days</div><div class="mini-score">9.28 â</div></div><div class="mini"><div class="row-meta">90 days</div><div class="mini-score">9.21 â</div></div><div class="mini"><div class="row-meta">All time</div><div class="mini-score">9.10</div></div></div>
+      <div class="grid3" style="margin-top:10px"><div class="mini"><div class="row-meta">30 days</div><div class="mini-score">9.28 &uarr;</div></div><div class="mini"><div class="row-meta">90 days</div><div class="mini-score">9.21 &uarr;</div></div><div class="mini"><div class="row-meta">All time</div><div class="mini-score">9.10</div></div></div>
     </div>
     <div class="card"><div class="section-title">Category Breakdown</div><div id="breakdown"></div></div>
     <button class="primary" onclick="startRating(selectedRestaurant)">Rate This Restaurant</button>
   </section>
 
   <section id="rate" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('home')">â¹</button><div class="page-title" style="margin:0">Rate Your Experience</div></div>
+    <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Rate Your Experience</div></div>
     <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
     <div class="card">
       <div class="field"><label>Where are you eating?</label><input id="rateRestaurant" placeholder="Restaurant name"></div>
-      <div id="verifiedMsg" class="notice">ð Location can be used to mark a submission as a Verified Visit.</div>
+      <div id="verifiedMsg" class="notice">&#128205; Location can be used to mark a submission as a Verified Visit.</div>
     </div>
     <div class="card"><div id="ratings"></div></div>
     <div class="total"><div><div class="muted" style="font-size:11px;font-weight:800">YOUR SCORE</div><div id="avg" class="n">0.00</div></div><div id="status" class="status">Rate all 7</div></div>
@@ -184,7 +185,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </section>
 
   <section id="finish" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('rate')">â¹</button><div class="page-title" style="margin:0">Finish Up</div></div>
+    <div class="backline"><button class="backbtn" onclick="showScreen('rate')">&lsaquo;</button><div class="page-title" style="margin:0">Finish Up</div></div>
     <div class="steps"><i class="on"></i><i class="on"></i><i class="on"></i></div>
     <div class="card">
       <div class="field"><label>Best Dish (optional)</label><input id="dish" placeholder="What stood out?"></div>
@@ -204,7 +205,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <div class="profilebox">
       <div id="profileAvatar" class="profileavatar">G</div>
       <div id="profileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">Guest</div>
-      <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely Â· Account required to rate</div>
+      <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
     </div>
     <div class="card">
       <div class="stats2"><div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div><div class="stat"><div class="stat-label">RESTAURANTS</div><div id="profileRestaurants" class="stat-value">0</div></div></div>
@@ -215,11 +216,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
 <div class="nav">
   <div class="nav-inner">
-    <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">â</span>Home</button>
-    <button data-s="explore" onclick="showScreen('explore')"><span class="ico">â</span>Explore</button>
-    <button data-s="rate" onclick="startRating()"><span class="ico">â</span>Rate</button>
-    <button data-s="saved" onclick="showScreen('saved')"><span class="ico">â¡</span>Saved</button>
-    <button data-s="profile" onclick="showScreen('profile')"><span class="ico">â</span>Profile</button>
+    <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
+    <button data-s="explore" onclick="showScreen('explore')"><span class="ico">&#8981;</span>Explore</button>
+    <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
+    <button data-s="saved" onclick="showScreen('saved')"><span class="ico">&#9825;</span>Saved</button>
+    <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
   </div>
 </div>
 
@@ -260,12 +261,43 @@ function showScreen(id){
   window.scrollTo({top:0,behavior:"smooth"});
 }
 function useLocation(){
-  if(!navigator.geolocation){alert("Location is not available in this browser.");return}
-  navigator.geolocation.getCurrentPosition(()=>{
-    locationEnabled=true; area="Current location";
-    localStorage.setItem("ts_location_enabled","1"); localStorage.setItem("ts_area",area);
+  if(!navigator.geolocation){
+    alert("Location is not available in this browser.");
+    return;
+  }
+  const btn = document.querySelector("#locationCard .primary");
+  if(btn){btn.disabled=true;btn.textContent="Checking location...";}
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    locationEnabled=true;
+    const lat=pos.coords.latitude;
+    const lon=pos.coords.longitude;
+    localStorage.setItem("ts_location_enabled","1");
+    localStorage.setItem("ts_lat",String(lat));
+    localStorage.setItem("ts_lon",String(lon));
+    area="Near you";
+    try{
+      const url="https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+encodeURIComponent(lat)+"&longitude="+encodeURIComponent(lon)+"&localityLanguage=en";
+      const res=await fetch(url);
+      if(res.ok){
+        const data=await res.json();
+        const city=data.city||data.locality||data.principalSubdivision||"Near you";
+        const region=data.principalSubdivisionCode ? data.principalSubdivisionCode.split("-").pop() : "";
+        area=region && city.indexOf(region)===-1 ? city+", "+region : city;
+      }
+    }catch(e){}
+    localStorage.setItem("ts_area",area);
     updateArea();
-  },()=>alert("Location permission was not enabled. You can enter a city instead."));
+    const msg=document.getElementById("verifiedMsg");
+    if(msg) msg.innerHTML="&#10003; Location verified. This visit can be marked as a Verified Visit.";
+    if(btn){btn.disabled=false;btn.innerHTML="&#128205; Use My Current Location";}
+  },(err)=>{
+    if(btn){btn.disabled=false;btn.innerHTML="&#128205; Use My Current Location";}
+    if(err.code===1){
+      alert("Location permission is blocked. In Safari, allow Location for this website, then try again.");
+    }else{
+      alert("I could not get your location. You can enter your city manually.");
+    }
+  },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
 function saveCity(){
   const v=document.getElementById("cityInput").value.trim();
@@ -273,7 +305,7 @@ function saveCity(){
   area=v; localStorage.setItem("ts_area",area); updateArea();
 }
 function updateArea(){
-  document.getElementById("topLocation").textContent="ð "+(area||"Set location");
+  document.getElementById("topLocation").innerHTML="&#128205; "+(area||"Set location");
   document.getElementById("locationCard").classList.toggle("hidden",!!area);
   renderProfile();
 }
@@ -307,14 +339,14 @@ function createLocalAccount(){
   const cb=afterAuth;afterAuth=null;if(cb)cb();
 }
 function renderExplore(){
-  document.getElementById("exploreList").innerHTML=sampleRestaurants.map((r,i)=>`<div class="row" onclick="openRestaurant('${r.name.replace(/'/g,"\\'")}')"><div><div class="row-name">${i+1}. ${r.name}</div><div class="row-meta">${r.cuisine} Â· ${r.distance} Â· ${r.consistency}% consistent</div></div><div class="row-score">${r.score.toFixed(2)}</div></div>`).join("");
+  document.getElementById("exploreList").innerHTML=sampleRestaurants.map((r,i)=>`<div class="row" onclick="openRestaurant('${r.name.replace(/'/g,"\\'")}')"><div><div class="row-name">${i+1}. ${r.name}</div><div class="row-meta">${r.cuisine} &middot; ${r.distance} &middot; ${r.consistency}% consistent</div></div><div class="row-score">${r.score.toFixed(2)}</div></div>`).join("");
 }
 const ratings=document.getElementById("ratings");
 cats.forEach((cat,i)=>{
   const el=document.createElement("div");el.className="rating";
-  el.innerHTML=`<div class="rating-head"><div class="rating-name">${cat}</div><div class="scorebox"><input id="score${i}" type="number" inputmode="decimal" min="0" max="10" step=".01" placeholder="â"><span class="muted">/10</span></div></div>
+  el.innerHTML=`<div class="rating-head"><div class="rating-name">${cat}</div><div class="scorebox"><input id="score${i}" type="number" inputmode="decimal" min="0" max="10" step=".01" placeholder="-"><span class="muted">/10</span></div></div>
   <div class="numgrid" id="grid${i}">${Array.from({length:11},(_,n)=>`<button type="button" data-v="${n}">${n}</button>`).join("")}</div>
-  <div class="adjust"><button onclick="adjust(${i},-.1)">â 0.1</button><button onclick="adjust(${i},.1)">+ 0.1</button></div>`;
+  <div class="adjust"><button onclick="adjust(${i},-.1)">&#8722; 0.1</button><button onclick="adjust(${i},.1)">+ 0.1</button></div>`;
   ratings.appendChild(el);
   el.querySelectorAll(".numgrid button").forEach(b=>b.addEventListener("click",()=>setScore(i,Number(b.dataset.v))));
   document.getElementById(`score${i}`).addEventListener("input",()=>{updateSelected(i);calculate()});
@@ -347,13 +379,13 @@ function consistencyFor(name){
 function renderSaved(){
   const el=document.getElementById("savedList");
   if(!entries.length){el.innerHTML=`<div class="card"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your submitted visits will appear here.</p></div>`;return}
-  el.innerHTML=entries.map(e=>{const c=consistencyFor(e.restaurant);return `<div class="row"><div><div class="row-name">${e.restaurant}</div><div class="row-meta">${new Date(e.date).toLocaleDateString()} Â· ${e.verified?"Verified Visit":"Unverified"}${c!==null?` Â· ${c}% consistency`:""}</div></div><div class="row-score">${e.avg.toFixed(2)}</div></div>`}).join("");
+  el.innerHTML=entries.map(e=>{const c=consistencyFor(e.restaurant);return `<div class="row"><div><div class="row-name">${e.restaurant}</div><div class="row-meta">${new Date(e.date).toLocaleDateString()} &middot; ${e.verified?"Verified Visit":"Unverified"}${c!==null?` &middot; ${c}% consistency`:""}</div></div><div class="row-score">${e.avg.toFixed(2)}</div></div>`}).join("");
 }
 function renderProfile(){
   const name=account?.name||"Guest";
   document.getElementById("profileName").textContent=name;
   document.getElementById("profileAvatar").textContent=name[0]?.toUpperCase()||"G";
-  document.getElementById("profileArea").textContent=(area?area+" Â· ":"")+(account?"TableScore member":"Browse freely Â· Account required to rate");
+  document.getElementById("profileArea").textContent=(area?area+" &middot; ":"")+(account?"TableScore member":"Browse freely &middot; Account required to rate");
   document.getElementById("profileRatings").textContent=entries.length;
   document.getElementById("profileRestaurants").textContent=new Set(entries.map(e=>e.restaurant.toLowerCase())).size;
   document.getElementById("profileAuthBtn").textContent=account?"Account Active":"Create Account to Rate";
