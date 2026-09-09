@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#090b0d">
 <title>TableScore</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
   --bg:#090b0d; --card:#111519; --card2:#151a1f; --ink:#f7f4ee; --muted:#9a9fa4;
@@ -14,6 +15,7 @@
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
 button,input,textarea{font:inherit}
 button{cursor:pointer}
+button:disabled{opacity:.55;cursor:default}
 .app{max-width:720px;margin:auto;min-height:100vh;padding:0 14px 98px}
 .topbar{position:sticky;top:0;z-index:10;background:rgba(9,11,13,.9);backdrop-filter:blur(18px);padding:calc(12px + env(safe-area-inset-top)) 2px 12px;display:flex;align-items:center;justify-content:space-between}
 .brand{font-family:Georgia,serif;letter-spacing:.18em;font-weight:700;font-size:17px}
@@ -31,7 +33,7 @@ button{cursor:pointer}
 .section-title{font-size:18px;font-weight:900}
 .linkbtn{border:0;background:transparent;color:var(--gold);font-weight:800;font-size:12px}
 .hot{border-radius:18px;overflow:hidden;background:var(--card2);border:1px solid var(--line)}
-.hot-cover{height:150px;background:
+.hot-cover{min-height:150px;background:
 linear-gradient(0deg,rgba(0,0,0,.72),rgba(0,0,0,.05)),
 radial-gradient(circle at 30% 30%,#7a3e20,#2a1710 45%,#0d0d0d 75%);display:flex;align-items:flex-end;padding:14px}
 .hot-rank{position:absolute;margin:10px;background:var(--gold);color:#121212;width:34px;height:34px;border-radius:50%;display:grid;place-items:center;font-weight:950}
@@ -89,11 +91,14 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .total .n{font-size:40px;font-weight:950}.status{color:var(--green);font-size:12px;font-weight:900}
 .toggle{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}.toggle button{border:1px solid var(--line);background:#151a1f;color:#ccc;border-radius:11px;padding:10px;font-weight:850}.toggle button.on{background:var(--gold);color:#111;border-color:var(--gold)}
 .notice{background:#101a15;border:1px solid #244934;color:#8be0ae;border-radius:13px;padding:11px;font-size:12px;font-weight:750}
+.warning{background:#1b1710;border:1px solid #5a451f;color:var(--gold2);border-radius:13px;padding:11px;font-size:12px;font-weight:750}
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);display:grid;place-items:end center;padding:14px}
 .sheet{width:min(100%,720px);background:#101418;border:1px solid var(--line);border-radius:24px 24px 18px 18px;padding:20px;margin-bottom:env(safe-area-inset-bottom)}
 .sheet h2{font-family:Georgia,serif;font-size:28px;margin:0 0 6px}
 .profilebox{text-align:center;padding:22px 10px}.profileavatar{width:72px;height:72px;border-radius:50%;margin:auto;background:var(--gold);color:#111;display:grid;place-items:center;font-size:28px;font-weight:950}
 .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:850}
+.authgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.empty{text-align:center;padding:20px 10px}
 @media(max-width:420px){.hero h1{font-size:35px}.grid3{gap:6px}.mini{padding:8px}.numgrid{grid-template-columns:repeat(4,1fr)}}
 </style>
 </head>
@@ -108,38 +113,26 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <div class="hero">
       <div class="kicker">Good food &middot; Better decisions</div>
       <h1>Good food.<br>Better decisions.</h1>
-      <div class="search"><input id="homeSearch" placeholder="Search restaurants, cuisine, or area"></div>
+      <div class="search"><input id="homeSearch" placeholder="Search TableScore restaurants"></div>
     </div>
 
     <div id="locationCard" class="card">
       <div class="section-title">Find what's good near you</div>
-      <p class="muted" style="font-size:13px;line-height:1.45">TableScore uses your real location to keep rankings relevant. Guests can browse without an account.</p>
+      <p class="muted" style="font-size:13px;line-height:1.45">TableScore uses your location to keep results relevant. Guests can browse without an account.</p>
       <button class="primary" onclick="useLocation()">&#128205; Use My Current Location</button>
       <div class="field"><input id="cityInput" placeholder="Or enter city, state / ZIP"></div>
       <button class="secondary" onclick="saveCity()">Use This Area</button>
-      <p class="muted" style="font-size:10px;margin:10px 0 0">Prototype note: your device location is real; restaurant rankings are still sample data until the live restaurant database is connected.</p>
+      <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableScore ratings shown in this version come only from the TableScore database.</p>
     </div>
 
     <div class="card">
       <div class="section-head"><div class="section-title">&#128293; Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
-      <div class="hot" onclick="openRestaurant('InterStellar BBQ')">
-        <div class="hot-rank">#1</div>
-        <div class="hot-cover">
-          <div style="width:100%">
-            <div class="hot-title">InterStellar BBQ</div>
-            <div class="scoreline"><div><span class="big">9.32</span> <span class="muted" style="font-size:12px">1.2k ratings</span></div><span class="pill">94% CONSISTENCY</span></div>
-          </div>
-        </div>
-      </div>
+      <div id="hotNow"></div>
     </div>
 
     <div class="card">
-      <div class="section-head"><div class="section-title">Top 3 Near You</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
-      <div class="grid3">
-        <div class="mini" onclick="openRestaurant('InterStellar BBQ')"><div class="rank">1</div><div class="mini-name">InterStellar BBQ</div><div class="mini-score">9.32</div></div>
-        <div class="mini" onclick="openRestaurant('Uchi')"><div class="rank">2</div><div class="mini-name">Uchi</div><div class="mini-score">9.18</div></div>
-        <div class="mini" onclick="openRestaurant('Fonda San Miguel')"><div class="rank">3</div><div class="mini-name">Fonda San Miguel</div><div class="mini-score">9.11</div></div>
-      </div>
+      <div class="section-head"><div class="section-title">Top Rated Near You</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
+      <div id="topThree" class="grid3"></div>
     </div>
 
     <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
@@ -147,28 +140,28 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
   <section id="explore" class="screen">
     <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
-    <div class="chips"><button class="chip active">Nearby</button><button class="chip">Cuisine</button><button class="chip">Price</button><button class="chip">Top Rated</button></div>
-    <div class="mapfake card" style="margin-top:12px">
-      <div class="pin" style="left:26%;top:31%"><span>9.3</span></div>
-      <div class="pin" style="left:58%;top:47%"><span>9.1</span></div>
-      <div class="pin" style="left:75%;top:22%"><span>8.9</span></div>
-    </div>
+    <div class="chips"><button class="chip active">TableScore</button><button class="chip">Top Rated</button><button class="chip">New</button></div>
+    <div class="mapfake card" style="margin-top:12px"></div>
     <div id="exploreList" class="list"></div>
   </section>
 
   <section id="restaurant" class="screen">
     <div class="backline"><button class="backbtn" onclick="showScreen('explore')">&lsaquo;</button><div class="muted" style="font-size:12px">Restaurant</div></div>
-    <div class="restaurant-hero"><div><div id="rName" class="hot-title">Restaurant</div><div class="muted" style="font-size:12px;margin-top:4px">Near you &middot; Community ratings</div></div></div>
+    <div class="restaurant-hero"><div><div id="rName" class="hot-title">Restaurant</div><div id="rMeta" class="muted" style="font-size:12px;margin-top:4px">TableScore community ratings</div></div></div>
     <div class="stats2" style="margin-top:10px">
-      <div class="stat"><div class="stat-label">TABLESCORE</div><div id="rScore" class="stat-value">9.32</div><div class="muted" style="font-size:11px">community average</div></div>
-      <div class="stat"><div class="stat-label">CONSISTENCY</div><div id="rConsistency" class="stat-value cons">94%</div><div class="cons" style="font-size:11px;font-weight:850">Calculated automatically</div></div>
+      <div class="stat"><div class="stat-label">TABLESCORE</div><div id="rScore" class="stat-value">--</div><div id="rRatingCount" class="muted" style="font-size:11px">No ratings yet</div></div>
+      <div class="stat"><div class="stat-label">CONSISTENCY</div><div id="rConsistency" class="stat-value cons">--</div><div class="cons" style="font-size:11px;font-weight:850">Calculated automatically</div></div>
     </div>
     <div class="card">
       <div class="section-title">Trend</div>
-      <div class="grid3" style="margin-top:10px"><div class="mini"><div class="row-meta">30 days</div><div class="mini-score">9.28 &uarr;</div></div><div class="mini"><div class="row-meta">90 days</div><div class="mini-score">9.21 &uarr;</div></div><div class="mini"><div class="row-meta">All time</div><div class="mini-score">9.10</div></div></div>
+      <div class="grid3" style="margin-top:10px">
+        <div class="mini"><div class="row-meta">30 days</div><div id="trend30" class="mini-score">--</div></div>
+        <div class="mini"><div class="row-meta">90 days</div><div id="trend90" class="mini-score">--</div></div>
+        <div class="mini"><div class="row-meta">All time</div><div id="trendAll" class="mini-score">--</div></div>
+      </div>
     </div>
     <div class="card"><div class="section-title">Category Breakdown</div><div id="breakdown"></div></div>
-    <button class="primary" onclick="startRating(selectedRestaurant)">Rate This Restaurant</button>
+    <button class="primary" onclick="startRating(selectedRestaurantName)">Rate This Restaurant</button>
   </section>
 
   <section id="rate" class="screen">
@@ -191,9 +184,9 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       <div class="field"><label>Best Dish (optional)</label><input id="dish" placeholder="What stood out?"></div>
       <div class="field"><label>Would You Return?</label><div class="toggle" id="returnToggle"><button data-v="Yes">Yes</button><button data-v="Maybe">Maybe</button><button data-v="No">No</button></div></div>
       <div class="field"><label>Quick Take (optional)</label><textarea id="notes" rows="4" placeholder="A quick note about your experience"></textarea></div>
-      <div class="notice">Consistency is never rated by users. TableScore calculates it from repeated visit scores over time.</div>
+      <div class="notice">Consistency is never rated by users. TableScore calculates it automatically from rating history.</div>
     </div>
-    <button class="primary" onclick="submitRating()">Submit TableScore</button>
+    <button id="submitBtn" class="primary" onclick="submitRating()">Submit TableScore</button>
   </section>
 
   <section id="saved" class="screen">
@@ -210,7 +203,9 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <div class="card">
       <div class="stats2"><div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div><div class="stat"><div class="stat-label">RESTAURANTS</div><div id="profileRestaurants" class="stat-value">0</div></div></div>
     </div>
-    <button id="profileAuthBtn" class="primary" onclick="openAccount()">Create Account to Rate</button>
+    <button id="profileAuthBtn" class="primary" onclick="openAccount()">Create Account / Sign In</button>
+    <div style="height:8px"></div>
+    <button id="signOutBtn" class="secondary hidden" onclick="signOut()">Sign Out</button>
   </section>
 </div>
 
@@ -226,31 +221,44 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
-    <h2>Join TableScore</h2>
-    <p class="muted" style="font-size:13px;line-height:1.45">Guests can browse everything. Create an account to submit ratings.</p>
-    <div class="field"><label>Name</label><input id="acctName" placeholder="Your name"></div>
-    <div class="field"><label>Email</label><input id="acctEmail" type="email" placeholder="you@example.com"></div>
-    <button class="primary" onclick="createLocalAccount()">Create Prototype Account</button>
-    <div style="height:8px"></div><button class="secondary" onclick="closeAccount()">Not Now</button>
-    <p class="muted" style="font-size:10px;margin-bottom:0">Prototype only: this account is stored on this device. Real Apple/Google/email sign-in comes with the production backend.</p>
+    <h2>TableScore Account</h2>
+    <p class="muted" style="font-size:13px;line-height:1.45">Guests can browse. Sign in or create an account to submit ratings.</p>
+    <div class="field"><label>Name (for new accounts)</label><input id="acctName" autocomplete="name" placeholder="Your name"></div>
+    <div class="field"><label>Email</label><input id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
+    <div class="field"><label>Password</label><input id="acctPassword" type="password" autocomplete="current-password" placeholder="At least 6 characters"></div>
+    <div class="authgrid">
+      <button id="signInBtn" class="secondary" onclick="signIn()">Sign In</button>
+      <button id="signUpBtn" class="primary" onclick="signUp()">Create Account</button>
+    </div>
+    <div style="height:8px"></div>
+    <button class="secondary" onclick="closeAccount()">Not Now</button>
+    <p class="muted" style="font-size:10px;margin-bottom:0">Your account and ratings are stored in TableScore's Supabase backend.</p>
   </div>
 </div>
 
 <script>
+const SUPABASE_URL="https://jyojnjkpwhwzgarfpepm.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY="sb_publishable_bFyMfzpmPsBnQ2JpCeXVUQ_J-aKri3f";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
-const sampleRestaurants=[
-  {name:"InterStellar BBQ",score:9.32,ratings:1248,consistency:94,cuisine:"BBQ",distance:"0.8 mi"},
-  {name:"Uchi",score:9.18,ratings:892,consistency:91,cuisine:"Japanese",distance:"1.1 mi"},
-  {name:"Fonda San Miguel",score:9.11,ratings:740,consistency:93,cuisine:"Mexican",distance:"2.4 mi"},
-  {name:"Loro",score:8.93,ratings:620,consistency:88,cuisine:"Asian Fusion",distance:"2.6 mi"},
-  {name:"Jeffrey's",score:8.87,ratings:540,consistency:90,cuisine:"Steakhouse",distance:"1.8 mi"}
-];
-let selectedRestaurant="InterStellar BBQ";
+const dbCols=["atmosphere","cleanliness","taste","quality","portions","price","service"];
+
+let currentUser=null;
+let profile=null;
+let myRatings=[];
+let restaurantStats=[];
+let selectedRestaurantId=null;
+let selectedRestaurantName="";
 let returnValue="";
+let afterAuth=null;
+
 let locationEnabled=localStorage.getItem("ts_location_enabled")==="1";
 let area=localStorage.getItem("ts_area")||"";
-let account=JSON.parse(localStorage.getItem("ts_account")||"null");
-let entries=JSON.parse(localStorage.getItem("ts_entries")||"[]");
+
+function esc(v){
+  return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
+}
 
 function showScreen(id){
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
@@ -258,16 +266,18 @@ function showScreen(id){
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s===id));
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
+  if(id==="explore") renderExplore();
   window.scrollTo({top:0,behavior:"smooth"});
 }
+
 function useLocation(){
   if(!navigator.geolocation){
     alert("Location is not available in this browser.");
     return;
   }
-  const btn = document.querySelector("#locationCard .primary");
+  const btn=document.querySelector("#locationCard .primary");
   if(btn){btn.disabled=true;btn.textContent="Checking location...";}
-  navigator.geolocation.getCurrentPosition(async (pos)=>{
+  navigator.geolocation.getCurrentPosition(async pos=>{
     locationEnabled=true;
     const lat=pos.coords.latitude;
     const lon=pos.coords.longitude;
@@ -281,16 +291,17 @@ function useLocation(){
       if(res.ok){
         const data=await res.json();
         const city=data.city||data.locality||data.principalSubdivision||"Near you";
-        const region=data.principalSubdivisionCode ? data.principalSubdivisionCode.split("-").pop() : "";
-        area=region && city.indexOf(region)===-1 ? city+", "+region : city;
+        const region=data.principalSubdivisionCode?data.principalSubdivisionCode.split("-").pop():"";
+        area=region&&city.indexOf(region)===-1?city+", "+region:city;
       }
     }catch(e){}
     localStorage.setItem("ts_area",area);
     updateArea();
     const msg=document.getElementById("verifiedMsg");
-    if(msg) msg.innerHTML="&#10003; Location verified. This visit can be marked as a Verified Visit.";
+    if(msg)msg.innerHTML="&#10003; Location captured. This visit can be submitted as a Verified Visit.";
     if(btn){btn.disabled=false;btn.innerHTML="&#128205; Use My Current Location";}
-  },(err)=>{
+    await loadRestaurantStats();
+  },err=>{
     if(btn){btn.disabled=false;btn.innerHTML="&#128205; Use My Current Location";}
     if(err.code===1){
       alert("Location permission is blocked. In Safari, allow Location for this website, then try again.");
@@ -299,101 +310,372 @@ function useLocation(){
     }
   },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
+
 function saveCity(){
   const v=document.getElementById("cityInput").value.trim();
   if(!v)return alert("Enter a city, state, or ZIP first.");
-  area=v; localStorage.setItem("ts_area",area); updateArea();
+  area=v;
+  localStorage.setItem("ts_area",area);
+  updateArea();
+  loadRestaurantStats();
 }
+
 function updateArea(){
-  document.getElementById("topLocation").innerHTML="&#128205; "+(area||"Set location");
+  document.getElementById("topLocation").innerHTML="&#128205; "+esc(area||"Set location");
   document.getElementById("locationCard").classList.toggle("hidden",!!area);
   renderProfile();
 }
-function openRestaurant(name){
-  selectedRestaurant=name;
-  const r=sampleRestaurants.find(x=>x.name===name)||{name,score:8.50,consistency:85};
+
+async function loadRestaurantStats(){
+  let q=db.from("restaurant_stats").select("*").order("tablescore",{ascending:false,nullsFirst:false}).limit(100);
+  if(area && area!=="Near you"){
+    const cityOnly=area.split(",")[0].trim();
+    if(cityOnly)q=q.ilike("city",cityOnly);
+  }
+  const {data,error}=await q;
+  if(error){
+    console.error("restaurant_stats:",error);
+    restaurantStats=[];
+  }else{
+    restaurantStats=data||[];
+  }
+  renderExplore();
+  renderHomeRankings();
+}
+
+function renderHomeRankings(){
+  const eligible=restaurantStats.filter(r=>r.ranking_eligible&&r.tablescore!==null);
+  const top=eligible.slice(0,3);
+  const topEl=document.getElementById("topThree");
+
+  if(!top.length){
+    topEl.innerHTML='<div class="mini" style="grid-column:1/-1;min-height:auto"><div class="row-meta">No restaurants are ranking-eligible here yet. A restaurant needs at least 10 TableScore ratings before it appears in rankings.</div></div>';
+  }else{
+    topEl.innerHTML=top.map((r,i)=>`<div class="mini" onclick="openRestaurantById('${r.id}')"><div class="rank">${i+1}</div><div class="mini-name">${esc(r.name)}</div><div class="mini-score">${Number(r.tablescore).toFixed(2)}</div></div>`).join("");
+  }
+
+  const hotEl=document.getElementById("hotNow");
+  const rated=restaurantStats.filter(r=>r.rating_count>0&&r.score_30_days!==null)
+    .sort((a,b)=>(b.rating_count-a.rating_count)||(Number(b.score_30_days)-Number(a.score_30_days)));
+
+  if(!rated.length){
+    hotEl.innerHTML='<div class="empty"><div class="section-title">Nothing hot yet</div><p class="muted" style="font-size:13px">Hot Right Now will populate from real recent TableScore activity.</p></div>';
+  }else{
+    const r=rated[0];
+    hotEl.innerHTML=`<div class="hot" onclick="openRestaurantById('${r.id}')">
+      <div class="hot-cover"><div style="width:100%">
+        <div class="hot-title">${esc(r.name)}</div>
+        <div class="scoreline"><div><span class="big">${r.tablescore===null?"--":Number(r.tablescore).toFixed(2)}</span> <span class="muted" style="font-size:12px">${r.rating_count} rating${r.rating_count===1?"":"s"}</span></div>
+        <span class="pill">${r.consistency_score===null?"NEW":Math.round(Number(r.consistency_score))+"% CONSISTENCY"}</span></div>
+      </div></div></div>`;
+  }
+}
+
+function renderExplore(){
+  const el=document.getElementById("exploreList");
+  if(!restaurantStats.length){
+    el.innerHTML='<div class="card"><div class="section-title">No TableScore restaurants here yet</div><p class="muted" style="font-size:13px">Restaurants will appear after they are added through real TableScore ratings. Live nearby discovery will come when a restaurant data provider is connected.</p></div>';
+    return;
+  }
+  el.innerHTML=restaurantStats.map(r=>{
+    const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
+    const cons=r.consistency_score===null?"Not enough data":Math.round(Number(r.consistency_score))+"% consistent";
+    const rank=r.ranking_eligible?"Ranking eligible":"Not ranked yet";
+    return `<div class="row" onclick="openRestaurantById('${r.id}')"><div><div class="row-name">${esc(r.name)}</div><div class="row-meta">${esc(r.cuisine||r.city||"TableScore restaurant")} &middot; ${r.rating_count} rating${r.rating_count===1?"":"s"} &middot; ${cons} &middot; ${rank}</div></div><div class="row-score">${score}</div></div>`;
+  }).join("");
+}
+
+async function openRestaurantById(id){
+  let r=restaurantStats.find(x=>x.id===id);
+  if(!r){
+    const {data,error}=await db.from("restaurant_stats").select("*").eq("id",id).maybeSingle();
+    if(error||!data)return alert("I could not load that restaurant.");
+    r=data;
+  }
+  selectedRestaurantId=r.id;
+  selectedRestaurantName=r.name;
   document.getElementById("rName").textContent=r.name;
-  document.getElementById("rScore").textContent=r.score.toFixed(2);
-  document.getElementById("rConsistency").textContent=r.consistency+"%";
-  const vals=[9.1,9.3,9.7,9.4,9.0,8.6,9.2];
-  document.getElementById("breakdown").innerHTML=cats.map((c,i)=>`<div class="breakrow"><span>${c}</span><div class="bar"><i style="width:${vals[i]*10}%"></i></div><b>${vals[i].toFixed(1)}</b></div>`).join("");
+  document.getElementById("rMeta").textContent=[r.cuisine,r.city,r.state_region].filter(Boolean).join(" \u00b7 ")||"TableScore community ratings";
+  document.getElementById("rScore").textContent=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
+  document.getElementById("rRatingCount").textContent=r.rating_count?`${r.rating_count} community rating${r.rating_count===1?"":"s"}`:"No ratings yet";
+  document.getElementById("rConsistency").textContent=r.consistency_score===null?"--":Math.round(Number(r.consistency_score))+"%";
+  document.getElementById("trend30").textContent=r.score_30_days===null?"--":Number(r.score_30_days).toFixed(2);
+  document.getElementById("trend90").textContent=r.score_90_days===null?"--":Number(r.score_90_days).toFixed(2);
+  document.getElementById("trendAll").textContent=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
+
+  document.getElementById("breakdown").innerHTML=cats.map((c,i)=>{
+    const raw=r[dbCols[i]];
+    const v=raw===null?null:Number(raw);
+    return `<div class="breakrow"><span>${c}</span><div class="bar"><i style="width:${v===null?0:v*10}%"></i></div><b>${v===null?"--":v.toFixed(1)}</b></div>`;
+  }).join("");
   showScreen("restaurant");
 }
-function startRating(name){
-  if(!account){openAccount(()=>startRating(name));return}
-  selectedRestaurant=name||selectedRestaurant||"";
-  document.getElementById("rateRestaurant").value=name||"";
+
+async function startRating(name){
+  if(!currentUser){openAccount(()=>startRating(name));return;}
+  selectedRestaurantName=name||selectedRestaurantName||"";
+  document.getElementById("rateRestaurant").value=name||selectedRestaurantName||"";
   resetScores();
   showScreen("rate");
 }
-let afterAuth=null;
-function openAccount(cb){afterAuth=typeof cb==="function"?cb:null;document.getElementById("accountModal").classList.remove("hidden")}
-function closeAccount(){document.getElementById("accountModal").classList.add("hidden");afterAuth=null}
-function createLocalAccount(){
+
+function openAccount(cb){
+  afterAuth=typeof cb==="function"?cb:null;
+  document.getElementById("accountModal").classList.remove("hidden");
+}
+
+function closeAccount(){
+  document.getElementById("accountModal").classList.add("hidden");
+  afterAuth=null;
+}
+
+function setAuthBusy(busy){
+  document.getElementById("signInBtn").disabled=busy;
+  document.getElementById("signUpBtn").disabled=busy;
+}
+
+async function signUp(){
   const name=document.getElementById("acctName").value.trim();
   const email=document.getElementById("acctEmail").value.trim();
-  if(!name||!email)return alert("Enter your name and email.");
-  account={name,email};localStorage.setItem("ts_account",JSON.stringify(account));
-  document.getElementById("accountModal").classList.add("hidden");
-  renderProfile();
+  const password=document.getElementById("acctPassword").value;
+  if(!name||!email||password.length<6)return alert("Enter your name, email, and a password with at least 6 characters.");
+  setAuthBusy(true);
+  const {data,error}=await db.auth.signUp({
+    email,
+    password,
+    options:{
+      data:{display_name:name},
+      emailRedirectTo:"https://ryanantjohnson.github.io/Table-Score/"
+    }
+  });
+  setAuthBusy(false);
+  if(error)return alert(error.message);
+  if(data.session){
+    currentUser=data.user;
+    closeAccount();
+    await refreshUserData();
+    const cb=afterAuth;afterAuth=null;if(cb)cb();
+  }else{
+    alert("Account created. Check your email for the confirmation link, then return to TableScore and sign in.");
+  }
+}
+
+async function signIn(){
+  const email=document.getElementById("acctEmail").value.trim();
+  const password=document.getElementById("acctPassword").value;
+  if(!email||!password)return alert("Enter your email and password.");
+  setAuthBusy(true);
+  const {data,error}=await db.auth.signInWithPassword({email,password});
+  setAuthBusy(false);
+  if(error)return alert(error.message);
+  currentUser=data.user;
+  closeAccount();
+  await refreshUserData();
   const cb=afterAuth;afterAuth=null;if(cb)cb();
 }
-function renderExplore(){
-  document.getElementById("exploreList").innerHTML=sampleRestaurants.map((r,i)=>`<div class="row" onclick="openRestaurant('${r.name.replace(/'/g,"\\'")}')"><div><div class="row-name">${i+1}. ${r.name}</div><div class="row-meta">${r.cuisine} &middot; ${r.distance} &middot; ${r.consistency}% consistent</div></div><div class="row-score">${r.score.toFixed(2)}</div></div>`).join("");
+
+async function signOut(){
+  await db.auth.signOut();
+  currentUser=null;
+  profile=null;
+  myRatings=[];
+  renderSaved();
+  renderProfile();
+  showScreen("home");
 }
+
+async function refreshUserData(){
+  if(!currentUser){
+    profile=null;
+    myRatings=[];
+    renderSaved();
+    renderProfile();
+    return;
+  }
+  const [{data:p,error:pErr},{data:r,error:rErr}]=await Promise.all([
+    db.from("profiles").select("*").eq("id",currentUser.id).maybeSingle(),
+    db.from("ratings").select("id,restaurant_id,overall_score,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
+  ]);
+  if(pErr)console.error("profile:",pErr);
+  if(rErr)console.error("ratings:",rErr);
+  profile=p||null;
+  myRatings=r||[];
+  renderSaved();
+  renderProfile();
+}
+
+function renderSaved(){
+  const el=document.getElementById("savedList");
+  if(!currentUser){
+    el.innerHTML='<div class="card"><div class="section-title">Sign in to see your ratings</div><p class="muted" style="font-size:13px">Your cloud-saved TableScore visits will appear here.</p></div>';
+    return;
+  }
+  if(!myRatings.length){
+    el.innerHTML='<div class="card"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your submitted visits will appear here.</p></div>';
+    return;
+  }
+  el.innerHTML=myRatings.map(e=>{
+    const name=e.restaurants?.name||"Restaurant";
+    return `<div class="row"><div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} &middot; ${e.verified_visit?"Verified Visit":"Unverified"}</div></div><div class="row-score">${Number(e.overall_score).toFixed(2)}</div></div>`;
+  }).join("");
+}
+
+function renderProfile(){
+  const fallback=currentUser?.email?.split("@")[0]||"Guest";
+  const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
+  document.getElementById("profileName").textContent=name;
+  document.getElementById("profileAvatar").textContent=(name[0]||"G").toUpperCase();
+  document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableScore member":"Browse freely \u00b7 Account required to rate");
+  document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
+  document.getElementById("profileRestaurants").textContent=currentUser?new Set(myRatings.map(e=>e.restaurant_id)).size:0;
+  document.getElementById("profileAuthBtn").textContent=currentUser?"Account Active":"Create Account / Sign In";
+  document.getElementById("profileAuthBtn").disabled=!!currentUser;
+  document.getElementById("signOutBtn").classList.toggle("hidden",!currentUser);
+}
+
 const ratings=document.getElementById("ratings");
 cats.forEach((cat,i)=>{
-  const el=document.createElement("div");el.className="rating";
+  const el=document.createElement("div");
+  el.className="rating";
   el.innerHTML=`<div class="rating-head"><div class="rating-name">${cat}</div><div class="scorebox"><input id="score${i}" type="number" inputmode="decimal" min="0" max="10" step=".01" placeholder="-"><span class="muted">/10</span></div></div>
   <div class="numgrid" id="grid${i}">${Array.from({length:11},(_,n)=>`<button type="button" data-v="${n}">${n}</button>`).join("")}</div>
   <div class="adjust"><button onclick="adjust(${i},-.1)">&#8722; 0.1</button><button onclick="adjust(${i},.1)">+ 0.1</button></div>`;
   ratings.appendChild(el);
   el.querySelectorAll(".numgrid button").forEach(b=>b.addEventListener("click",()=>setScore(i,Number(b.dataset.v))));
-  document.getElementById(`score${i}`).addEventListener("input",()=>{updateSelected(i);calculate()});
+  document.getElementById(`score${i}`).addEventListener("input",()=>{updateSelected(i);calculate();});
 });
-function setScore(i,v){v=Math.max(0,Math.min(10,Math.round(v*100)/100));document.getElementById(`score${i}`).value=v.toFixed(2);updateSelected(i);calculate()}
-function adjust(i,d){let v=parseFloat(document.getElementById(`score${i}`).value);if(!Number.isFinite(v))v=0;setScore(i,v+d)}
-function updateSelected(i){const v=parseFloat(document.getElementById(`score${i}`).value);document.querySelectorAll(`#grid${i} button`).forEach(b=>b.classList.toggle("sel",Number(b.dataset.v)===Math.round(v)&&Math.abs(v-Math.round(v))<.001))}
-function getScores(){return cats.map((_,i)=>{const v=parseFloat(document.getElementById(`score${i}`).value);return Number.isFinite(v)?Math.max(0,Math.min(10,v)):null})}
-function calculate(){const s=getScores().filter(v=>v!==null),a=s.length?s.reduce((x,y)=>x+y,0)/s.length:0;document.getElementById("avg").textContent=a.toFixed(2);let t="Rate all 7";if(s.length===7)t=a>=9?"PHENOMENAL":a>=8.5?"GREAT PICK":a>=8?"GOOD PICK":"SCORED";document.getElementById("status").textContent=t}
-function resetScores(){cats.forEach((_,i)=>{document.getElementById(`score${i}`).value="";updateSelected(i)});document.getElementById("dish").value="";document.getElementById("notes").value="";returnValue="";document.querySelectorAll("#returnToggle button").forEach(b=>b.classList.remove("on"));calculate()}
-document.querySelectorAll("#returnToggle button").forEach(b=>b.addEventListener("click",()=>{returnValue=b.dataset.v;document.querySelectorAll("#returnToggle button").forEach(x=>x.classList.toggle("on",x===b))}));
-function submitRating(){
+
+function setScore(i,v){
+  v=Math.max(0,Math.min(10,Math.round(v*100)/100));
+  document.getElementById(`score${i}`).value=v.toFixed(2);
+  updateSelected(i);
+  calculate();
+}
+function adjust(i,d){
+  let v=parseFloat(document.getElementById(`score${i}`).value);
+  if(!Number.isFinite(v))v=0;
+  setScore(i,v+d);
+}
+function updateSelected(i){
+  const v=parseFloat(document.getElementById(`score${i}`).value);
+  document.querySelectorAll(`#grid${i} button`).forEach(b=>b.classList.toggle("sel",Number(b.dataset.v)===Math.round(v)&&Math.abs(v-Math.round(v))<.001));
+}
+function getScores(){
+  return cats.map((_,i)=>{
+    const v=parseFloat(document.getElementById(`score${i}`).value);
+    return Number.isFinite(v)?Math.max(0,Math.min(10,v)):null;
+  });
+}
+function calculate(){
+  const s=getScores().filter(v=>v!==null);
+  const a=s.length?s.reduce((x,y)=>x+y,0)/s.length:0;
+  document.getElementById("avg").textContent=a.toFixed(2);
+  let t="Rate all 7";
+  if(s.length===7)t=a>=9?"PHENOMENAL":a>=8.5?"GREAT PICK":a>=8?"GOOD PICK":"SCORED";
+  document.getElementById("status").textContent=t;
+}
+function resetScores(){
+  cats.forEach((_,i)=>{document.getElementById(`score${i}`).value="";updateSelected(i);});
+  document.getElementById("dish").value="";
+  document.getElementById("notes").value="";
+  returnValue="";
+  document.querySelectorAll("#returnToggle button").forEach(b=>b.classList.remove("on"));
+  calculate();
+}
+document.querySelectorAll("#returnToggle button").forEach(b=>b.addEventListener("click",()=>{
+  returnValue=b.dataset.v;
+  document.querySelectorAll("#returnToggle button").forEach(x=>x.classList.toggle("on",x===b));
+}));
+
+async function findOrCreateRestaurant(name){
+  const clean=name.trim();
+  const {data:existing,error:findError}=await db.from("restaurants").select("id,name").ilike("name",clean).limit(1);
+  if(findError)throw findError;
+  if(existing&&existing.length)return existing[0];
+
+  const lat=locationEnabled?parseFloat(localStorage.getItem("ts_lat")):null;
+  const lon=locationEnabled?parseFloat(localStorage.getItem("ts_lon")):null;
+  const city=area&&area!=="Near you"?area.split(",")[0].trim():null;
+
+  const {data:created,error:createError}=await db.from("restaurants").insert({
+    name:clean,
+    city:city||null,
+    latitude:Number.isFinite(lat)?lat:null,
+    longitude:Number.isFinite(lon)?lon:null
+  }).select("id,name").single();
+
+  if(createError)throw createError;
+  return created;
+}
+
+async function submitRating(){
+  if(!currentUser){openAccount(submitRating);return;}
   const name=document.getElementById("rateRestaurant").value.trim();
   const scores=getScores();
   if(!name)return alert("Choose or enter the restaurant.");
   if(scores.some(v=>v===null))return alert("Rate all seven categories first.");
-  const avg=scores.reduce((a,b)=>a+b,0)/7;
-  entries.unshift({id:Date.now(),restaurant:name,date:new Date().toISOString(),scores,avg,dish:document.getElementById("dish").value.trim(),notes:document.getElementById("notes").value.trim(),returnValue,verified:locationEnabled});
-  localStorage.setItem("ts_entries",JSON.stringify(entries.slice(0,500)));
-  alert(`TableScore submitted: ${avg.toFixed(2)}/10`);
-  renderSaved();renderProfile();showScreen("saved");
+
+  const btn=document.getElementById("submitBtn");
+  btn.disabled=true;
+  btn.textContent="Submitting...";
+
+  try{
+    const restaurant=await findOrCreateRestaurant(name);
+    const lat=locationEnabled?parseFloat(localStorage.getItem("ts_lat")):null;
+    const lon=locationEnabled?parseFloat(localStorage.getItem("ts_lon")):null;
+
+    const payload={
+      user_id:currentUser.id,
+      restaurant_id:restaurant.id,
+      atmosphere:scores[0],
+      cleanliness:scores[1],
+      taste:scores[2],
+      quality:scores[3],
+      portions:scores[4],
+      price:scores[5],
+      service:scores[6],
+      best_dish:document.getElementById("dish").value.trim()||null,
+      would_return:returnValue||null,
+      quick_take:document.getElementById("notes").value.trim()||null,
+      verified_visit:!!locationEnabled,
+      visit_latitude:Number.isFinite(lat)?lat:null,
+      visit_longitude:Number.isFinite(lon)?lon:null
+    };
+
+    const {data,error}=await db.from("ratings").insert(payload).select("overall_score").single();
+    if(error)throw error;
+
+    alert(`TableScore submitted: ${Number(data.overall_score).toFixed(2)}/10`);
+    selectedRestaurantId=restaurant.id;
+    selectedRestaurantName=restaurant.name;
+    await Promise.all([refreshUserData(),loadRestaurantStats()]);
+    showScreen("saved");
+  }catch(err){
+    console.error(err);
+    alert("TableScore could not submit this rating: "+(err.message||"Unknown error"));
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Submit TableScore";
+  }
 }
-function consistencyFor(name){
-  const vals=entries.filter(e=>e.restaurant.toLowerCase()===name.toLowerCase()).map(e=>e.avg);
-  if(vals.length<3)return null;
-  const mean=vals.reduce((a,b)=>a+b,0)/vals.length;
-  const sd=Math.sqrt(vals.reduce((a,v)=>a+(v-mean)**2,0)/vals.length);
-  return Math.round(Math.max(0,Math.min(100,100-sd*20)));
-}
-function renderSaved(){
-  const el=document.getElementById("savedList");
-  if(!entries.length){el.innerHTML=`<div class="card"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your submitted visits will appear here.</p></div>`;return}
-  el.innerHTML=entries.map(e=>{const c=consistencyFor(e.restaurant);return `<div class="row"><div><div class="row-name">${e.restaurant}</div><div class="row-meta">${new Date(e.date).toLocaleDateString()} &middot; ${e.verified?"Verified Visit":"Unverified"}${c!==null?` &middot; ${c}% consistency`:""}</div></div><div class="row-score">${e.avg.toFixed(2)}</div></div>`}).join("");
-}
-function renderProfile(){
-  const name=account?.name||"Guest";
-  document.getElementById("profileName").textContent=name;
-  document.getElementById("profileAvatar").textContent=name[0]?.toUpperCase()||"G";
-  document.getElementById("profileArea").textContent=(area?area+" &middot; ":"")+(account?"TableScore member":"Browse freely &middot; Account required to rate");
-  document.getElementById("profileRatings").textContent=entries.length;
-  document.getElementById("profileRestaurants").textContent=new Set(entries.map(e=>e.restaurant.toLowerCase())).size;
-  document.getElementById("profileAuthBtn").textContent=account?"Account Active":"Create Account to Rate";
-  document.getElementById("profileAuthBtn").disabled=!!account;
-}
+
 document.getElementById("avatarBtn").onclick=()=>showScreen("profile");
 document.getElementById("homeSearch").addEventListener("focus",()=>showScreen("explore"));
-renderExplore();updateArea();renderSaved();renderProfile();calculate();
+
+async function init(){
+  updateArea();
+  calculate();
+
+  const {data:{session}}=await db.auth.getSession();
+  currentUser=session?.user||null;
+  await Promise.all([loadRestaurantStats(),refreshUserData()]);
+
+  db.auth.onAuthStateChange(async (_event,sessionNow)=>{
+    currentUser=sessionNow?.user||null;
+    await refreshUserData();
+  });
+}
+init();
 </script>
 </body>
 </html>
