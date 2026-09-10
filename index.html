@@ -266,11 +266,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .badge-choice.active{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
 .badge-choice .badge-emoji{display:block;font-size:25px;line-height:1.1;margin-bottom:5px}
 .badge-choice .badge-name{display:block;font-size:9px;font-weight:900;line-height:1.15}
-.badge-choice .badge-check{
-  position:absolute;right:5px;top:5px;width:16px;height:16px;border-radius:50%;
-  display:none;place-items:center;background:var(--gold);color:white;font-size:10px;font-weight:950
-}
-.badge-choice.active .badge-check{display:grid}
 .badge-count{font-size:11px;font-weight:900;color:var(--gold);margin-top:7px}
 @media(max-width:380px){.badge-picker{grid-template-columns:repeat(3,1fr)}}
 
@@ -801,7 +796,6 @@ const STARTER_BADGES=[
   {slug:"cheese-please",emoji:"ð§",name:"Cheese Please"},
   {slug:"late-night",emoji:"ð",name:"Late-Night Eater"},
   {slug:"worth-the-drive",emoji:"ð",name:"Worth the Drive"},
-  {slug:"hidden-gem",emoji:"ð",name:"Hidden Gem Hunter"},
   {slug:"sushi-side",emoji:"ð£",name:"Sushi Side"},
   {slug:"bbq-mode",emoji:"ð¥",name:"BBQ Mode"},
   {slug:"breakfast-club",emoji:"ð¥",name:"Breakfast Club"},
@@ -2129,7 +2123,7 @@ function renderBadgePicker(){
   out.innerHTML=availableBadges.map(b=>{
     const active=equippedBadgeSlugs.includes(b.slug);
     return `<button class="badge-choice ${active?"active":""}" onclick="toggleFoodBadge('${b.slug}')">
-      <span class="badge-check">â</span><span class="badge-emoji">${b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
+      <span class="badge-emoji">${b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
     </button>`;
   }).join("");
   const count=document.getElementById("badgeCount");if(count)count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
