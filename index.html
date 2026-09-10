@@ -54,7 +54,7 @@ radial-gradient(circle at 30% 30%,#7a3e20,#2a1710 45%,#0d0d0d 75%);display:flex;
 .hidden{display:none!important}
 .screen{display:none}.screen.active{display:block}
 .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(9,11,13,.94);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
-.nav-inner{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}
+.nav-inner{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(6,1fr)}
 .nav button{border:0;background:transparent;color:#8d9398;padding:7px 2px;font-size:10px;font-weight:750}
 .nav button .ico{display:block;font-size:20px;margin-bottom:2px}
 .nav button.active{color:var(--gold)}
@@ -178,15 +178,14 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableScore ratings shown in this version come only from the TableScore database.</p>
     </div>
 
-    <div id="followingFeedCard" class="card">
-      <div class="section-head">
+    <div class="card" onclick="showScreen('feed')" style="cursor:pointer">
+      <div class="section-head" style="margin-bottom:5px">
         <div>
-          <div class="section-title">Following</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Recent ratings from people you follow</div>
+          <div class="section-title">Your Feed</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">See what people you follow are rating</div>
         </div>
-        <button class="linkbtn" onclick="showScreen('profile')">Find people &rsaquo;</button>
+        <button class="linkbtn" onclick="event.stopPropagation();showScreen('feed')">Open &rsaquo;</button>
       </div>
-      <div id="followingFeed" style="margin-top:8px"></div>
     </div>
 
     <div class="card">
@@ -200,6 +199,25 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     </div>
 
     <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
+  </section>
+
+  <section id="feed" class="screen">
+    <div class="hero" style="padding-bottom:4px">
+      <div class="kicker">TableScore Social</div>
+      <h1 style="font-size:34px">Your Feed</h1>
+      <div class="muted" style="font-size:13px;line-height:1.45">Recent ratings, dish photos, and restaurant picks from people you follow.</div>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Following</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableScore circle</div>
+        </div>
+        <button class="linkbtn" onclick="showScreen('profile')">Find people &rsaquo;</button>
+      </div>
+      <div id="followingFeed" style="margin-top:8px"></div>
+    </div>
   </section>
 
   <section id="explore" class="screen">
@@ -322,6 +340,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   <div class="nav-inner">
     <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
     <button data-s="explore" onclick="showScreen('explore')"><span class="ico">&#8981;</span>Explore</button>
+    <button data-s="feed" onclick="showScreen('feed')"><span class="ico">&#9776;</span>Feed</button>
     <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
     <button data-s="saved" onclick="showScreen('saved')"><span class="ico">&#9825;</span>Saved</button>
     <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
@@ -440,7 +459,7 @@ function showScreen(id,options={}){
 
   // Remember the user's main page so a browser refresh returns here.
   // Do not persist temporary rating-flow screens.
-  const persistentScreens=["home","explore","saved","profile"];
+  const persistentScreens=["home","explore","feed","saved","profile"];
   if(persistentScreens.includes(id)){
     localStorage.setItem("ts_current_screen",id);
   }
@@ -448,6 +467,7 @@ function showScreen(id,options={}){
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
   if(id==="explore") renderExplore();
+  if(id==="feed") loadFollowingFeed();
   if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -1735,7 +1755,7 @@ async function init(){
   await Promise.all([loadRestaurantStats(),refreshUserData()]);
 
   const savedScreen=localStorage.getItem("ts_current_screen");
-  if(["home","explore","saved","profile"].includes(savedScreen)){
+  if(["home","explore","feed","saved","profile"].includes(savedScreen)){
     showScreen(savedScreen,{restore:true});
   }
 
