@@ -2545,7 +2545,7 @@ async function loadProfileTitles(){
 function renderTitlePicker(){
   const out=document.getElementById("titlePicker"); if(!out)return;
   const active=profile?.active_title||"Table Regular";
-  out.innerHTML=availableTitles.map(title=>`<button class="title-choice ${title===active?"active":""}" onclick="setActiveTitle(${JSON.stringify(title)})">${esc(title)}</button>`).join("");
+  out.innerHTML=availableTitles.map(title=>`<button class="title-choice ${title===active?"active":""}" data-title="${esc(title)}" onclick="setActiveTitle(this.dataset.title)">${esc(title)}</button>`).join("");
 }
 async function setActiveTitle(title){
   if(!currentUser)return openAccount();
