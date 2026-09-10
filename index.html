@@ -210,8 +210,8 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
         <div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div>
         <div class="stat"><div class="stat-label">PLACES</div><div id="profileRestaurants" class="stat-value">0</div></div>
-        <div class="stat"><div class="stat-label">FOLLOWERS</div><div id="profileFollowers" class="stat-value">0</div></div>
-        <div class="stat"><div class="stat-label">FOLLOWING</div><div id="profileFollowing" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openConnections('followers')" onkeydown="if(event.key==='Enter')openConnections('followers')" style="cursor:pointer"><div class="stat-label">FOLLOWERS</div><div id="profileFollowers" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openConnections('following')" onkeydown="if(event.key==='Enter')openConnections('following')" style="cursor:pointer"><div class="stat-label">FOLLOWING</div><div id="profileFollowing" class="stat-value">0</div></div>
       </div>
     </div>
 
@@ -247,6 +247,16 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
     <button data-s="saved" onclick="showScreen('saved')"><span class="ico">&#9825;</span>Saved</button>
     <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
+  </div>
+</div>
+
+<div id="connectionsModal" class="modal" onclick="if(event.target===this)closeConnections()">
+  <div class="sheet">
+    <div class="section-head">
+      <div id="connectionsTitle" class="section-title">Followers</div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeConnections()">Close</button>
+    </div>
+    <div id="connectionsList" class="list" style="margin-top:10px;max-height:55vh;overflow:auto"></div>
   </div>
 </div>
 
@@ -701,6 +711,53 @@ function renderProfile(){
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
+}
+
+async function openConnections(type){
+  if(!currentUser)return openAccount();
+  const modal=document.getElementById("connectionsModal");
+  const title=document.getElementById("connectionsTitle");
+  const out=document.getElementById("connectionsList");
+  title.textContent=type==="followers"?"Followers":"Following";
+  modal.classList.add("open");
+  out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading...</div>';
+
+  let ids=[];
+  if(type==="followers"){
+    const {data,error}=await db.from("follows").select("follower_id").eq("following_id",currentUser.id);
+    if(error){console.error(error);out.innerHTML='<div class="muted">Could not load followers.</div>';return;}
+    ids=(data||[]).map(x=>x.follower_id);
+  }else{
+    const {data,error}=await db.from("follows").select("following_id").eq("follower_id",currentUser.id);
+    if(error){console.error(error);out.innerHTML='<div class="muted">Could not load following.</div>';return;}
+    ids=(data||[]).map(x=>x.following_id);
+  }
+
+  if(!ids.length){
+    out.innerHTML=`<div class="muted" style="font-size:12px;padding:14px 2px">No ${type==="followers"?"followers":"accounts followed"} yet.</div>`;
+    return;
+  }
+
+  const {data:people,error}=await db.from("profiles")
+    .select("id,display_name,username,home_city")
+    .in("id",ids);
+  if(error){console.error(error);out.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
+
+  out.innerHTML=(people||[]).map(u=>{
+    const isFollowing=followingIds.has(u.id);
+    const display=u.display_name||u.username||"TableScore User";
+    return `<div class="row">
+      <div style="min-width:0;flex:1">
+        <div class="row-name">${esc(display)}</div>
+        <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
+      </div>
+      ${u.id===currentUser.id?"":`<button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
+    </div>`;
+  }).join("");
+}
+
+function closeConnections(){
+  document.getElementById("connectionsModal").classList.remove("open");
 }
 
 async function claimUsername(){
