@@ -2190,7 +2190,7 @@ async function loadSecretRewards(){
   // Earned secret badges become available only after the unlock.
   for(const r of earnedSecretRewards.filter(x=>x.reward_type==="badge")){
     if(!availableBadges.some(b=>b.slug===r.reward_slug)){
-      availableBadges.push({slug:r.reward_slug,name:r.reward_name,emoji:r.reward_emoji});
+      availableBadges.push({slug:r.reward_slug,name:r.reward_name,emoji:r.reward_slug==="secret-sauce"?"ð§ª":r.reward_emoji});
     }
   }
   // Earned secret titles become available only after the unlock.
@@ -2222,7 +2222,7 @@ async function tryUnlockSecretReward(slug){
     reward_slug:"secret-sauce",
     reward_type:"badge",
     reward_name:"Secret Sauce",
-    reward_emoji:"ð¥«",
+    reward_emoji:"ð§ª",
     is_new:true
   };
   const {data,error}=await db.from("user_secret_rewards").insert(payload).select("*").single();
@@ -2233,7 +2233,7 @@ async function tryUnlockSecretReward(slug){
   }
   earnedSecretRewards.unshift(data);
   if(!availableBadges.some(b=>b.slug==="secret-sauce")){
-    availableBadges.push({slug:"secret-sauce",name:"Secret Sauce",emoji:"ð¥«"});
+    availableBadges.push({slug:"secret-sauce",name:"Secret Sauce",emoji:"ð§ª"});
   }
   renderBadgePicker();
   showSecretReward({
@@ -2246,7 +2246,7 @@ async function tryUnlockSecretReward(slug){
 function showSecretReward(reward){
   currentSecretReward=reward;
   const overlay=document.getElementById("secretRewardOverlay");
-  document.getElementById("secretRewardIcon").textContent=reward.reward_emoji||"â¨";
+  document.getElementById("secretRewardIcon").textContent=reward.reward_slug==="secret-sauce"?"ð§ª":(reward.reward_emoji||"â¨");
   document.getElementById("secretRewardName").textContent=reward.reward_name||"Secret Reward";
   document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
   const req=document.getElementById("secretRewardRequirements");
