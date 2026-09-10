@@ -122,6 +122,37 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .edit-photo-current{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
 .edit-photo-current .photo-preview-item button.photo-remove{z-index:2}
 
+
+.edit-rating-header{
+  position:sticky;
+  top:0;
+  z-index:20;
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  margin:-15px -15px 12px;
+  padding:15px;
+  background:rgba(17,21,25,.98);
+  border-bottom:1px solid var(--line);
+  backdrop-filter:blur(14px);
+}
+.edit-rating-actions{
+  position:sticky;
+  bottom:0;
+  z-index:20;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+  margin:14px -15px -15px;
+  padding:12px 15px calc(12px + env(safe-area-inset-bottom));
+  background:rgba(17,21,25,.98);
+  border-top:1px solid var(--line);
+  backdrop-filter:blur(14px);
+}
+.edit-rating-actions .primary,
+.edit-rating-actions .secondary{margin:0}
+
 </style>
 </head>
 <body>
@@ -1701,9 +1732,9 @@ async function init(){
 init();
 </script>
 
-  <div id="editRatingModal" class="modal hidden">
+  <div id="editRatingModal" class="modal hidden" onclick="if(event.target===this)closeEditRating()">
     <div class="modal-sheet" style="max-height:92vh;overflow:auto">
-      <div class="section-head">
+      <div class="edit-rating-header">
         <div class="section-title">Edit Rating</div>
         <button class="linkbtn" onclick="closeEditRating()">Close</button>
       </div>
@@ -1736,7 +1767,10 @@ init();
         <div id="editNewPhotoPreviews" class="photo-preview-grid"></div>
       </div>
 
-      <button id="saveEditedRatingBtn" class="primary" onclick="saveEditedRating()">Save Changes</button>
+      <div class="edit-rating-actions">
+        <button class="secondary" onclick="closeEditRating()">Cancel</button>
+        <button id="saveEditedRatingBtn" class="primary" onclick="saveEditedRating()">Save Changes</button>
+      </div>
     </div>
   </div>
 
