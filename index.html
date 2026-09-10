@@ -95,7 +95,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .modal{position:fixed;inset:0;z-index:100;background:rgba(0,0,0,.75);display:grid;place-items:end center;padding:14px}
 .sheet{width:min(100%,720px);background:#101418;border:1px solid var(--line);border-radius:24px 24px 18px 18px;padding:20px;margin-bottom:env(safe-area-inset-bottom)}
 .sheet h2{font-family:Georgia,serif;font-size:28px;margin:0 0 6px}
-.profilebox{text-align:center;padding:22px 10px}.profileavatar{width:72px;height:72px;border-radius:50%;margin:auto;background:var(--gold);color:#111;display:grid;place-items:center;font-size:28px;font-weight:950}
+.profilebox{text-align:center;padding:22px 10px}.profileavatar{width:92px;height:92px;border-radius:50%;margin:auto;background:var(--gold);color:#111;display:grid;place-items:center;font-size:30px;font-weight:950;background-size:cover;background-position:center;border:2px solid rgba(229,184,91,.55);cursor:pointer;overflow:hidden}.avatar{background-size:cover!important;background-position:center!important}.photo-actions{display:flex;justify-content:center;gap:8px;margin-top:10px}.photo-actions button{width:auto;padding:9px 13px}
 .kicker{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted);font-weight:850}
 .authgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .empty{text-align:center;padding:20px 10px}
@@ -200,7 +200,12 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
   <section id="profile" class="screen">
     <div class="profilebox">
-      <div id="profileAvatar" class="profileavatar">G</div>
+      <div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
+      <input id="profilePhotoInput" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
+      <div id="profilePhotoActions" class="photo-actions hidden">
+        <button class="secondary" onclick="chooseProfilePhoto()">Change Photo</button>
+        <button id="removePhotoBtn" class="secondary hidden" onclick="removeProfilePhoto()">Remove</button>
+      </div>
       <div id="profileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">Guest</div>
       <div id="profileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
       <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
@@ -698,7 +703,7 @@ function renderProfile(){
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
   const username=profile?.username||"";
   document.getElementById("profileName").textContent=name;
-  document.getElementById("profileAvatar").textContent=(name[0]||"G").toUpperCase();
+  renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
   document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableScore member":"Browse freely \u00b7 Account required to rate");
   document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
@@ -711,6 +716,120 @@ function renderProfile(){
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
+}
+
+
+function renderAvatarUI(name){
+  const profileAvatar=document.getElementById("profileAvatar");
+  const topAvatar=document.getElementById("avatarBtn");
+  const actions=document.getElementById("profilePhotoActions");
+  const removeBtn=document.getElementById("removePhotoBtn");
+  const initial=(name?.[0]||"G").toUpperCase();
+  const url=profile?.avatar_url||"";
+
+  if(url){
+    profileAvatar.textContent="";
+    profileAvatar.style.backgroundImage=`url("${url}")`;
+    topAvatar.textContent="";
+    topAvatar.style.backgroundImage=`url("${url}")`;
+  }else{
+    profileAvatar.style.backgroundImage="none";
+    profileAvatar.textContent=initial;
+    topAvatar.style.backgroundImage="none";
+    topAvatar.textContent=currentUser?initial:"ð¤";
+  }
+
+  actions.classList.toggle("hidden",!currentUser);
+  removeBtn.classList.toggle("hidden",!currentUser||!url);
+}
+
+function chooseProfilePhoto(){
+  if(!currentUser)return openAccount();
+  document.getElementById("profilePhotoInput").click();
+}
+
+async function imageFileToJpeg(file){
+  return await new Promise((resolve,reject)=>{
+    const reader=new FileReader();
+    reader.onerror=()=>reject(new Error("Could not read that photo."));
+    reader.onload=()=>{
+      const img=new Image();
+      img.onerror=()=>reject(new Error("That photo format could not be opened. Try a JPEG, PNG, or another photo."));
+      img.onload=()=>{
+        const max=1200;
+        let w=img.width,h=img.height;
+        const scale=Math.min(1,max/Math.max(w,h));
+        w=Math.max(1,Math.round(w*scale));
+        h=Math.max(1,Math.round(h*scale));
+        const canvas=document.createElement("canvas");
+        canvas.width=w;canvas.height=h;
+        const ctx=canvas.getContext("2d");
+        ctx.drawImage(img,0,0,w,h);
+        canvas.toBlob(blob=>{
+          if(!blob)return reject(new Error("Could not prepare that photo."));
+          resolve(blob);
+        },"image/jpeg",0.86);
+      };
+      img.src=reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+async function handleProfilePhoto(event){
+  if(!currentUser)return;
+  const file=event.target.files?.[0];
+  event.target.value="";
+  if(!file)return;
+
+  if(file.size>20*1024*1024){
+    return alert("That photo is too large. Choose an image under 20 MB.");
+  }
+
+  const avatar=document.getElementById("profileAvatar");
+  const oldText=avatar.textContent;
+  avatar.textContent="â¦";
+
+  try{
+    const jpegBlob=await imageFileToJpeg(file);
+    const path=`${currentUser.id}/avatar.jpg`;
+
+    const {error:uploadError}=await db.storage
+      .from("avatars")
+      .upload(path,jpegBlob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});
+    if(uploadError)throw uploadError;
+
+    const {data:urlData}=db.storage.from("avatars").getPublicUrl(path);
+    const publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
+
+    const {error:profileError}=await db
+      .from("profiles")
+      .update({avatar_url:publicUrl})
+      .eq("id",currentUser.id);
+    if(profileError)throw profileError;
+
+    profile={...(profile||{}),avatar_url:publicUrl};
+    renderProfile();
+  }catch(err){
+    console.error(err);
+    avatar.textContent=oldText;
+    alert(err.message||"Could not upload your profile photo.");
+  }
+}
+
+async function removeProfilePhoto(){
+  if(!currentUser||!profile?.avatar_url)return;
+  if(!confirm("Remove your profile photo?"))return;
+
+  const path=`${currentUser.id}/avatar.jpg`;
+  const {error:storageError}=await db.storage.from("avatars").remove([path]);
+  if(storageError)console.error("avatar remove:",storageError);
+
+  const {error}=await db.from("profiles").update({avatar_url:null}).eq("id",currentUser.id);
+  if(error)return alert(error.message);
+
+  profile={...(profile||{}),avatar_url:null};
+  renderProfile();
 }
 
 async function openConnections(type){
