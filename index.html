@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#090b0d">
-<title>TableScore</title>
+<title onclick="secretTestTap()" style="cursor:pointer">TableScore</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -268,6 +268,47 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .badge-choice .badge-name{display:block;font-size:9px;font-weight:900;line-height:1.15}
 .badge-count{font-size:11px;font-weight:900;color:var(--gold);margin-top:7px}
 @media(max-width:380px){.badge-picker{grid-template-columns:repeat(3,1fr)}}
+
+
+/* ===== V5.19 Secret Rewards ===== */
+.secret-reward-overlay{
+  position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
+  padding:22px;background:rgba(8,10,12,.82);backdrop-filter:blur(10px);overflow:hidden
+}
+.secret-reward-overlay.hidden{display:none}
+.secret-reward-card{
+  position:relative;width:min(92vw,390px);border-radius:28px;padding:28px 20px 22px;
+  background:var(--card);border:1px solid var(--line);box-shadow:0 28px 90px rgba(0,0,0,.38);
+  text-align:center;animation:secretCardIn .62s cubic-bezier(.2,.9,.2,1.15) both
+}
+.secret-reward-burst{position:absolute;inset:-70px;pointer-events:none}
+.secret-particle{
+  position:absolute;left:50%;top:50%;font-size:18px;opacity:0;
+  animation:secretParticle 1.25s ease-out forwards;animation-delay:var(--delay);
+  transform:rotate(var(--rot))
+}
+.secret-icon{
+  width:96px;height:96px;border-radius:28px;margin:4px auto 16px;display:grid;place-items:center;
+  font-size:54px;background:var(--card2);border:2px solid var(--gold);
+  box-shadow:0 0 0 8px color-mix(in srgb,var(--gold) 10%,transparent),0 12px 35px rgba(0,0,0,.16);
+  animation:secretIconPop .78s .18s cubic-bezier(.2,1.4,.35,1) both
+}
+.secret-kicker{font-size:12px;font-weight:1000;letter-spacing:.18em;color:var(--gold);opacity:0;animation:secretReveal .4s .55s forwards}
+.secret-name{font-size:27px;font-weight:1000;margin-top:8px;opacity:0;animation:secretReveal .45s .72s forwards}
+.secret-line{font-size:13px;color:var(--muted);font-weight:800;margin-top:6px;opacity:0;animation:secretReveal .45s .88s forwards}
+.secret-requirements{margin-top:18px;text-align:left;display:grid;gap:8px}
+.secret-requirement{
+  border:1px solid var(--line);background:var(--card2);border-radius:13px;padding:10px 11px;
+  font-size:11px;font-weight:850;opacity:0;transform:translateY(8px);animation:secretReqIn .4s forwards
+}
+.secret-requirement::before{content:"â";display:inline-grid;place-items:center;width:19px;height:19px;border-radius:50%;background:var(--gold);color:white;margin-right:8px;font-size:11px}
+.secret-actions{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-top:20px;opacity:0;animation:secretReveal .4s 1.35s forwards}
+.reward-new-dot{display:inline-flex;margin-left:5px;padding:2px 5px;border-radius:999px;background:var(--gold);color:#fff;font-size:8px;font-weight:1000;vertical-align:middle}
+@keyframes secretCardIn{0%{opacity:0;transform:scale(.72) translateY(28px)}100%{opacity:1;transform:scale(1) translateY(0)}}
+@keyframes secretIconPop{0%{opacity:0;transform:scale(.1) rotate(-18deg)}65%{opacity:1;transform:scale(1.14) rotate(5deg)}100%{opacity:1;transform:scale(1) rotate(0)}}
+@keyframes secretReveal{to{opacity:1}}
+@keyframes secretReqIn{to{opacity:1;transform:translateY(0)}}
+@keyframes secretParticle{0%{opacity:0;transform:translate(0,0) scale(.5) rotate(var(--rot))}18%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1.25) rotate(calc(var(--rot) + 160deg))}}
 
 </style>
 </head>
@@ -803,6 +844,12 @@ const STARTER_BADGES=[
 ];
 let availableBadges=[...STARTER_BADGES];
 let equippedBadgeSlugs=[];
+
+let earnedSecretRewards=[];
+let currentSecretReward=null;
+let secretTestTapCount=0;
+let secretTestTapTimer=null;
+
 
 
 let cropSourceFile=null,cropObjectUrl="",cropImageNaturalW=0,cropImageNaturalH=0,cropBaseScale=1,cropZoom=1,cropX=0,cropY=0;
@@ -2095,6 +2142,127 @@ async function renderMyProfileRatings(){
 
 
 
+
+async function loadSecretRewards(){
+  if(!currentUser){earnedSecretRewards=[];return;}
+  const {data,error}=await db.from("user_secret_rewards")
+    .select("reward_slug,reward_type,reward_name,reward_emoji,unlocked_at,is_new")
+    .eq("user_id",currentUser.id)
+    .order("unlocked_at",{ascending:false});
+  if(error){console.error("secret rewards:",error);earnedSecretRewards=[];return;}
+  earnedSecretRewards=data||[];
+
+  // Earned secret badges become available only after the unlock.
+  for(const r of earnedSecretRewards.filter(x=>x.reward_type==="badge")){
+    if(!availableBadges.some(b=>b.slug===r.reward_slug)){
+      availableBadges.push({slug:r.reward_slug,name:r.reward_name,emoji:r.reward_emoji});
+    }
+  }
+  // Earned secret titles become available only after the unlock.
+  for(const r of earnedSecretRewards.filter(x=>x.reward_type==="title")){
+    if(!availableTitles.includes(r.reward_name))availableTitles.push(r.reward_name);
+  }
+  renderBadgePicker();
+  renderTitlePicker();
+}
+
+function secretTestTap(){
+  if(!currentUser)return;
+  secretTestTapCount++;
+  clearTimeout(secretTestTapTimer);
+  secretTestTapTimer=setTimeout(()=>secretTestTapCount=0,1800);
+  if(secretTestTapCount>=5){
+    secretTestTapCount=0;
+    tryUnlockSecretReward("secret-sauce");
+  }
+}
+
+async function tryUnlockSecretReward(slug){
+  if(!currentUser)return;
+  // Test reward. Production secrets will call this only after their hidden condition checker passes.
+  if(slug!=="secret-sauce")return;
+
+  const existing=earnedSecretRewards.find(r=>r.reward_slug===slug);
+  if(existing)return;
+
+  const payload={
+    user_id:currentUser.id,
+    reward_slug:"secret-sauce",
+    reward_type:"badge",
+    reward_name:"Secret Sauce",
+    reward_emoji:"ð¥«",
+    is_new:true
+  };
+  const {data,error}=await db.from("user_secret_rewards").insert(payload).select("*").single();
+  if(error){
+    if(error.code==="23505")return;
+    console.error("secret unlock:",error);
+    return;
+  }
+  earnedSecretRewards.unshift(data);
+  if(!availableBadges.some(b=>b.slug==="secret-sauce")){
+    availableBadges.push({slug:"secret-sauce",name:"Secret Sauce",emoji:"ð¥«"});
+  }
+  renderBadgePicker();
+  showSecretReward({
+    ...data,
+    tagline:"You found something that wasn't on the menu.",
+    requirements:["Found the hidden TableScore test Easter egg","Completed the secret interaction"]
+  });
+}
+
+function showSecretReward(reward){
+  currentSecretReward=reward;
+  const overlay=document.getElementById("secretRewardOverlay");
+  document.getElementById("secretRewardIcon").textContent=reward.reward_emoji||"â¨";
+  document.getElementById("secretRewardName").textContent=reward.reward_name||"Secret Reward";
+  document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
+  const req=document.getElementById("secretRewardRequirements");
+  req.innerHTML=(reward.requirements||[]).map((x,i)=>`<div class="secret-requirement" style="animation-delay:${.92+i*.16}s">${esc(x)}</div>`).join("");
+  const burst=document.getElementById("secretRewardBurst");
+  const bits=["â¨","â¦","â¢","ð´","â","â§","â¢","â¨","â¦","â","ð´","â§"];
+  burst.innerHTML=bits.map((b,i)=>{
+    const angle=(Math.PI*2*i/bits.length)+(i%2?.18:0);
+    const dist=105+(i%3)*28;
+    return `<span class="secret-particle" style="--x:${Math.cos(angle)*dist}px;--y:${Math.sin(angle)*dist}px;--rot:${i*31}deg;--delay:${.18+(i%4)*.06}s">${b}</span>`;
+  }).join("");
+  const equip=document.getElementById("secretEquipBtn");
+  equip.textContent=reward.reward_type==="title"?"Equip Title":"Equip Badge";
+  overlay.classList.remove("hidden");
+  if(navigator.vibrate)navigator.vibrate([35,35,70]);
+}
+
+function closeSecretReward(){
+  document.getElementById("secretRewardOverlay")?.classList.add("hidden");
+  currentSecretReward=null;
+}
+
+async function equipSecretReward(){
+  const r=currentSecretReward;if(!r)return closeSecretReward();
+  if(r.reward_type==="badge"){
+    if(!equippedBadgeSlugs.includes(r.reward_slug)){
+      if(equippedBadgeSlugs.length>=4){
+        alert("You already have 4 badges equipped. Remove one in Settings, then equip this reward.");
+        closeSecretReward();return;
+      }
+      const next=[...equippedBadgeSlugs,r.reward_slug];
+      const {error:delErr}=await db.from("user_profile_badges").delete().eq("user_id",currentUser.id);
+      if(delErr)return alert("Could not equip reward: "+delErr.message);
+      const rows=next.map((badge_slug,i)=>({user_id:currentUser.id,badge_slug,slot:i+1}));
+      const {error:insErr}=await db.from("user_profile_badges").insert(rows);
+      if(insErr){await loadFoodBadges();return alert("Could not equip reward: "+insErr.message);}
+      equippedBadgeSlugs=next;
+      renderOwnBadges();renderBadgePicker();
+    }
+  }else if(r.reward_type==="title"){
+    const {error}=await db.from("profiles").update({active_title:r.reward_name}).eq("id",currentUser.id);
+    if(error)return alert("Could not equip reward: "+error.message);
+    profile={...(profile||{}),active_title:r.reward_name};renderProfile();renderTitlePicker();
+  }
+  await db.from("user_secret_rewards").update({is_new:false}).eq("user_id",currentUser.id).eq("reward_slug",r.reward_slug);
+  closeSecretReward();
+}
+
 async function loadFoodBadges(){
   if(!currentUser){availableBadges=[...STARTER_BADGES];equippedBadgeSlugs=[];renderBadgePicker();return;}
   const [{data:defs,error:defErr},{data:equipped,error:eqErr}]=await Promise.all([
@@ -2999,6 +3167,7 @@ async function init(){
   const {data:{session}}=await db.auth.getSession();
   currentUser=session?.user||null;
   await Promise.all([loadRestaurantStats(),refreshUserData(),loadProfileTitles(),loadFoodBadges()]);
+  await loadSecretRewards();
 
   const savedScreen=localStorage.getItem("ts_current_screen");
   if(["home","explore","feed","saved","profile"].includes(savedScreen)){
@@ -3069,5 +3238,21 @@ init();
     <button id="photoNext" class="photo-lightbox-nav photo-lightbox-next" onclick="changeLightboxPhoto(1)" aria-label="Next">&rsaquo;</button>
     <div id="photoLightboxCount" class="photo-lightbox-count"></div>
   </div>
+
+<div id="secretRewardOverlay" class="secret-reward-overlay hidden">
+  <div class="secret-reward-card">
+    <div id="secretRewardBurst" class="secret-reward-burst"></div>
+    <div id="secretRewardIcon" class="secret-icon">ð½ï¸</div>
+    <div class="secret-kicker">SECRET FOUND</div>
+    <div id="secretRewardName" class="secret-name">Reward Unlocked</div>
+    <div id="secretRewardLine" class="secret-line"></div>
+    <div id="secretRewardRequirements" class="secret-requirements"></div>
+    <div class="secret-actions">
+      <button class="secondary" onclick="closeSecretReward()">Keep Current</button>
+      <button id="secretEquipBtn" class="primary" onclick="equipSecretReward()">Equip Now</button>
+    </div>
+  </div>
+</div>
+
 </body>
 </html>
