@@ -196,6 +196,22 @@ body.booting .app, body.booting .nav{visibility:hidden}
 .community-verified{display:inline-flex;align-items:center;gap:4px;color:var(--gold);font-size:10px;font-weight:900;margin-top:8px}
 .community-own{font-size:10px;font-weight:900;color:var(--gold);border:1px solid rgba(229,184,91,.35);border-radius:999px;padding:3px 7px;margin-left:5px}
 
+
+.engagement-row{display:flex;align-items:center;gap:8px;margin-top:11px;padding-top:9px;border-top:1px solid var(--line)}
+.engagement-btn{width:auto!important;padding:7px 10px!important;border-radius:999px!important;font-size:11px!important;font-weight:900!important}
+.engagement-btn.dug{border-color:rgba(229,184,91,.7)!important;background:rgba(229,184,91,.12)!important;color:var(--gold)!important}
+.rating-clickable{cursor:pointer}
+.detail-breakdown{margin-top:12px}
+.detail-breakdown .breakrow{padding:7px 0}
+.comment-item{display:flex;gap:9px;padding:10px 0;border-bottom:1px solid var(--line)}
+.comment-item:last-child{border-bottom:0}
+.comment-body{min-width:0;flex:1}
+.comment-text{font-size:13px;line-height:1.45;margin-top:3px;white-space:pre-wrap;overflow-wrap:anywhere}
+.comment-delete{width:auto!important;padding:4px 7px!important;font-size:10px!important}
+.comment-compose{display:flex;gap:8px;align-items:flex-end;margin-top:10px}
+.comment-compose textarea{min-height:42px;max-height:110px;resize:vertical}
+.comment-compose button{width:auto;flex:0 0 auto;padding:10px 12px}
+
 </style>
 </head>
 <body class="booting">
@@ -518,6 +534,50 @@ body.booting .app, body.booting .nav{visibility:hidden}
   </div>
 </div>
 
+
+<div id="ratingDetailModal" class="modal hidden" onclick="if(event.target===this)closeRatingDetail()">
+  <div class="sheet" style="max-height:90vh;overflow:auto">
+    <div class="section-head" style="position:sticky;top:0;background:var(--bg);z-index:3;padding-bottom:9px">
+      <div>
+        <div id="ratingDetailRestaurant" class="section-title">Rating</div>
+        <div id="ratingDetailMeta" class="muted" style="font-size:11px;margin-top:3px"></div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRatingDetail()">Close</button>
+    </div>
+
+    <div id="ratingDetailAuthor" style="margin-top:8px"></div>
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px">
+      <div>
+        <div class="stat-label">THEIR TABLESCORE</div>
+        <div id="ratingDetailScore" style="font-family:Georgia,serif;font-size:40px;font-weight:900;line-height:1">--</div>
+      </div>
+      <div id="ratingDetailLabel" style="color:var(--gold);font-weight:900;font-size:12px;text-align:right"></div>
+    </div>
+
+    <div class="card detail-breakdown">
+      <div class="section-title">How They Scored It</div>
+      <div id="ratingDetailBreakdown"></div>
+    </div>
+
+    <div id="ratingDetailBestDish" class="row-meta" style="margin-top:10px"></div>
+    <div id="ratingDetailQuickTake" style="font-size:13px;line-height:1.5;margin-top:8px"></div>
+    <div id="ratingDetailReturn" class="row-meta" style="margin-top:8px"></div>
+    <div id="ratingDetailPhotos"></div>
+
+    <div id="ratingDetailEngagement"></div>
+
+    <div class="card" style="margin-top:12px">
+      <div class="section-head">
+        <div class="section-title">Comments</div>
+        <div id="ratingDetailCommentCount" class="muted" style="font-size:11px"></div>
+      </div>
+      <div id="ratingDetailComments" style="margin-top:4px"></div>
+      <div id="ratingCommentComposer"></div>
+    </div>
+  </div>
+</div>
+
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
     <h2>TableScore Account</h2>
@@ -790,7 +850,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
   out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading ratings...</div>';
 
   const {data:ratings,error:rErr}=await db.from("ratings")
-    .select("id,user_id,restaurant_id,overall_score,taste,quality,service,best_dish,would_return,quick_take,verified_visit,created_at")
+    .select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at")
     .eq("restaurant_id",restaurantId)
     .order("created_at",{ascending:false})
     .limit(30);
@@ -836,9 +896,9 @@ async function loadRestaurantCommunityRatings(restaurantId){
     const score=Number(r.overall_score);
     const label=scoreWord(score);
 
-    return `<div class="community-rating">
+    return `<div class="community-rating rating-clickable" onclick="openRatingDetail('${r.id}')">
       <div style="display:flex;align-items:flex-start;gap:10px">
-        <button class="community-reviewer-btn" onclick="${own?"showScreen('profile')":`openPublicProfile('${r.user_id}')`}">
+        <button class="community-reviewer-btn" onclick="event.stopPropagation();${own?"showScreen('profile')":`openPublicProfile('${r.user_id}')`}">
           ${avatarMarkup(p,42)}
           <div style="min-width:0;flex:1">
             <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
@@ -862,9 +922,11 @@ async function loadRestaurantCommunityRatings(restaurantId){
       ${r.quick_take?`<div style="font-size:13px;line-height:1.5;margin-top:8px">${esc(r.quick_take)}</div>`:""}
       ${r.would_return?`<div class="row-meta" style="margin-top:8px"><b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}</div>`:""}
       ${photoGridMarkup(photos)}
-      ${own?`<button class="secondary" style="margin-top:10px" onclick="openEditRating('${r.id}')">Edit Your Rating</button>`:""}
+      ${engagementMarkup(r.id)}
+      ${own?`<button class="secondary" style="margin-top:10px" onclick="event.stopPropagation();openEditRating('${r.id}')">Edit Your Rating</button>`:""}
     </div>`;
   }).join("");
+  await hydrateRatingEngagement(visible.map(r=>r.id));
 }
 
 async function openRestaurantById(id){
@@ -1196,6 +1258,250 @@ function updateSaveRestaurantButton(){
   btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
 }
 
+
+let activeRatingDetailId=null;
+
+function engagementMarkup(ratingId){
+  return `<div class="engagement-row" onclick="event.stopPropagation()">
+    <button id="digBtn-${ratingId}" class="secondary engagement-btn" onclick="toggleDig('${ratingId}')">&#127860; Dig It <span id="digCount-${ratingId}">0</span></button>
+    <button class="secondary engagement-btn" onclick="openRatingDetail('${ratingId}')">&#128172; <span id="commentCount-${ratingId}">0</span></button>
+  </div>`;
+}
+
+async function hydrateRatingEngagement(ratingIds){
+  const ids=[...new Set((ratingIds||[]).filter(Boolean))];
+  if(!ids.length)return;
+
+  const [{data:digs,error:dErr},{data:comments,error:cErr}]=await Promise.all([
+    db.from("rating_digs").select("rating_id,user_id").in("rating_id",ids),
+    db.from("rating_comments").select("rating_id").in("rating_id",ids)
+  ]);
+
+  if(dErr){console.error("rating digs:",dErr);return;}
+  if(cErr){console.error("rating comments:",cErr);return;}
+
+  const digCounts=new Map();
+  const myDigs=new Set();
+  (digs||[]).forEach(d=>{
+    digCounts.set(d.rating_id,(digCounts.get(d.rating_id)||0)+1);
+    if(currentUser&&d.user_id===currentUser.id)myDigs.add(d.rating_id);
+  });
+
+  const commentCounts=new Map();
+  (comments||[]).forEach(c=>commentCounts.set(c.rating_id,(commentCounts.get(c.rating_id)||0)+1));
+
+  ids.forEach(id=>{
+    document.querySelectorAll(`[id="digCount-${id}"]`).forEach(el=>el.textContent=digCounts.get(id)||0);
+    document.querySelectorAll(`[id="commentCount-${id}"]`).forEach(el=>el.textContent=commentCounts.get(id)||0);
+    document.querySelectorAll(`[id="digBtn-${id}"]`).forEach(btn=>btn.classList.toggle("dug",myDigs.has(id)));
+  });
+}
+
+async function toggleDig(ratingId){
+  if(!currentUser){
+    openAccount(()=>toggleDig(ratingId));
+    return;
+  }
+
+  const {data:existing,error:findErr}=await db.from("rating_digs")
+    .select("rating_id")
+    .eq("rating_id",ratingId)
+    .eq("user_id",currentUser.id)
+    .maybeSingle();
+
+  if(findErr)return alert("Could not update Dig It: "+findErr.message);
+
+  if(existing){
+    const {error}=await db.from("rating_digs").delete()
+      .eq("rating_id",ratingId)
+      .eq("user_id",currentUser.id);
+    if(error)return alert("Could not remove Dig It: "+error.message);
+  }else{
+    const {error}=await db.from("rating_digs").insert({rating_id:ratingId,user_id:currentUser.id});
+    if(error)return alert("Could not Dig It: "+error.message);
+  }
+
+  await hydrateRatingEngagement([ratingId]);
+  if(activeRatingDetailId===ratingId)await renderRatingDetailEngagement(ratingId);
+}
+
+async function renderRatingDetailEngagement(ratingId){
+  const el=document.getElementById("ratingDetailEngagement");
+  if(!el)return;
+  el.innerHTML=engagementMarkup(ratingId);
+  await hydrateRatingEngagement([ratingId]);
+}
+
+async function openRatingDetail(ratingId){
+  if(!ratingId)return;
+  activeRatingDetailId=ratingId;
+  const modal=document.getElementById("ratingDetailModal");
+  modal.classList.remove("hidden");
+  document.getElementById("ratingDetailRestaurant").textContent="Loading rating...";
+  document.getElementById("ratingDetailAuthor").innerHTML="";
+  document.getElementById("ratingDetailBreakdown").innerHTML="";
+  document.getElementById("ratingDetailPhotos").innerHTML="";
+  document.getElementById("ratingDetailComments").innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">Loading comments...</div>';
+
+  const {data:r,error:rErr}=await db.from("ratings")
+    .select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)")
+    .eq("id",ratingId)
+    .maybeSingle();
+
+  if(rErr||!r){
+    document.getElementById("ratingDetailRestaurant").textContent="Rating unavailable";
+    console.error(rErr);
+    return;
+  }
+
+  const {data:p,error:pErr}=await db.from("profiles")
+    .select("id,display_name,username,avatar_url,is_private")
+    .eq("id",r.user_id)
+    .maybeSingle();
+
+  if(pErr)console.error(pErr);
+
+  const own=!!currentUser&&r.user_id===currentUser.id;
+  if(p?.is_private&&!own&&!(currentUser&&followingIds.has(r.user_id))){
+    closeRatingDetail();
+    alert("This rating belongs to a private account.");
+    return;
+  }
+
+  const photoMap=await getPhotosForRatings([ratingId]);
+  const photos=photoMap.get(ratingId)||[];
+  const restaurant=r.restaurants||{};
+  const score=Number(r.overall_score);
+  const name=p?.display_name||p?.username||"TableScore User";
+
+  document.getElementById("ratingDetailRestaurant").textContent=restaurant.name||"Restaurant";
+  document.getElementById("ratingDetailMeta").textContent=[
+    [restaurant.city,restaurant.state_region].filter(Boolean).join(", "),
+    r.verified_visit?"Verified Visit":"Unverified",
+    new Date(r.created_at).toLocaleDateString()
+  ].filter(Boolean).join(" Â· ");
+
+  document.getElementById("ratingDetailAuthor").innerHTML=`<button onclick="${own?"closeRatingDetail();showScreen('profile')":`closeRatingDetail();openPublicProfile('${r.user_id}')`}" style="display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left">
+    ${avatarMarkup(p,44)}
+    <div style="min-width:0">
+      <div style="font-weight:950">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
+      <div class="row-meta">${p?.username?"@"+esc(p.username):""}</div>
+    </div>
+  </button>`;
+
+  document.getElementById("ratingDetailScore").textContent=Number.isFinite(score)?score.toFixed(2):"--";
+  document.getElementById("ratingDetailLabel").textContent=scoreWord(score);
+
+  const values=[r.atmosphere,r.cleanliness,r.taste,r.quality,r.portions,r.price,r.service];
+  document.getElementById("ratingDetailBreakdown").innerHTML=cats.map((c,i)=>{
+    const n=Number(values[i]);
+    return `<div class="breakrow"><span>${esc(c)}</span><div class="bar"><i style="width:${Number.isFinite(n)?n*10:0}%"></i></div><b>${Number.isFinite(n)?n.toFixed(1):"--"}</b></div>`;
+  }).join("");
+
+  document.getElementById("ratingDetailBestDish").innerHTML=r.best_dish?`<b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}`:"";
+  document.getElementById("ratingDetailQuickTake").textContent=r.quick_take?r.quick_take:"";
+  document.getElementById("ratingDetailReturn").innerHTML=r.would_return?`<b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}`:"";
+  document.getElementById("ratingDetailPhotos").innerHTML=photoGridMarkup(photos);
+
+  await Promise.all([
+    renderRatingDetailEngagement(ratingId),
+    loadRatingComments(ratingId)
+  ]);
+}
+
+function closeRatingDetail(){
+  document.getElementById("ratingDetailModal").classList.add("hidden");
+  activeRatingDetailId=null;
+}
+
+async function loadRatingComments(ratingId){
+  const list=document.getElementById("ratingDetailComments");
+  const count=document.getElementById("ratingDetailCommentCount");
+  const composer=document.getElementById("ratingCommentComposer");
+
+  const {data:comments,error}=await db.from("rating_comments")
+    .select("id,rating_id,user_id,body,created_at")
+    .eq("rating_id",ratingId)
+    .order("created_at",{ascending:true})
+    .limit(100);
+
+  if(error){
+    console.error("rating comments:",error);
+    list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">Could not load comments.</div>';
+    return;
+  }
+
+  count.textContent=`${comments?.length||0} comment${comments?.length===1?"":"s"}`;
+
+  const userIds=[...new Set((comments||[]).map(c=>c.user_id))];
+  let people=[];
+  if(userIds.length){
+    const {data,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url").in("id",userIds);
+    if(pErr)console.error(pErr);
+    people=data||[];
+  }
+  const peopleMap=new Map(people.map(p=>[p.id,p]));
+
+  if(!comments?.length){
+    list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">No comments yet. Start the table talk.</div>';
+  }else{
+    list.innerHTML=comments.map(c=>{
+      const p=peopleMap.get(c.user_id);
+      const own=!!currentUser&&c.user_id===currentUser.id;
+      return `<div class="comment-item">
+        <button onclick="closeRatingDetail();${own?"showScreen('profile')":`openPublicProfile('${c.user_id}')`}" style="padding:0;border:0;background:none">${avatarMarkup(p,32)}</button>
+        <div class="comment-body">
+          <div style="display:flex;align-items:center;gap:6px">
+            <span style="font-size:11px;font-weight:900">${esc(p?.display_name||p?.username||"TableScore User")}</span>
+            <span class="row-meta">${timeAgo(c.created_at)}</span>
+          </div>
+          <div class="comment-text">${esc(c.body)}</div>
+        </div>
+        ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
+      </div>`;
+    }).join("");
+  }
+
+  if(currentUser){
+    composer.innerHTML=`<div class="comment-compose">
+      <textarea id="ratingCommentInput" maxlength="500" placeholder="Add a comment..."></textarea>
+      <button class="primary" onclick="submitRatingComment('${ratingId}')">Post</button>
+    </div>`;
+  }else{
+    composer.innerHTML='<button class="secondary" style="margin-top:10px" onclick="closeRatingDetail();openAccount()">Sign in to comment</button>';
+  }
+
+  await hydrateRatingEngagement([ratingId]);
+}
+
+async function submitRatingComment(ratingId){
+  if(!currentUser)return openAccount(()=>openRatingDetail(ratingId));
+  const input=document.getElementById("ratingCommentInput");
+  const body=(input?.value||"").trim();
+  if(!body)return;
+  if(body.length>500)return alert("Comments can be up to 500 characters.");
+
+  const {error}=await db.from("rating_comments").insert({
+    rating_id:ratingId,
+    user_id:currentUser.id,
+    body
+  });
+  if(error)return alert("Could not post comment: "+error.message);
+
+  input.value="";
+  await loadRatingComments(ratingId);
+}
+
+async function deleteRatingComment(commentId,ratingId){
+  if(!currentUser)return;
+  if(!confirm("Delete this comment?"))return;
+  const {error}=await db.from("rating_comments").delete()
+    .eq("id",commentId)
+    .eq("user_id",currentUser.id);
+  if(error)return alert("Could not delete comment: "+error.message);
+  await loadRatingComments(ratingId);
+}
+
 function scoreWord(score){
   const n=Number(score);
   if(n>=9)return "Phenomenal";
@@ -1276,6 +1582,7 @@ async function loadFollowingFeed(){
   const photoMap=await getPhotosForRatings((ratings||[]).map(r=>r.id));
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
   el.innerHTML=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id))).join("");
+  await hydrateRatingEngagement(ratings.map(r=>r.id));
 }
 
 function feedRatingCard(r,person){
@@ -1288,16 +1595,16 @@ function feedRatingCard(r,person){
     Number.isFinite(Number(r.service))?`Service ${Number(r.service).toFixed(1)}`:""
   ].filter(Boolean).join(" &middot; ");
 
-  return `<div style="padding:14px 0;border-bottom:1px solid var(--line)">
+  return `<div class="rating-clickable" onclick="openRatingDetail('${r.id}')" style="padding:14px 0;border-bottom:1px solid var(--line)">
     <div style="display:flex;gap:10px;align-items:center">
-      <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
+      <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
-        <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
+        <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
         <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
-    <button onclick="openRestaurantById('${restaurant.id||r.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
+    <button onclick="event.stopPropagation();openRestaurantById('${restaurant.id||r.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
       <div style="font-family:Georgia,serif;font-size:19px;font-weight:800">${esc(restaurant.name||"Restaurant")}</div>
       <div class="row-meta">${[restaurant.city,restaurant.state_region].filter(Boolean).map(esc).join(", ")}</div>
     </button>
@@ -1309,6 +1616,7 @@ function feedRatingCard(r,person){
     ${photoGridMarkup(r._photos)}
       ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">&ldquo;${esc(r.quick_take)}&rdquo;</div>`:""}
     ${r.best_dish?`<div class="row-meta" style="margin-top:6px">Best dish: ${esc(r.best_dish)}</div>`:""}
+    ${engagementMarkup(r.id)}
   </div>`;
 }
 
@@ -1389,7 +1697,9 @@ async function openPublicProfile(userId){
   }else{
     const photoMap=await getPhotosForRatings(viewedProfileRatings.map(r=>r.id));
     viewedProfileRatings.forEach(r=>r._photos=photoMap.get(r.id)||[]);
-    out.innerHTML=viewedProfileRatings.slice(0,15).map(r=>feedRatingCard(r,p)).join("");
+    const shown=viewedProfileRatings.slice(0,15);
+    out.innerHTML=shown.map(r=>feedRatingCard(r,p)).join("");
+    await hydrateRatingEngagement(shown.map(r=>r.id));
   }
 }
 
@@ -1493,10 +1803,10 @@ async function renderMyProfileRatings(){
   el.innerHTML=recent.map(r=>{
     const restaurantName=r.restaurants?.name||"Restaurant";
     const label=scoreWord(r.overall_score);
-    return `<div class="card" style="margin:0 0 10px;padding:12px">
+    return `<div class="card rating-clickable" onclick="openRatingDetail('${r.id}')" style="margin:0 0 10px;padding:12px">
       <div class="row" style="border:0;padding:0;background:transparent;align-items:flex-start">
         <div style="min-width:0;flex:1">
-          <button onclick="${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
+          <button onclick="event.stopPropagation();${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
             <div class="row-name">${esc(restaurantName)}</div>
           </button>
           <div class="row-meta">${new Date(r.created_at).toLocaleDateString()} &middot; ${r.verified_visit?"Verified Visit":"Unverified"}</div>
@@ -1509,8 +1819,10 @@ async function renderMyProfileRatings(){
       ${r.best_dish?`<div class="row-meta" style="margin-top:9px"><b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}</div>`:""}
       ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:8px">${esc(r.quick_take)}</div>`:""}
       ${photoGridMarkup(r._photos)}
+      ${engagementMarkup(r.id)}
     </div>`;
   }).join("");
+  await hydrateRatingEngagement(recent.map(r=>r.id));
 }
 
 
