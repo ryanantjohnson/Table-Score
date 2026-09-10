@@ -360,6 +360,23 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .profile-badge svg{width:30px;height:30px;filter:drop-shadow(0 3px 5px rgba(216,98,36,.22))}
 .secret-icon svg{width:68px;height:68px;filter:drop-shadow(0 0 10px rgba(255,184,65,.55))}
 
+
+/* V5.20 Account Marks */
+.account-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:6px;vertical-align:-6px;cursor:pointer;flex:0 0 auto}
+.account-mark svg{width:24px;height:24px;display:block;filter:drop-shadow(0 2px 4px rgba(177,108,28,.25))}
+.account-mark.mark-og svg{width:25px;height:25px}
+.account-mark-pop{position:fixed;inset:0;background:rgba(25,17,11,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px}
+.account-mark-card{width:min(390px,100%);background:var(--card,#fffaf1);color:var(--text,#2b211a);border-radius:24px;padding:24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28)}
+.account-mark-hero{width:70px;height:70px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
+.account-mark-hero svg{width:68px;height:68px;filter:drop-shadow(0 6px 12px rgba(177,108,28,.3))}
+.account-mark-title{font-size:22px;font-weight:900;letter-spacing:.04em}
+.account-mark-copy{margin:8px 0 18px;opacity:.78;line-height:1.45}
+.account-mark-close{border:0;border-radius:14px;padding:12px 18px;font-weight:800;background:var(--accent,#e67835);color:white;width:100%}
+.account-marks-settings{margin-top:16px}
+.account-mark-row{display:flex;align-items:center;gap:12px;padding:12px 0}
+.account-mark-row .account-mark{margin-left:0;width:34px;height:34px}
+.account-mark-row .account-mark svg{width:32px;height:32px}
+
 </style>
 </head>
 <body class="booting">
@@ -3269,6 +3286,147 @@ async function init(){
   });
 }
 init();
+
+
+// ===== V5.20 Account Marks =====
+// SECURITY NOTE:
+// OG is bound to the account through auth metadata flag `tablescore_og`.
+// In production set that flag ONLY server-side for Ryan's immutable auth user UUID.
+// Tastemaker/First Round grants live in public.account_marks and are read-only to normal clients.
+const ACCOUNT_MARK_META = {
+  og: {
+    title: "OG",
+    copy: "Where the first table was set. Est. 2026."
+  },
+  tastemaker: {
+    title: "TableScore Tastemaker",
+    copy: "A recognized voice in the TableScore food community."
+  },
+  first_round: {
+    title: "First Round",
+    copy: "From the first table, to yours. Personally given by the OG."
+  }
+};
+
+function accountMarkSvg(kind){
+  if(kind === "og"){
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="ogG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe29a"/><stop offset=".48" stop-color="#d99a35"/><stop offset="1" stop-color="#9c5b18"/></linearGradient></defs>
+      <path d="M13 29c-5-1-8-5-8-10 0-6 5-11 11-11 3 0 6 1 8 4 2-6 7-9 13-9s11 3 13 9c2-3 5-4 8-4 6 0 11 5 11 11 0 5-3 9-8 10v18H13V29z" fill="url(#ogG)" stroke="#6f3d10" stroke-width="2"/>
+      <path d="M15 47h34v9H15z" rx="3" fill="url(#ogG)" stroke="#6f3d10" stroke-width="2"/>
+      <text x="32" y="37" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#4b2a0c">OG</text>
+    </svg>`;
+  }
+  if(kind === "tastemaker"){
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="tmG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe29a"/><stop offset=".5" stop-color="#e1a33d"/><stop offset="1" stop-color="#a66019"/></linearGradient></defs>
+      <g fill="none" stroke="url(#tmG)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M18 7v15M11 8v12c0 6 4 9 7 9s7-3 7-9V8M18 29v27"/>
+        <path d="M46 7c-7 8-9 17-5 24l5 4v21M46 7v49"/>
+      </g>
+      <path d="M51 8l2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5z" fill="#efb64d"/>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">
+    <defs><radialGradient id="frG"><stop stop-color="#ffe7a4"/><stop offset=".62" stop-color="#e0a23b"/><stop offset="1" stop-color="#a96018"/></radialGradient></defs>
+    <circle cx="32" cy="32" r="27" fill="url(#frG)" stroke="#75420f" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="20" fill="none" stroke="#fff1bd" stroke-width="2" opacity=".8"/>
+    <text x="32" y="42" text-anchor="middle" font-family="Georgia,serif" font-size="29" font-weight="700" fill="#5c340e">1</text>
+    <path d="M52 8l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6L52 8z" fill="#ffe09a"/>
+  </svg>`;
+}
+
+function showAccountMarkInfo(kind){
+  const m = ACCOUNT_MARK_META[kind];
+  if(!m) return;
+  const wrap = document.createElement("div");
+  wrap.className = "account-mark-pop";
+  wrap.innerHTML = `<div class="account-mark-card" role="dialog" aria-modal="true">
+    <div class="account-mark-hero">${accountMarkSvg(kind)}</div>
+    <div class="account-mark-title">${m.title}</div>
+    <div class="account-mark-copy">${m.copy}</div>
+    <button class="account-mark-close" type="button">Close</button>
+  </div>`;
+  wrap.addEventListener("click", e => { if(e.target === wrap) wrap.remove(); });
+  wrap.querySelector(".account-mark-close").onclick = () => wrap.remove();
+  document.body.appendChild(wrap);
+}
+
+function accountMarkHtml(kind){
+  if(!ACCOUNT_MARK_META[kind]) return "";
+  return `<span class="account-mark mark-${kind}" title="${ACCOUNT_MARK_META[kind].title}" onclick="event.stopPropagation();showAccountMarkInfo('${kind}')">${accountMarkSvg(kind)}</span>`;
+}
+
+// Cache keeps rendering inexpensive in feed/comments/community cards.
+const accountMarkCache = new Map();
+
+async function loadAccountMarks(userIds=[]){
+  const ids = [...new Set((userIds||[]).filter(Boolean))];
+  if(!ids.length) return {};
+  const missing = ids.filter(id => !accountMarkCache.has(id));
+  if(missing.length){
+    try{
+      const { data, error } = await supabaseClient
+        .from("account_marks")
+        .select("user_id,mark_type,is_active")
+        .in("user_id", missing)
+        .eq("is_active", true);
+      if(error) throw error;
+      missing.forEach(id => accountMarkCache.set(id, []));
+      (data||[]).forEach(r => {
+        const arr = accountMarkCache.get(r.user_id) || [];
+        if(!arr.includes(r.mark_type)) arr.push(r.mark_type);
+        accountMarkCache.set(r.user_id, arr);
+      });
+    }catch(err){
+      console.warn("Account marks unavailable:", err?.message || err);
+      missing.forEach(id => accountMarkCache.set(id, []));
+    }
+  }
+  const out = {};
+  ids.forEach(id => out[id] = accountMarkCache.get(id) || []);
+  return out;
+}
+
+function preferredAccountMark(markTypes=[]){
+  if(markTypes.includes("og")) return "og";
+  if(markTypes.includes("tastemaker")) return "tastemaker";
+  if(markTypes.includes("first_round")) return "first_round";
+  return null;
+}
+
+function decorateNameWithMark(nameEl, markTypes=[]){
+  if(!nameEl) return;
+  nameEl.querySelectorAll(".account-mark").forEach(x=>x.remove());
+  const kind = preferredAccountMark(markTypes);
+  if(kind) nameEl.insertAdjacentHTML("beforeend", accountMarkHtml(kind));
+}
+
+// Call after any screen/feed/comment list is rendered.
+// It finds elements carrying data-user-id and decorates a likely name element.
+async function applyAccountMarks(root=document){
+  const holders = [...root.querySelectorAll("[data-user-id]")];
+  const ids = holders.map(x=>x.dataset.userId).filter(Boolean);
+  if(!ids.length) return;
+  const marks = await loadAccountMarks(ids);
+  holders.forEach(h => {
+    const target = h.matches("[data-account-name]") ? h :
+      h.querySelector("[data-account-name],.profile-name,.feed-name,.reviewer-name,.comment-name,.user-name,h2,h3,strong");
+    if(target) decorateNameWithMark(target, marks[h.dataset.userId] || []);
+  });
+}
+
+// Mutation observer makes marks follow newly-rendered feed/comments/profile UI.
+let accountMarkTimer;
+const accountMarkObserver = new MutationObserver(() => {
+  clearTimeout(accountMarkTimer);
+  accountMarkTimer = setTimeout(() => applyAccountMarks(document), 60);
+});
+document.addEventListener("DOMContentLoaded", () => {
+  accountMarkObserver.observe(document.body,{childList:true,subtree:true});
+  applyAccountMarks(document);
+});
+
 </script>
 
   <div id="editRatingModal" class="modal hidden" onclick="if(event.target===this)closeEditRating()">
