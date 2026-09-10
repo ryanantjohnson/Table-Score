@@ -181,6 +181,21 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 body.booting .app, body.booting .nav{visibility:hidden}
 
 .delete-rating-btn{margin-top:12px;border:1px solid rgba(255,92,92,.45)!important;background:rgba(120,24,24,.18)!important;color:#ff8d8d!important}
+
+.restaurant-community{margin-top:12px}
+.community-rating{padding:14px 0;border-bottom:1px solid var(--line)}
+.community-rating:last-child{border-bottom:0}
+.community-reviewer{display:flex;align-items:center;gap:10px;min-width:0}
+.community-reviewer-btn{display:flex;align-items:center;gap:10px;min-width:0;flex:1;border:0;background:none;color:inherit;padding:0;text-align:left}
+.community-reviewer-name{font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.community-score{font-family:Georgia,serif;font-size:25px;font-weight:900;line-height:1}
+.community-score-label{font-size:10px;color:var(--gold);font-weight:900;margin-top:2px}
+.community-cats{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.community-cat{padding:5px 8px;border:1px solid var(--line);background:var(--card2);border-radius:999px;font-size:10px;font-weight:850;color:var(--muted)}
+.community-cat b{color:var(--ink)}
+.community-verified{display:inline-flex;align-items:center;gap:4px;color:var(--gold);font-size:10px;font-weight:900;margin-top:8px}
+.community-own{font-size:10px;font-weight:900;color:var(--gold);border:1px solid rgba(229,184,91,.35);border-radius:999px;padding:3px 7px;margin-left:5px}
+
 </style>
 </head>
 <body class="booting">
@@ -275,6 +290,20 @@ body.booting .app, body.booting .nav{visibility:hidden}
       </div>
     </div>
     <div class="card"><div class="section-title">Category Breakdown</div><div id="breakdown"></div></div>
+
+    <div class="card restaurant-community">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Recent Ratings</div>
+          <div id="restaurantCommunitySummary" class="muted" style="font-size:11px;margin-top:3px">TableScore community</div>
+        </div>
+        <span class="muted" style="font-size:10px">Newest first</span>
+      </div>
+      <div id="restaurantCommunityRatings" style="margin-top:6px">
+        <div class="muted" style="font-size:12px;padding:12px 2px">Loading ratings...</div>
+      </div>
+    </div>
+
     <button id="saveRestaurantBtn" class="secondary save-restaurant-btn" onclick="toggleSaveRestaurant()">&#9825; Save Restaurant</button>
     <div style="height:8px"></div>
     <button class="primary" onclick="startRating(selectedRestaurantName)">Rate This Restaurant</button>
@@ -745,6 +774,99 @@ function renderExplore(){
     return `<div class="row" onclick="openRestaurantById('${r.id}')"><div><div class="row-name">${esc(r.name)}</div><div class="row-meta">${r.rating_count} rating${r.rating_count===1?"":"s"} &middot; ${cons} &middot; ${rank}${locality}</div></div><div class="row-score">${score}</div></div>`;
   }).join("");
 }
+
+function canSeeRestaurantRatingProfile(p,userId){
+  if(!p)return false;
+  if(currentUser&&userId===currentUser.id)return true;
+  if(!p.is_private)return true;
+  return !!currentUser&&followingIds.has(userId);
+}
+
+async function loadRestaurantCommunityRatings(restaurantId){
+  const out=document.getElementById("restaurantCommunityRatings");
+  const summary=document.getElementById("restaurantCommunitySummary");
+  if(!out||!restaurantId)return;
+
+  out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading ratings...</div>';
+
+  const {data:ratings,error:rErr}=await db.from("ratings")
+    .select("id,user_id,restaurant_id,overall_score,taste,quality,service,best_dish,would_return,quick_take,verified_visit,created_at")
+    .eq("restaurant_id",restaurantId)
+    .order("created_at",{ascending:false})
+    .limit(30);
+
+  if(rErr){
+    console.error("restaurant community ratings:",rErr);
+    out.innerHTML='<div class="empty"><div class="section-title">Could not load recent ratings</div></div>';
+    return;
+  }
+
+  if(!ratings?.length){
+    summary.textContent="No community posts yet";
+    out.innerHTML='<div class="empty"><div class="section-title">Be the first to rate it</div><p class="muted" style="font-size:12px">Once someone posts a rating, it will appear here.</p></div>';
+    return;
+  }
+
+  const userIds=[...new Set(ratings.map(r=>r.user_id).filter(Boolean))];
+  const {data:people,error:pErr}=userIds.length
+    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private").in("id",userIds)
+    : {data:[],error:null};
+
+  if(pErr)console.error("restaurant rating profiles:",pErr);
+  const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
+
+  const visible=ratings.filter(r=>canSeeRestaurantRatingProfile(peopleMap.get(r.user_id),r.user_id));
+  const photoMap=await getPhotosForRatings(visible.map(r=>r.id));
+
+  summary.textContent=visible.length===ratings.length
+    ? `${ratings.length} recent community rating${ratings.length===1?"":"s"}`
+    : `${visible.length} visible recent rating${visible.length===1?"":"s"}`;
+
+  if(!visible.length){
+    out.innerHTML='<div class="empty"><div class="section-title">No visible ratings</div><p class="muted" style="font-size:12px">Recent ratings here are from private accounts you do not currently follow.</p></div>';
+    return;
+  }
+
+  out.innerHTML=visible.map(r=>{
+    const p=peopleMap.get(r.user_id);
+    const name=p?.display_name||p?.username||"TableScore User";
+    const username=p?.username?`@${esc(p.username)}`:"";
+    const own=!!currentUser&&r.user_id===currentUser.id;
+    const photos=photoMap.get(r.id)||[];
+    const score=Number(r.overall_score);
+    const label=scoreWord(score);
+
+    return `<div class="community-rating">
+      <div style="display:flex;align-items:flex-start;gap:10px">
+        <button class="community-reviewer-btn" onclick="${own?"showScreen('profile')":`openPublicProfile('${r.user_id}')`}">
+          ${avatarMarkup(p,42)}
+          <div style="min-width:0;flex:1">
+            <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
+            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>
+          </div>
+        </button>
+        <div style="text-align:right;flex:0 0 auto">
+          <div class="community-score">${Number.isFinite(score)?score.toFixed(2):"--"}</div>
+          <div class="community-score-label">${esc(label)}</div>
+        </div>
+      </div>
+
+      <div class="community-cats">
+        <span class="community-cat">Taste <b>${Number(r.taste).toFixed(1)}</b></span>
+        <span class="community-cat">Quality <b>${Number(r.quality).toFixed(1)}</b></span>
+        <span class="community-cat">Service <b>${Number(r.service).toFixed(1)}</b></span>
+      </div>
+
+      ${r.verified_visit?'<div class="community-verified">&#10003; Verified Visit</div>':""}
+      ${r.best_dish?`<div class="row-meta" style="margin-top:9px"><b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}</div>`:""}
+      ${r.quick_take?`<div style="font-size:13px;line-height:1.5;margin-top:8px">${esc(r.quick_take)}</div>`:""}
+      ${r.would_return?`<div class="row-meta" style="margin-top:8px"><b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}</div>`:""}
+      ${photoGridMarkup(photos)}
+      ${own?`<button class="secondary" style="margin-top:10px" onclick="openEditRating('${r.id}')">Edit Your Rating</button>`:""}
+    </div>`;
+  }).join("");
+}
+
 async function openRestaurantById(id){
   let r=restaurantStats.find(x=>x.id===id);
   if(!r){
@@ -770,6 +892,7 @@ async function openRestaurantById(id){
   }).join("");
   updateSaveRestaurantButton();
   showScreen("restaurant");
+  await loadRestaurantCommunityRatings(r.id);
 }
 
 async function startRating(name){
@@ -2064,6 +2187,7 @@ async function deleteCurrentRating(){
     closeEditRating();
     await refreshUserData();
     await loadRestaurantStats();
+    if(selectedRestaurantId)await loadRestaurantCommunityRatings(selectedRestaurantId);
     alert("Rating deleted.");
   }catch(err){
     console.error("delete rating:",err);
@@ -2118,6 +2242,7 @@ async function saveEditedRating(){
     closeEditRating();
     await refreshUserData();
     await loadRestaurantStats();
+    if(selectedRestaurantId)await loadRestaurantCommunityRatings(selectedRestaurantId);
     alert("Rating updated.");
   }catch(err){
     console.error(err);
