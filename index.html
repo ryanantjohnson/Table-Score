@@ -2550,10 +2550,15 @@ function renderTitlePicker(){
 async function setActiveTitle(title){
   if(!currentUser)return openAccount();
   if(!availableTitles.includes(title))return;
-  const {error}=await db.from("profiles").update({active_title:title}).eq("id",currentUser.id);
-  if(error)return alert("Could not change your title: "+error.message);
+  const {data,error}=await db.rpc("set_my_active_title",{p_title:title});
+  if(error){
+    console.error("title update:",error);
+    return alert("Could not change your title: "+error.message);
+  }
+  if(!data)return alert("That title is not available to your account.");
   profile={...(profile||{}),active_title:title};
-  renderTitlePicker(); renderProfile();
+  renderTitlePicker();
+  renderProfile();
 }
 
 function updateSettingsBadges(){
