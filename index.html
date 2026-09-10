@@ -54,7 +54,7 @@ radial-gradient(circle at 30% 30%,#7a3e20,#2a1710 45%,#0d0d0d 75%);display:flex;
 .hidden{display:none!important}
 .screen{display:none}.screen.active{display:block}
 .nav{position:fixed;bottom:0;left:0;right:0;z-index:30;background:rgba(9,11,13,.94);backdrop-filter:blur(18px);border-top:1px solid var(--line);padding:7px 8px calc(7px + env(safe-area-inset-bottom))}
-.nav-inner{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(6,1fr)}
+.nav-inner{max-width:720px;margin:auto;display:grid;grid-template-columns:repeat(5,1fr)}
 .nav button{border:0;background:transparent;color:#8d9398;padding:7px 2px;font-size:10px;font-weight:750}
 .nav button .ico{display:block;font-size:20px;margin-bottom:2px}
 .nav button.active{color:var(--gold)}
@@ -338,9 +338,8 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
 <div class="nav">
   <div class="nav-inner">
-    <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
-    <button data-s="explore" onclick="showScreen('explore')"><span class="ico">&#8981;</span>Explore</button>
     <button data-s="feed" onclick="showScreen('feed')"><span class="ico">&#9776;</span>Feed</button>
+    <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
     <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
     <button data-s="saved" onclick="showScreen('saved')"><span class="ico">&#9825;</span>Saved</button>
     <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
