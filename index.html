@@ -412,7 +412,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
     <div class="top-actions">
       <button id="topNotificationsBtn" class="top-notifications hidden" onclick="openNotifications()" aria-label="Notifications">
-        &#128276;<span id="notificationCount" class="notification-count hidden">0</span>
+        <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="notificationCount" class="notification-count hidden">0</span>
       </button>
       <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
     </div>
@@ -3372,11 +3372,11 @@ let notificationPollTimer=null;
 let notificationsInitialized=false;
 
 function notificationIcon(type){
-  if(type==="first_round_granted") return "ð½ï¸";
-  if(type==="chefs_table_approved") return "ð´";
-  if(type==="chefs_table_application") return "ð";
-  if(type==="account_mark_revoked") return "â¹ï¸";
-  return "ð";
+  if(type==="first_round_granted") return '<span aria-hidden="true" style="font-weight:950">1</span>';
+  if(type==="chefs_table_approved") return '<span aria-hidden="true" style="font-weight:950">CT</span>';
+  if(type==="chefs_table_application") return '<span aria-hidden="true" style="font-weight:950">A</span>';
+  if(type==="account_mark_revoked") return '<span aria-hidden="true" style="font-weight:950">i</span>';
+  return '<span aria-hidden="true" style="font-weight:950">N</span>';
 }
 
 function notificationAge(ts){
@@ -3434,7 +3434,7 @@ function renderNotifications(){
   const list=document.getElementById("notificationsList");
   if(!list)return;
   if(!tableScoreNotifications.length){
-    list.innerHTML=`<div class="notification-empty"><div style="font-size:30px">ð</div><div class="section-title" style="font-size:15px;margin-top:8px">Nothing new yet</div><div class="muted" style="font-size:11px;margin-top:4px">First Round gifts, Chef's Table approvals, and other activity will appear here.</div></div>`;
+    list.innerHTML=`<div class="notification-empty"><div style="display:grid;place-items:center;color:var(--gold)"><svg viewBox="0 0 48 48" width="38" height="38" aria-hidden="true"><path d="M35 19a11 11 0 0 0-22 0c0 13-6 13-6 17h34c0-4-6-4-6-17M20 42h8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="37" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="3"/></svg></div><div class="section-title" style="font-size:15px;margin-top:8px">Nothing new yet</div><div class="muted" style="font-size:11px;margin-top:4px">First Round gifts, Chef's Table approvals, and other activity will appear here.</div></div>`;
     return;
   }
   list.innerHTML=tableScoreNotifications.map(n=>`<button class="notification-item ${n.is_read?"":"unread"}" onclick="openNotification('${n.id}')">
