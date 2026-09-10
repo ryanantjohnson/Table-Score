@@ -377,6 +377,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .account-mark-row .account-mark{margin-left:0;width:34px;height:34px}
 .account-mark-row .account-mark svg{width:32px;height:32px}
 
+
+/* V5.21 Account Mark Management */
+.mark-admin-card{display:none;margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:18px;background:var(--card2);text-align:left}
+.mark-admin-card.show{display:block}
+.mark-admin-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.mark-admin-btn{border:1px solid var(--gold);border-radius:12px;background:var(--card);color:var(--ink);padding:10px 8px;font-size:11px;font-weight:900}
+.mark-admin-btn.active{background:var(--gold);color:var(--accentText)}
+.account-mark-picker{display:grid;gap:8px;margin-top:12px}
+.account-mark-choice{display:flex;align-items:center;gap:11px;width:100%;border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:15px;padding:11px 12px;text-align:left}
+.account-mark-choice.active{outline:2px solid var(--gold);outline-offset:1px}
+.account-mark-choice .account-mark{margin:0;width:32px;height:32px}
+.account-mark-choice .account-mark svg{width:31px;height:31px}
+
 </style>
 </head>
 <body class="booting">
@@ -616,6 +629,15 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div id="publicProfileBadges" class="profile-badges"></div>
       <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
       <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
+
+      <div id="markAdminCard" class="mark-admin-card">
+        <div style="font-weight:950">Account Marks</div>
+        <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
+        <div class="mark-admin-actions">
+          <button id="grantTastemakerBtn" class="mark-admin-btn" onclick="toggleManagedMark('tastemaker')">Grant Tastemaker</button>
+          <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
+        </div>
+      </div>
     </div>
 
     <div class="card" style="margin-top:0">
@@ -683,6 +705,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         </div>
       </div>
       <div id="badgePicker" class="badge-picker"></div>
+    </div>
+
+    <div id="accountMarksSettingsCard" class="card hidden">
+      <div class="section-title" style="font-size:15px">Account Mark</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">If you own more than one distinction, choose which one appears beside your name.</div>
+      <div id="accountMarkPicker" class="account-mark-picker"></div>
     </div>
 
     <div class="card">
@@ -2012,7 +2040,7 @@ async function openPublicProfile(userId){
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
 
   const [{data:p,error:pErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
-    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,active_title").eq("id",userId).maybeSingle(),
+    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,active_title,active_account_mark").eq("id",userId).maybeSingle(),
     db.from("ratings").select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)").eq("user_id",userId).order("created_at",{ascending:false}).limit(50),
     db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted"),
     db.from("follows").select("following_id").eq("follower_id",userId).eq("status","accepted")
@@ -2042,7 +2070,13 @@ async function openPublicProfile(userId){
     av.textContent=(p.display_name||p.username||"T")[0].toUpperCase();
   }
 
-  document.getElementById("publicProfileName").textContent=p.display_name||p.username||"TableScore User";
+  const publicNameEl=document.getElementById("publicProfileName");
+  publicNameEl.textContent=p.display_name||p.username||"TableScore User";
+  publicNameEl.dataset.userId=userId;
+  publicNameEl.dataset.accountName="true";
+  const viewedMarkMap=await loadAccountMarks([userId]);
+  decorateNameWithMark(publicNameEl,viewedMarkMap[userId]||[],p.active_account_mark||null);
+  renderMarkAdminControls(userId,viewedMarkMap[userId]||[]);
   document.getElementById("publicProfileUsername").textContent=p.username?"@"+p.username:"";
   const publicTitleEl=document.getElementById("publicProfileTitle"); if(publicTitleEl)publicTitleEl.textContent=p.active_title||"Table Regular";
   const publicBadgeSlugs=await loadPublicBadges(userId);
@@ -2149,7 +2183,9 @@ function renderProfile(){
     profileNameEl.dataset.userId=currentUser.id;
     profileNameEl.dataset.accountName="true";
     loadAccountMarks([currentUser.id]).then(markMap=>{
-      decorateNameWithMark(profileNameEl,markMap[currentUser.id]||[]);
+      const owned=markMap[currentUser.id]||[];
+      decorateNameWithMark(profileNameEl,owned,profile?.active_account_mark||null);
+      renderAccountMarkPicker(owned,profile?.active_account_mark||null);
     });
   }
   renderAvatarUI(name);
@@ -3437,18 +3473,105 @@ async function loadAccountMarks(userIds=[]){
   return out;
 }
 
-function preferredAccountMark(markTypes=[]){
+function preferredAccountMark(markTypes=[], selected=null){
+  if(selected && markTypes.includes(selected)) return selected;
   if(markTypes.includes("og")) return "og";
   if(markTypes.includes("tastemaker")) return "tastemaker";
   if(markTypes.includes("first_round")) return "first_round";
   return null;
 }
 
-function decorateNameWithMark(nameEl, markTypes=[]){
+function decorateNameWithMark(nameEl, markTypes=[], selected=null){
   if(!nameEl) return;
   nameEl.querySelectorAll(".account-mark").forEach(x=>x.remove());
-  const kind = preferredAccountMark(markTypes);
+  const kind = preferredAccountMark(markTypes,selected);
   if(kind) nameEl.insertAdjacentHTML("beforeend", accountMarkHtml(kind));
+}
+
+
+const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
+let viewedManagedMarks=[];
+
+function isOGAccount(){
+  return !!currentUser && currentUser.id===TABLESCORE_OG_USER_ID;
+}
+
+function markLabel(kind){
+  return kind==="og"?"OG":kind==="tastemaker"?"Tastemaker":"First Round";
+}
+
+function renderAccountMarkPicker(owned=[],selected=null){
+  const card=document.getElementById("accountMarksSettingsCard");
+  const picker=document.getElementById("accountMarkPicker");
+  if(!card||!picker)return;
+  if(!currentUser||!owned.length){
+    card.classList.add("hidden");
+    picker.innerHTML="";
+    return;
+  }
+  card.classList.remove("hidden");
+  const active=preferredAccountMark(owned,selected);
+  picker.innerHTML=owned.map(kind=>`<button class="account-mark-choice ${kind===active?"active":""}" onclick="setActiveAccountMark('${kind}')">
+    ${accountMarkHtml(kind)}
+    <span><strong>${markLabel(kind)}</strong><span class="muted" style="display:block;font-size:10px;margin-top:2px">${kind===active?"Showing beside your name":"Tap to display this mark"}</span></span>
+  </button>`).join("");
+}
+
+async function setActiveAccountMark(kind){
+  if(!currentUser)return;
+  const owned=accountMarkCache.get(currentUser.id)||[];
+  if(!owned.includes(kind))return alert("That mark is not assigned to your account.");
+  const {data,error}=await db.rpc("set_my_active_account_mark",{p_mark_type:kind});
+  if(error){
+    console.error(error);
+    return alert("Could not change your account mark.");
+  }
+  if(!data)return alert("That mark is not available to this account.");
+  profile.active_account_mark=kind;
+  renderProfile();
+}
+
+function renderMarkAdminControls(targetUserId,marks=[]){
+  viewedManagedMarks=[...marks];
+  const card=document.getElementById("markAdminCard");
+  if(!card)return;
+  const canManage=isOGAccount() && targetUserId!==TABLESCORE_OG_USER_ID;
+  card.classList.toggle("show",canManage);
+  if(!canManage)return;
+  const t=document.getElementById("grantTastemakerBtn");
+  const f=document.getElementById("grantFirstRoundBtn");
+  const hasT=marks.includes("tastemaker");
+  const hasF=marks.includes("first_round");
+  t.textContent=hasT?"Revoke Tastemaker":"Grant Tastemaker";
+  f.textContent=hasF?"Revoke First Round":"Grant First Round";
+  t.classList.toggle("active",hasT);
+  f.classList.toggle("active",hasF);
+}
+
+async function toggleManagedMark(kind){
+  if(!isOGAccount()||!viewedProfile)return;
+  if(!["tastemaker","first_round"].includes(kind))return;
+  const has=viewedManagedMarks.includes(kind);
+  const action=has?"revoke":"grant";
+  const label=markLabel(kind);
+  if(!confirm(`${has?"Revoke":"Grant"} ${label} ${has?"from":"to"} @${viewedProfile.username||"this account"}?`))return;
+  const {data,error}=await db.rpc("manage_account_mark",{
+    p_target_user:viewedProfile.id,
+    p_mark_type:kind,
+    p_make_active:!has
+  });
+  if(error){
+    console.error(error);
+    return alert("Account mark update failed.");
+  }
+  if(!data)return alert("This action was not authorized.");
+  accountMarkCache.delete(viewedProfile.id);
+  const map=await loadAccountMarks([viewedProfile.id]);
+  viewedManagedMarks=map[viewedProfile.id]||[];
+  const nameEl=document.getElementById("publicProfileName");
+  decorateNameWithMark(nameEl,viewedManagedMarks,viewedProfile.active_account_mark||null);
+  renderMarkAdminControls(viewedProfile.id,viewedManagedMarks);
+  alert(`${label} ${has?"revoked":"granted"}.`);
 }
 
 // Call after any screen/feed/comment list is rendered.
