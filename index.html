@@ -2052,14 +2052,32 @@ async function openPublicProfile(userId){
   document.getElementById("publicProfileUsername").textContent="";
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
 
-  const [{data:p,error:pErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
-    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,active_title,active_account_mark").eq("id",userId).maybeSingle(),
+  const [{data:profileData,error:profileErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
+    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,active_title").eq("id",userId).maybeSingle(),
     db.from("ratings").select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)").eq("user_id",userId).order("created_at",{ascending:false}).limit(50),
     db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted"),
     db.from("follows").select("following_id").eq("follower_id",userId).eq("status","accepted")
   ]);
 
-  if(pErr||!p){
+  let p=profileData;
+  let pErr=profileErr;
+
+  // active_account_mark is optional for public profile loading.
+  // Load it separately so a missing/new column can never make an otherwise valid profile unavailable.
+  if(p){
+    const {data:markPref,error:markPrefErr}=await db.from("profiles")
+      .select("active_account_mark")
+      .eq("id",userId)
+      .maybeSingle();
+    if(!markPrefErr&&markPref){
+      p.active_account_mark=markPref.active_account_mark||null;
+    }else{
+      p.active_account_mark=null;
+      if(markPrefErr)console.warn("Account mark preference unavailable:",markPrefErr);
+    }
+  }
+
+  if(!p){
     console.error(pErr);
     document.getElementById("publicProfileName").textContent="Profile unavailable";
     document.getElementById("publicProfileRatings").innerHTML="";
