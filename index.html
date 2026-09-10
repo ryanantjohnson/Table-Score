@@ -222,6 +222,18 @@ html[data-theme="electric"]{--bg:#0a0b0b;--card:#111315;--card2:#171a1d;--ink:#f
 html[data-theme="night"]{--bg:#090b0d;--card:#111519;--card2:#151a1f;--ink:#f7f4ee;--muted:#9a9fa4;--line:#252b31;--gold:#e3b55f;--gold2:#f1cf86;--green:#54d192;--red:#ef7272;--accentText:#111;--navBg:rgba(9,11,13,.95);--topBg:rgba(9,11,13,.92);--sheetBg:#101418;--inputBg:#151a1f;--chipBg:#151a1f;--shadow:0 12px 30px rgba(0,0,0,.34);--heroSoft:linear-gradient(135deg,rgba(227,181,95,.12),rgba(227,181,95,0))}
 body{background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}.app{padding-left:12px;padding-right:12px}.topbar{background:var(--topBg);border-bottom:1px solid var(--line)}.brand{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif;letter-spacing:-.04em;font-size:22px;font-weight:950}.loc{color:var(--gold)}.hero{margin:8px 0 4px;padding:20px 16px 18px;border-radius:24px;background:var(--heroSoft)}.hero h1,.page-title,.hot-title,.sheet h2,#profileName,#publicProfileName,#editRatingRestaurant{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif}.hero h1{font-size:38px;letter-spacing:-.045em}.kicker{letter-spacing:.11em}.card{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.hot,.mini,.row,.stat,.community-cat{background:var(--card2);border-color:var(--line)}.search input,.field input,.field textarea,.scorebox input,.modal-sheet select{background:var(--inputBg)!important;color:var(--ink)!important;border-color:var(--line)!important}.chip{background:var(--chipBg);color:var(--ink);border-color:var(--line)}.chip.active,.numgrid button.sel,.toggle button.on,.saved-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}.primary{background:var(--gold);color:var(--accentText);box-shadow:0 6px 18px rgba(0,0,0,.08)}.secondary{border-color:var(--gold);color:var(--gold2)}.nav{background:var(--navBg);border-color:var(--line)}.nav button.active{color:var(--gold)}.sheet,.modal-sheet{background:var(--sheetBg)!important;border-color:var(--line)!important}.edit-rating-header,.edit-rating-actions{background:var(--sheetBg)!important}.mapfake{background:linear-gradient(135deg,var(--card2),var(--card))}.bar{background:var(--line)}.bar i{background:var(--gold)}.steps i{background:var(--line)}.steps i.on{background:var(--gold)}.numgrid button,.adjust button,.toggle button{background:var(--card2);color:var(--ink);border-color:var(--line)}.total{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.photo-add-btn{background:var(--card2);border-color:var(--gold);color:var(--gold)}.pill{background:var(--card2);border-color:var(--gold);color:var(--gold)}.profileavatar,.avatar{background-color:var(--gold)!important;color:var(--accentText)}.settings-gear{background:var(--card);border-color:var(--line)}.slider{background:var(--card2);border-color:var(--line)}.switch input:checked + .slider{background:var(--gold)}.engagement-btn.dug{border-color:var(--gold)!important;background:var(--card2)!important;color:var(--gold)!important}.community-score,.row-score,.mini-score,.big{color:var(--gold2)}.community-score-label,.community-verified,.community-own,#profileUsername,#publicProfileUsername{color:var(--gold)}.restaurant-hero{box-shadow:var(--shadow)}.rating-photo-thumb{border-radius:14px}.engagement-row{gap:10px}.engagement-btn{font-size:12px!important;padding:8px 11px!important}.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.theme-choice{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:8px 5px;color:var(--ink);font-size:10px;font-weight:900;text-align:center}.theme-choice.active{outline:2px solid var(--gold);outline-offset:1px}.theme-swatch{display:block;width:30px;height:30px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(0,0,0,.12)}.sw-classic{background:linear-gradient(135deg,#fbfbfa 50%,#4e946c 50%)}.sw-fresh{background:linear-gradient(135deg,#f7faf9 50%,#22a9ad 50%)}.sw-warm{background:linear-gradient(135deg,#fff8f0 50%,#ee8446 50%)}.sw-electric{background:linear-gradient(135deg,#0a0b0b 50%,#caff2f 50%)}.sw-night{background:linear-gradient(135deg,#090b0d 50%,#e3b55f 50%)}@media(max-width:420px){.theme-grid{gap:6px}.theme-choice{padding:7px 3px;font-size:9px}.theme-swatch{width:27px;height:27px}.hero{padding:18px 14px}.hero h1{font-size:34px}}
 
+
+/* ===== V5.16.1 Rating cards + account controls ===== */
+.feed-rating-card,.community-rating{background:var(--card);border:1px solid var(--line)!important;border-radius:18px;padding:14px!important;margin:10px 0!important;box-shadow:var(--shadow)}
+.feed-rating-card{border-bottom:1px solid var(--line)!important}
+.community-rating:last-child{border-bottom:1px solid var(--line)!important}
+#followingFeed{display:grid;gap:10px}
+#publicProfileRatings{display:grid;gap:10px}
+#myProfileRatings{display:grid;gap:10px}
+.account-link{width:auto;border:0;background:transparent;color:var(--gold);font-weight:900;font-size:12px;padding:6px 2px}
+.account-subcard{background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;margin-top:10px}
+.inline-actions{display:flex;gap:8px;align-items:center}.inline-actions .primary,.inline-actions .secondary{width:auto;flex:1}
+
 </style>
 </head>
 <body class="booting">
@@ -528,9 +540,25 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div class="card">
       <div class="section-title" style="font-size:15px">Account</div>
-      <div class="settings-row">
-        <div><div style="font-weight:900">Username</div><div id="settingsUsername" class="muted" style="font-size:11px;margin-top:3px"></div></div>
+
+      <div class="settings-row" style="display:block">
+        <div style="font-weight:900">Change Username</div>
+        <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">Usernames are unique and use lowercase letters, numbers, or underscores.</div>
+        <div class="inline-actions" style="margin-top:9px">
+          <input id="settingsUsernameInput" autocapitalize="none" spellcheck="false" placeholder="New username" style="flex:1;min-width:0;background:var(--inputBg);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:11px 12px">
+          <button class="primary" onclick="changeUsername()">Save</button>
+        </div>
+        <div id="settingsUsername" class="muted" style="font-size:11px;margin-top:6px"></div>
       </div>
+
+      <div class="settings-row" style="display:block">
+        <div style="font-weight:900">Change Password</div>
+        <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">Use 8+ characters with an uppercase letter, number, and special character.</div>
+        <div class="field" style="margin:9px 0 7px"><input id="settingsNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
+        <div class="field" style="margin:0 0 9px"><input id="settingsConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
+        <button class="primary" onclick="changePassword()">Update Password</button>
+      </div>
+
       <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
     </div>
   </div>
@@ -600,6 +628,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+<div id="passwordRecoveryModal" class="modal hidden" onclick="if(event.target===this)closePasswordRecovery()">
+  <div class="sheet">
+    <div class="section-head">
+      <div class="section-title">Set a New Password</div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
+    </div>
+    <p class="muted" style="font-size:12px;line-height:1.45">Enter a new TableScore password below.</p>
+    <div class="field"><input id="recoveryNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
+    <div class="field"><input id="recoveryConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
+    <button class="primary" onclick="finishPasswordRecovery()">Save New Password</button>
+  </div>
+</div>
+
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
     <h2>TableScore Account</h2>
@@ -609,6 +650,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="field"><label>Email</label><input id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
     <div class="field"><label>Password</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="Create a password"></div>
     <p class="muted" style="font-size:10px;line-height:1.45;margin:6px 2px 10px">Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.</p>
+    <div style="display:flex;justify-content:flex-end;margin:-3px 0 8px"><button type="button" class="account-link" onclick="forgotPassword()">Forgot password?</button></div>
     <label style="display:flex;align-items:center;gap:9px;margin:0 2px 14px;font-size:12px;font-weight:800;cursor:pointer">
       <input id="keepSignedIn" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--gold)">
       Keep me signed in
@@ -1068,6 +1110,74 @@ async function signUp(){
   }else{
     alert("Account created. Check your email for the confirmation link, then return to TableScore and sign in.");
   }
+}
+
+function validAccountPassword(password){
+  return password.length>=8&&/[A-Z]/.test(password)&&/[0-9]/.test(password)&&/[!@#$%^&*()_+\-=[\]{};':"\\|,.<>/?]/.test(password);
+}
+
+async function forgotPassword(){
+  const email=document.getElementById("acctEmail").value.trim();
+  if(!email)return alert("Enter your email first, then tap Forgot password?");
+  const redirectTo=window.location.origin+window.location.pathname;
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error)return alert("Could not send the reset email: "+error.message);
+  alert("Password reset email sent. Open the link in that email, then return to TableScore to choose a new password.");
+}
+
+function openPasswordRecovery(){
+  closeAccount();
+  document.getElementById("passwordRecoveryModal").classList.remove("hidden");
+}
+function closePasswordRecovery(){
+  document.getElementById("passwordRecoveryModal").classList.add("hidden");
+}
+
+async function finishPasswordRecovery(){
+  const p1=document.getElementById("recoveryNewPassword").value;
+  const p2=document.getElementById("recoveryConfirmPassword").value;
+  if(!validAccountPassword(p1))return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
+  if(p1!==p2)return alert("Those passwords do not match.");
+  const {error}=await db.auth.updateUser({password:p1});
+  if(error)return alert("Could not update your password: "+error.message);
+  document.getElementById("recoveryNewPassword").value="";
+  document.getElementById("recoveryConfirmPassword").value="";
+  closePasswordRecovery();
+  alert("Password updated.");
+}
+
+async function changeUsername(){
+  if(!currentUser)return openAccount();
+  const input=document.getElementById("settingsUsernameInput");
+  const username=(input.value||"").trim().toLowerCase();
+  if(!/^[a-z0-9_]{3,30}$/.test(username))return alert("Username must be 3-30 characters and use only letters, numbers, or underscores.");
+  if(username===String(profile?.username||"").toLowerCase())return alert("That is already your username.");
+  const {data:taken,error:checkError}=await db.from("profiles").select("id").ilike("username",username).neq("id",currentUser.id).limit(1);
+  if(checkError)return alert("Could not check that username. Please try again.");
+  if(taken&&taken.length)return alert("That username is already taken. Choose another one.");
+  const {error}=await db.from("profiles").update({username}).eq("id",currentUser.id);
+  if(error){
+    if(error.code==="23505")return alert("That username is already taken. Choose another one.");
+    return alert("Could not change username: "+error.message);
+  }
+  profile={...(profile||{}),username};
+  input.value="";
+  renderProfile();
+  document.getElementById("settingsUsername").textContent="Current: @"+username;
+  alert("Username updated to @"+username+".");
+}
+
+async function changePassword(){
+  if(!currentUser)return openAccount();
+  const p1=document.getElementById("settingsNewPassword").value;
+  const p2=document.getElementById("settingsConfirmPassword").value;
+  if(!validAccountPassword(p1))return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
+  if(p1!==p2)return alert("Those passwords do not match.");
+  const {error}=await db.auth.updateUser({password:p1});
+  if(error)return alert("Could not update your password: "+error.message);
+  document.getElementById("settingsNewPassword").value="";
+  document.getElementById("settingsConfirmPassword").value="";
+  alert("Password updated.");
 }
 
 async function signIn(){
@@ -1634,7 +1744,7 @@ function feedRatingCard(r,person){
     Number.isFinite(Number(r.service))?`Service ${Number(r.service).toFixed(1)}`:""
   ].filter(Boolean).join(" &middot; ");
 
-  return `<div class="rating-clickable" onclick="openRatingDetail('${r.id}')" style="padding:14px 0;border-bottom:1px solid var(--line)">
+  return `<div class="rating-clickable feed-rating-card" onclick="openRatingDetail('${r.id}')">
     <div style="display:flex;gap:10px;align-items:center">
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
@@ -1875,7 +1985,9 @@ function openSettings(){
   renderThemeChoices();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
   document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
-  document.getElementById("settingsUsername").textContent=profile?.username?"@"+profile.username:"Not set";
+  document.getElementById("settingsUsername").textContent=profile?.username?"Current: @"+profile.username:"No username set";
+  const settingsUsernameInput=document.getElementById("settingsUsernameInput");
+  if(settingsUsernameInput)settingsUsernameInput.value="";
   updateSettingsBadges();
   document.getElementById("settingsModal").classList.remove("hidden");
 }
@@ -2681,6 +2793,7 @@ async function init(){
 
   db.auth.onAuthStateChange(async (_event,sessionNow)=>{
     currentUser=sessionNow?.user||null;
+    if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
     await refreshUserData();
   });
 }
