@@ -212,6 +212,16 @@ body.booting .app, body.booting .nav{visibility:hidden}
 .comment-compose textarea{min-height:42px;max-height:110px;resize:vertical}
 .comment-compose button{width:auto;flex:0 0 auto;padding:10px 12px}
 
+
+/* ===== TableScore V5.16 Visual System + Themes ===== */
+:root{--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
+html[data-theme="classic"]{--bg:#fbfbfa;--card:#fff;--card2:#f4f5f3;--ink:#171a18;--muted:#747a76;--line:#e3e6e1;--gold:#3e7b59;--gold2:#4e946c;--green:#3e9b6c;--red:#cf5f5f;--accentText:#fff;--navBg:rgba(251,251,250,.95);--topBg:rgba(251,251,250,.92);--sheetBg:#fff;--inputBg:#f6f7f5;--chipBg:#f4f5f3;--shadow:0 10px 28px rgba(30,40,34,.07);--heroSoft:linear-gradient(135deg,rgba(78,148,108,.11),rgba(255,255,255,0))}
+html[data-theme="fresh"]{--bg:#f7faf9;--card:#fff;--card2:#f0f5f4;--ink:#13201f;--muted:#6f7f7d;--line:#dce7e5;--gold:#168b8f;--gold2:#22a9ad;--green:#39a977;--red:#d95d5d;--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
+html[data-theme="warm"]{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#3b2418;--muted:#8b6e5f;--line:#ead9c7;--gold:#d5672d;--gold2:#ee8446;--green:#5c9a67;--red:#cf5b58;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(238,132,70,.16),rgba(213,103,45,.03))}
+html[data-theme="electric"]{--bg:#0a0b0b;--card:#111315;--card2:#171a1d;--ink:#f8f8f5;--muted:#9ca2a0;--line:#2a2e2d;--gold:#caff2f;--gold2:#d9ff5f;--green:#8ee85c;--red:#ff7777;--accentText:#0b0d0b;--navBg:rgba(10,11,11,.95);--topBg:rgba(10,11,11,.92);--sheetBg:#111315;--inputBg:#171a1d;--chipBg:#171a1d;--shadow:0 12px 30px rgba(0,0,0,.35);--heroSoft:linear-gradient(135deg,rgba(202,255,47,.12),rgba(202,255,47,0))}
+html[data-theme="night"]{--bg:#090b0d;--card:#111519;--card2:#151a1f;--ink:#f7f4ee;--muted:#9a9fa4;--line:#252b31;--gold:#e3b55f;--gold2:#f1cf86;--green:#54d192;--red:#ef7272;--accentText:#111;--navBg:rgba(9,11,13,.95);--topBg:rgba(9,11,13,.92);--sheetBg:#101418;--inputBg:#151a1f;--chipBg:#151a1f;--shadow:0 12px 30px rgba(0,0,0,.34);--heroSoft:linear-gradient(135deg,rgba(227,181,95,.12),rgba(227,181,95,0))}
+body{background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}.app{padding-left:12px;padding-right:12px}.topbar{background:var(--topBg);border-bottom:1px solid var(--line)}.brand{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif;letter-spacing:-.04em;font-size:22px;font-weight:950}.loc{color:var(--gold)}.hero{margin:8px 0 4px;padding:20px 16px 18px;border-radius:24px;background:var(--heroSoft)}.hero h1,.page-title,.hot-title,.sheet h2,#profileName,#publicProfileName,#editRatingRestaurant{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif}.hero h1{font-size:38px;letter-spacing:-.045em}.kicker{letter-spacing:.11em}.card{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.hot,.mini,.row,.stat,.community-cat{background:var(--card2);border-color:var(--line)}.search input,.field input,.field textarea,.scorebox input,.modal-sheet select{background:var(--inputBg)!important;color:var(--ink)!important;border-color:var(--line)!important}.chip{background:var(--chipBg);color:var(--ink);border-color:var(--line)}.chip.active,.numgrid button.sel,.toggle button.on,.saved-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}.primary{background:var(--gold);color:var(--accentText);box-shadow:0 6px 18px rgba(0,0,0,.08)}.secondary{border-color:var(--gold);color:var(--gold2)}.nav{background:var(--navBg);border-color:var(--line)}.nav button.active{color:var(--gold)}.sheet,.modal-sheet{background:var(--sheetBg)!important;border-color:var(--line)!important}.edit-rating-header,.edit-rating-actions{background:var(--sheetBg)!important}.mapfake{background:linear-gradient(135deg,var(--card2),var(--card))}.bar{background:var(--line)}.bar i{background:var(--gold)}.steps i{background:var(--line)}.steps i.on{background:var(--gold)}.numgrid button,.adjust button,.toggle button{background:var(--card2);color:var(--ink);border-color:var(--line)}.total{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.photo-add-btn{background:var(--card2);border-color:var(--gold);color:var(--gold)}.pill{background:var(--card2);border-color:var(--gold);color:var(--gold)}.profileavatar,.avatar{background-color:var(--gold)!important;color:var(--accentText)}.settings-gear{background:var(--card);border-color:var(--line)}.slider{background:var(--card2);border-color:var(--line)}.switch input:checked + .slider{background:var(--gold)}.engagement-btn.dug{border-color:var(--gold)!important;background:var(--card2)!important;color:var(--gold)!important}.community-score,.row-score,.mini-score,.big{color:var(--gold2)}.community-score-label,.community-verified,.community-own,#profileUsername,#publicProfileUsername{color:var(--gold)}.restaurant-hero{box-shadow:var(--shadow)}.rating-photo-thumb{border-radius:14px}.engagement-row{gap:10px}.engagement-btn{font-size:12px!important;padding:8px 11px!important}.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.theme-choice{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:8px 5px;color:var(--ink);font-size:10px;font-weight:900;text-align:center}.theme-choice.active{outline:2px solid var(--gold);outline-offset:1px}.theme-swatch{display:block;width:30px;height:30px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(0,0,0,.12)}.sw-classic{background:linear-gradient(135deg,#fbfbfa 50%,#4e946c 50%)}.sw-fresh{background:linear-gradient(135deg,#f7faf9 50%,#22a9ad 50%)}.sw-warm{background:linear-gradient(135deg,#fff8f0 50%,#ee8446 50%)}.sw-electric{background:linear-gradient(135deg,#0a0b0b 50%,#caff2f 50%)}.sw-night{background:linear-gradient(135deg,#090b0d 50%,#e3b55f 50%)}@media(max-width:420px){.theme-grid{gap:6px}.theme-choice{padding:7px 3px;font-size:9px}.theme-swatch{width:27px;height:27px}.hero{padding:18px 14px}.hero h1{font-size:34px}}
+
 </style>
 </head>
 <body class="booting">
@@ -263,7 +273,7 @@ body.booting .app, body.booting .nav{visibility:hidden}
   <section id="feed" class="screen">
     <div class="hero" style="padding-bottom:4px">
       <div class="kicker">TableScore Social</div>
-      <h1 style="font-size:34px">Your Feed</h1>
+      <h1 style="font-size:34px">What's on the table?</h1>
       <div class="muted" style="font-size:13px;line-height:1.45">Recent ratings, dish photos, and restaurant picks from people you follow.</div>
     </div>
 
@@ -494,6 +504,18 @@ body.booting .app, body.booting .nav{visibility:hidden}
       </div>
     </div>
 
+
+    <div class="card">
+      <div class="section-title" style="font-size:15px">Appearance</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Same TableScore. Pick the color personality that feels right to you.</div>
+      <div class="theme-grid" id="themeGrid">
+        <button class="theme-choice" data-theme-choice="classic" onclick="setTheme('classic')"><span class="theme-swatch sw-classic"></span>Classic</button>
+        <button class="theme-choice" data-theme-choice="fresh" onclick="setTheme('fresh')"><span class="theme-swatch sw-fresh"></span>Fresh</button>
+        <button class="theme-choice" data-theme-choice="warm" onclick="setTheme('warm')"><span class="theme-swatch sw-warm"></span>Warm</button>
+        <button class="theme-choice" data-theme-choice="electric" onclick="setTheme('electric')"><span class="theme-swatch sw-electric"></span>Electric</button>
+        <button class="theme-choice" data-theme-choice="night" onclick="setTheme('night')"><span class="theme-swatch sw-night"></span>Night</button>
+      </div>
+    </div>
     <div class="card">
       <div class="section-title" style="font-size:15px">Location</div>
       <div class="settings-row">
@@ -630,6 +652,23 @@ let followRequestCount=0;
 let followingCount=0;
 let viewedProfile=null;
 let viewedProfileRatings=[];
+
+const TABLESCORE_THEMES=["classic","fresh","warm","electric","night"];
+let currentTheme=localStorage.getItem("ts_theme")||"fresh";
+function applyTheme(theme){
+  const next=TABLESCORE_THEMES.includes(theme)?theme:"fresh";
+  currentTheme=next;
+  document.documentElement.setAttribute("data-theme",next);
+  localStorage.setItem("ts_theme",next);
+  const meta=document.querySelector('meta[name="theme-color"]');
+  const colors={classic:"#fbfbfa",fresh:"#f7faf9",warm:"#fff8f0",electric:"#0a0b0b",night:"#090b0d"};
+  if(meta)meta.setAttribute("content",colors[next]||colors.fresh);
+  renderThemeChoices();
+}
+function setTheme(theme){applyTheme(theme);}
+function renderThemeChoices(){document.querySelectorAll("[data-theme-choice]").forEach(btn=>btn.classList.toggle("active",btn.dataset.themeChoice===currentTheme));}
+applyTheme(currentTheme);
+
 
 // If the previous login was intentionally session-only, clear it after a true
 // browser/app restart. sessionStorage survives reloads but not a new session.
@@ -1833,6 +1872,7 @@ function updateSettingsBadges(){
 
 function openSettings(){
   if(!currentUser)return openAccount();
+  renderThemeChoices();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
   document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
   document.getElementById("settingsUsername").textContent=profile?.username?"@"+profile.username:"Not set";
