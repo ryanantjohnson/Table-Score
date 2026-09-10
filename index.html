@@ -258,7 +258,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <div class="field"><label>Username</label><input id="acctUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Choose a unique username"></div>
     <div class="field"><label>Email</label><input id="acctEmail" type="email" autocomplete="email" placeholder="you@example.com"></div>
     <div class="field"><label>Password</label><input id="acctPassword" type="password" autocomplete="new-password" placeholder="Create a password"></div>
-    <p class="muted" style="font-size:10px;line-height:1.45;margin:6px 2px 12px">Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.</p>
+    <p class="muted" style="font-size:10px;line-height:1.45;margin:6px 2px 10px">Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.</p>
+    <label style="display:flex;align-items:center;gap:9px;margin:0 2px 14px;font-size:12px;font-weight:800;cursor:pointer">
+      <input id="keepSignedIn" type="checkbox" checked style="width:18px;height:18px;accent-color:var(--gold)">
+      Keep me signed in
+    </label>
     <div class="authgrid">
       <button id="signInBtn" class="secondary" onclick="signIn()">Sign In</button>
       <button id="signUpBtn" class="primary" onclick="signUp()">Create Account</button>
@@ -272,7 +276,9 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 <script>
 const SUPABASE_URL="https://jyojnjkpwhwzgarfpepm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_bFyMfzpmPsBnQ2JpCeXVUQ_J-aKri3f";
-const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY);
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
+  auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
+});
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
 const dbCols=["atmosphere","cleanliness","taste","quality","portions","price","service"];
@@ -289,6 +295,13 @@ let exploreFilter="all";
 let followingIds=new Set();
 let followerCount=0;
 let followingCount=0;
+
+// If the previous login was intentionally session-only, clear it after a true
+// browser/app restart. sessionStorage survives reloads but not a new session.
+if(localStorage.getItem("ts_session_only")==="1" && !sessionStorage.getItem("ts_session_only")){
+  db.auth.signOut().catch(()=>{});
+  localStorage.removeItem("ts_session_only");
+}
 
 let locationEnabled=localStorage.getItem("ts_location_enabled")==="1";
 let area=localStorage.getItem("ts_area")||"";
@@ -579,6 +592,19 @@ async function signIn(){
   setAuthBusy(false);
   if(error)return alert(error.message);
   currentUser=data.user;
+  const keepSignedIn=document.getElementById("keepSignedIn").checked;
+  if(!keepSignedIn){
+    try{
+      sessionStorage.setItem("ts_session_only","1");
+      localStorage.setItem("ts_session_only","1");
+      localStorage.removeItem("ts_keep_signed_in");
+    }catch(e){}
+  }else{
+    try{
+      localStorage.setItem("ts_keep_signed_in","1");
+      sessionStorage.removeItem("ts_session_only");
+    }catch(e){}
+  }
   closeAccount();
   await refreshUserData();
   const cb=afterAuth;afterAuth=null;if(cb)cb();
@@ -586,6 +612,11 @@ async function signIn(){
 
 async function signOut(){
   await db.auth.signOut();
+  try{
+    localStorage.removeItem("ts_keep_signed_in");
+    localStorage.removeItem("ts_session_only");
+    sessionStorage.removeItem("ts_session_only");
+  }catch(e){}
   currentUser=null;
   profile=null;
   myRatings=[];
