@@ -250,7 +250,7 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </div>
 </div>
 
-<div id="connectionsModal" class="modal" onclick="if(event.target===this)closeConnections()">
+<div id="connectionsModal" class="modal hidden" onclick="if(event.target===this)closeConnections()">
   <div class="sheet">
     <div class="section-head">
       <div id="connectionsTitle" class="section-title">Followers</div>
@@ -719,7 +719,7 @@ async function openConnections(type){
   const title=document.getElementById("connectionsTitle");
   const out=document.getElementById("connectionsList");
   title.textContent=type==="followers"?"Followers":"Following";
-  modal.classList.add("open");
+  modal.classList.remove("hidden");
   out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading...</div>';
 
   let ids=[];
@@ -757,7 +757,7 @@ async function openConnections(type){
 }
 
 function closeConnections(){
-  document.getElementById("connectionsModal").classList.remove("open");
+  document.getElementById("connectionsModal").classList.add("hidden");
 }
 
 async function claimUsername(){
