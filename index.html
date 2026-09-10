@@ -420,11 +420,16 @@ function useLocation(){
   },{enableHighAccuracy:true,timeout:12000,maximumAge:60000});
 }
 
-function saveCity(){
+async function saveCity(){
   const v=document.getElementById("cityInput").value.trim();
   if(!v)return alert("Enter a city, state, or ZIP first.");
   area=v;
   localStorage.setItem("ts_area",area);
+  if(currentUser){
+    const {error}=await db.from("profiles").update({home_city:area}).eq("id",currentUser.id);
+    if(error)console.error("Could not save account location:",error);
+    if(profile)profile.home_city=area;
+  }
   updateArea();
   loadRestaurantStats();
 }
@@ -708,6 +713,11 @@ async function refreshUserData(){
   if(rErr)console.error("ratings:",rErr);
   profile=p||null;
   myRatings=r||[];
+  if(profile?.home_city){
+    area=profile.home_city;
+    localStorage.setItem("ts_area",area);
+    updateArea();
+  }
   await loadSocialCounts();
   await loadFollowingFeed();
   renderSaved();
@@ -815,14 +825,14 @@ function feedRatingCard(r,person){
     Number.isFinite(Number(r.taste))?`Taste ${Number(r.taste).toFixed(1)}`:"",
     Number.isFinite(Number(r.quality))?`Quality ${Number(r.quality).toFixed(1)}`:"",
     Number.isFinite(Number(r.service))?`Service ${Number(r.service).toFixed(1)}`:""
-  ].filter(Boolean).join(" Â· ");
+  ].filter(Boolean).join(" &middot; ");
 
   return `<div style="padding:14px 0;border-bottom:1px solid var(--line)">
     <div style="display:flex;gap:10px;align-items:center">
       <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
         <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
-        <div class="row-meta">${p.username?"@"+esc(p.username)+" Â· ":""}${esc(timeAgo(r.created_at))}</div>
+        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
@@ -835,7 +845,7 @@ function feedRatingCard(r,person){
       <div style="font-size:12px;font-weight:900">${esc(scoreWord(score))}</div>
     </div>
     ${details?`<div class="muted" style="font-size:11px;margin-top:3px">${details}</div>`:""}
-    ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">â${esc(r.quick_take)}â</div>`:""}
+    ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">&ldquo;${esc(r.quick_take)}&rdquo;</div>`:""}
     ${r.best_dish?`<div class="row-meta" style="margin-top:6px">Best dish: ${esc(r.best_dish)}</div>`:""}
   </div>`;
 }
@@ -1108,7 +1118,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   const out=document.getElementById("connectionsList");
   title.textContent=userId===currentUser?.id
     ? (type==="followers"?"Followers":"Following")
-    : `${ownerLabel} Â· ${type==="followers"?"Followers":"Following"}`;
+    : `${ownerLabel} &middot; ${type==="followers"?"Followers":"Following"}`;
   modal.classList.remove("hidden");
   out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading...</div>';
 
@@ -1142,7 +1152,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
       <div style="min-width:0;flex:1">
         <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
           <div class="row-name">${esc(display)}</div>
-          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" Â· "+esc(u.home_city):""}</div>
+          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" &middot; "+esc(u.home_city):""}</div>
         </button>
       </div>
       ${isMe?"":`<button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
