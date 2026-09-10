@@ -423,6 +423,22 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 .reward-chip-icon svg{width:38px;height:38px;display:block}
 
+
+/* V5.26 Profile Background Customization */
+.profile-hero{overflow:hidden;isolation:isolate;padding:22px!important}
+.profile-hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;background-repeat:no-repeat;z-index:0;opacity:0;transition:opacity .25s ease}
+.profile-hero.has-background .profile-hero-bg{opacity:1}
+.profile-hero-shade{position:absolute;inset:0;z-index:1;pointer-events:none;background:linear-gradient(180deg,rgba(0,0,0,.25),rgba(0,0,0,.48) 58%,rgba(0,0,0,.66));opacity:0;transition:opacity .25s ease}
+.profile-hero.has-background .profile-hero-shade{opacity:1}
+.profile-hero-content{position:relative;z-index:2}
+.profile-hero.has-background #profileName,.profile-hero.has-background #profileUsername,.profile-hero.has-background #profileTitle,.profile-hero.has-background #profileArea{color:#fff!important;text-shadow:0 1px 8px rgba(0,0,0,.72)}
+.profile-background-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.profile-background-actions button{width:auto;padding:8px 11px}
+.profile-hero.has-background .profile-background-actions button{background:rgba(0,0,0,.28);border-color:rgba(255,255,255,.72);color:#fff;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+.background-crop-stage{position:relative;width:min(88vw,420px);aspect-ratio:16/9;margin:14px auto;overflow:hidden;border-radius:20px;background:#0b0d0f;touch-action:none;border:1px solid var(--line)}
+.background-crop-stage img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-drag:none;transform-origin:center center;pointer-events:none}
+.background-crop-guide{position:absolute;inset:0;pointer-events:none;border:2px solid rgba(255,255,255,.88);box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)}
+
 </style>
 </head>
 <body class="booting">
@@ -585,9 +601,11 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </section>
 
   <section id="profile" class="screen">
-    <div class="profilebox" style="position:relative">
-      
-      <div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
+    <div id="profileHero" class="profilebox profile-hero" style="position:relative">
+      <div id="profileHeroBg" class="profile-hero-bg"></div>
+      <div id="profileHeroShade" class="profile-hero-shade"></div>
+      <div class="profile-hero-content">
+<div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
       <input id="profilePhotoInput" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
       <div id="profilePhotoActions" class="photo-actions hidden">
         <button class="secondary" onclick="chooseProfilePhoto()">Change Photo</button>
@@ -598,6 +616,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div id="profileTitle" class="profile-title">Table Regular</div>
       <div id="profileBadges" class="profile-badges"></div>
       <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
+      <div id="profileBackgroundActions" class="profile-background-actions hidden">
+        <button class="secondary" onclick="chooseProfileBackground()">Customize Background</button>
+        <button id="removeBackgroundBtn" class="secondary hidden" onclick="removeProfileBackground()">Remove Background</button>
+      </div>
+      </div>
+    <input id="profileBackgroundInput" type="file" accept="image/*" class="hidden" onchange="handleProfileBackground(event)">
     </div>
 
     <div class="card">
@@ -939,6 +963,27 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+<div id="backgroundCropModal" class="modal hidden" onclick="if(event.target===this)cancelBackgroundCrop()">
+  <div class="sheet">
+    <div class="section-head">
+      <div><div class="section-title">Profile Background</div><div class="muted" style="font-size:11px;margin-top:3px">Move and zoom your photo to frame the profile header.</div></div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="cancelBackgroundCrop()">Cancel</button>
+    </div>
+    <div id="backgroundCropStage" class="background-crop-stage">
+      <img id="backgroundCropImage" alt="Profile background crop preview">
+      <div class="background-crop-guide"></div>
+    </div>
+    <div class="crop-controls">
+      <input id="backgroundCropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="setBackgroundCropZoom(this.value)">
+      <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
+    </div>
+    <div class="crop-actions">
+      <button class="secondary" onclick="cancelBackgroundCrop()">Cancel</button>
+      <button id="saveBackgroundCropBtn" class="primary" onclick="saveProfileBackgroundCrop()">Use Background</button>
+    </div>
+  </div>
+</div>
+
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
     <h2>TableScore Account</h2>
@@ -1029,6 +1074,8 @@ let secretTestTapTimer=null;
 
 let cropSourceFile=null,cropObjectUrl="",cropImageNaturalW=0,cropImageNaturalH=0,cropBaseScale=1,cropZoom=1,cropX=0,cropY=0;
 let cropPointers=new Map(),cropPinchStartDistance=0,cropPinchStartZoom=1,cropDragStart=null;
+let backgroundSourceFile=null,backgroundObjectUrl="",backgroundNaturalW=0,backgroundNaturalH=0,backgroundBaseScale=1,backgroundZoom=1,backgroundX=0,backgroundY=0;
+let backgroundPointers=new Map(),backgroundPinchStartDistance=0,backgroundPinchStartZoom=1,backgroundDragStart=null;
 
 
 const TABLESCORE_THEMES=["classic","fresh","warm","electric","night"];
@@ -2778,6 +2825,16 @@ function renderAvatarUI(name){
   else{profileAvatar.style.backgroundImage="none";profileAvatar.textContent=initial;}
   actions.classList.toggle("hidden",!currentUser);
   removeBtn.classList.toggle("hidden",!currentUser||!url);
+
+  const hero=document.getElementById("profileHero");
+  const bg=document.getElementById("profileHeroBg");
+  const bgActions=document.getElementById("profileBackgroundActions");
+  const removeBg=document.getElementById("removeBackgroundBtn");
+  const bgUrl=profile?.background_url||"";
+  if(bg)bg.style.backgroundImage=bgUrl?`url("${bgUrl}")`:"none";
+  hero?.classList.toggle("has-background",!!bgUrl);
+  bgActions?.classList.toggle("hidden",!currentUser);
+  removeBg?.classList.toggle("hidden",!currentUser||!bgUrl);
 }
 
 function chooseProfilePhoto(){
@@ -2895,6 +2952,92 @@ async function removeProfilePhoto(){
 
   profile={...(profile||{}),avatar_url:null};
   renderProfile();
+}
+
+
+function chooseProfileBackground(){
+  if(!currentUser)return openAccount();
+  document.getElementById("profileBackgroundInput").click();
+}
+async function handleProfileBackground(event){
+  if(!currentUser)return;
+  const file=event.target.files?.[0];event.target.value="";
+  if(!file)return;
+  if(file.size>20*1024*1024)return alert("That photo is too large. Choose an image under 20 MB.");
+  if(!file.type.startsWith("image/"))return alert("Choose an image file.");
+  cancelBackgroundCrop();
+  backgroundSourceFile=file;backgroundObjectUrl=URL.createObjectURL(file);
+  const img=document.getElementById("backgroundCropImage");
+  img.onload=()=>{
+    backgroundNaturalW=img.naturalWidth;backgroundNaturalH=img.naturalHeight;
+    const stage=document.getElementById("backgroundCropStage");
+    backgroundBaseScale=Math.max(stage.clientWidth/backgroundNaturalW,stage.clientHeight/backgroundNaturalH);
+    backgroundZoom=1;backgroundX=0;backgroundY=0;
+    document.getElementById("backgroundCropZoom").value="1";
+    updateBackgroundCropTransform();
+    document.getElementById("backgroundCropModal").classList.remove("hidden");
+  };
+  img.onerror=()=>{cancelBackgroundCrop();alert("That photo could not be opened.");};
+  img.src=backgroundObjectUrl;
+}
+function clampBackgroundCrop(){
+  const stage=document.getElementById("backgroundCropStage");if(!stage||!backgroundNaturalW)return;
+  const scale=backgroundBaseScale*backgroundZoom,shownW=backgroundNaturalW*scale,shownH=backgroundNaturalH*scale;
+  const maxX=Math.max(0,(shownW-stage.clientWidth)/2),maxY=Math.max(0,(shownH-stage.clientHeight)/2);
+  backgroundX=Math.max(-maxX,Math.min(maxX,backgroundX));backgroundY=Math.max(-maxY,Math.min(maxY,backgroundY));
+}
+function updateBackgroundCropTransform(){
+  const img=document.getElementById("backgroundCropImage");if(!img||!backgroundNaturalW)return;
+  const scale=backgroundBaseScale*backgroundZoom;
+  img.style.width=(backgroundNaturalW*scale)+"px";img.style.height=(backgroundNaturalH*scale)+"px";
+  clampBackgroundCrop();img.style.transform=`translate(calc(-50% + ${backgroundX}px),calc(-50% + ${backgroundY}px))`;
+}
+function setBackgroundCropZoom(v){backgroundZoom=Math.max(1,Math.min(3,Number(v)||1));updateBackgroundCropTransform();}
+function backgroundPointerDown(e){
+  const stage=document.getElementById("backgroundCropStage");stage.setPointerCapture?.(e.pointerId);backgroundPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(backgroundPointers.size===1)backgroundDragStart={x:e.clientX,y:e.clientY,startX:backgroundX,startY:backgroundY};
+  else if(backgroundPointers.size===2){const p=[...backgroundPointers.values()];backgroundPinchStartDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;backgroundPinchStartZoom=backgroundZoom;}
+}
+function backgroundPointerMove(e){
+  if(!backgroundPointers.has(e.pointerId))return;backgroundPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(backgroundPointers.size===1&&backgroundDragStart){backgroundX=backgroundDragStart.startX+(e.clientX-backgroundDragStart.x);backgroundY=backgroundDragStart.startY+(e.clientY-backgroundDragStart.y);updateBackgroundCropTransform();}
+  else if(backgroundPointers.size===2){const p=[...backgroundPointers.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;backgroundZoom=Math.max(1,Math.min(3,backgroundPinchStartZoom*(d/backgroundPinchStartDistance)));document.getElementById("backgroundCropZoom").value=String(backgroundZoom);updateBackgroundCropTransform();}
+}
+function backgroundPointerUp(e){
+  backgroundPointers.delete(e.pointerId);
+  if(backgroundPointers.size===1){const p=[...backgroundPointers.values()][0];backgroundDragStart={x:p.x,y:p.y,startX:backgroundX,startY:backgroundY};}else backgroundDragStart=null;
+}
+function cancelBackgroundCrop(){
+  document.getElementById("backgroundCropModal")?.classList.add("hidden");backgroundPointers.clear();backgroundDragStart=null;
+  if(backgroundObjectUrl){URL.revokeObjectURL(backgroundObjectUrl);backgroundObjectUrl="";}backgroundSourceFile=null;
+}
+async function saveProfileBackgroundCrop(){
+  if(!currentUser||!backgroundSourceFile||!backgroundNaturalW)return;
+  const btn=document.getElementById("saveBackgroundCropBtn");btn.disabled=true;btn.textContent="Saving...";
+  try{
+    const stage=document.getElementById("backgroundCropStage"),scale=backgroundBaseScale*backgroundZoom;
+    const sourceW=stage.clientWidth/scale,sourceH=stage.clientHeight/scale;
+    const centerX=(backgroundNaturalW/2)-(backgroundX/scale),centerY=(backgroundNaturalH/2)-(backgroundY/scale);
+    const sx=Math.max(0,Math.min(backgroundNaturalW-sourceW,centerX-sourceW/2));
+    const sy=Math.max(0,Math.min(backgroundNaturalH-sourceH,centerY-sourceH/2));
+    const sourceImg=document.getElementById("backgroundCropImage"),canvas=document.createElement("canvas");
+    canvas.width=1600;canvas.height=900;canvas.getContext("2d").drawImage(sourceImg,sx,sy,sourceW,sourceH,0,0,1600,900);
+    const jpegBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not prepare that background.")),"image/jpeg",0.86));
+    const path=`${currentUser.id}/profile-background.jpg`;
+    const {error:uploadError}=await db.storage.from("avatars").upload(path,jpegBlob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});if(uploadError)throw uploadError;
+    const {data:urlData}=db.storage.from("avatars").getPublicUrl(path),publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
+    const {error:profileError}=await db.from("profiles").update({background_url:publicUrl}).eq("id",currentUser.id);if(profileError)throw profileError;
+    profile={...(profile||{}),background_url:publicUrl};cancelBackgroundCrop();renderProfile();
+  }catch(err){console.error("profile background:",err);alert(err.message||"Could not save your profile background.");}
+  finally{btn.disabled=false;btn.textContent="Use Background";}
+}
+async function removeProfileBackground(){
+  if(!currentUser||!profile?.background_url)return;
+  if(!confirm("Remove your profile background?"))return;
+  const path=`${currentUser.id}/profile-background.jpg`;
+  const {error:storageError}=await db.storage.from("avatars").remove([path]);if(storageError)console.error("background remove:",storageError);
+  const {error}=await db.from("profiles").update({background_url:null}).eq("id",currentUser.id);if(error)return alert(error.message);
+  profile={...(profile||{}),background_url:null};renderProfile();
 }
 
 async function openConnections(type){
@@ -3547,6 +3690,13 @@ if(cropStageEl){
   cropStageEl.addEventListener("pointermove",cropPointerMove);
   cropStageEl.addEventListener("pointerup",cropPointerUp);
   cropStageEl.addEventListener("pointercancel",cropPointerUp);
+}
+const backgroundCropStageEl=document.getElementById("backgroundCropStage");
+if(backgroundCropStageEl){
+  backgroundCropStageEl.addEventListener("pointerdown",backgroundPointerDown);
+  backgroundCropStageEl.addEventListener("pointermove",backgroundPointerMove);
+  backgroundCropStageEl.addEventListener("pointerup",backgroundPointerUp);
+  backgroundCropStageEl.addEventListener("pointercancel",backgroundPointerUp);
 }
 
 
