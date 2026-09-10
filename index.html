@@ -2278,7 +2278,8 @@ function rewardIconMarkup(slug){
     "hidden-gem-hunter":"GEM",
     "second-chance":"+",
     "plot-twist":"-",
-    "before-it-was-cool":"OG"
+    "before-it-was-cool":"OG",
+    "secret-sauce":"SAUCE"
   };
   return icons[slug]||"*";
 }
@@ -2321,9 +2322,36 @@ async function checkProgressRewards({announce=true}={}){
 
 async function loadProgressRewards(){
   if(!currentUser){earnedProgressRewards=[];renderEarnedProgressRewards();return;}
-  const {data,error}=await db.rpc("get_my_earned_rewards");
-  if(error){console.error("earned rewards:",error);return;}
-  earnedProgressRewards=data||[];
+
+  const [{data:progress,error:progressError},{data:legacy,error:legacyError}]=await Promise.all([
+    db.rpc("get_my_earned_rewards"),
+    db.from("user_secret_rewards").select("reward_slug,earned_at").eq("user_id",currentUser.id)
+  ]);
+
+  if(progressError)console.error("earned rewards:",progressError);
+  if(legacyError)console.error("legacy secret rewards:",legacyError);
+
+  const merged=[...(progress||[])];
+  const seen=new Set(merged.map(r=>r.reward_slug));
+
+  (legacy||[]).forEach(r=>{
+    if(seen.has(r.reward_slug))return;
+    if(r.reward_slug==="secret-sauce"){
+      merged.push({
+        reward_slug:"secret-sauce",
+        reward_name:"Secret Sauce",
+        reward_type:"badge",
+        is_secret:true,
+        description:"You found something that wasn't on the menu.",
+        earned_at:r.earned_at,
+        metadata:{legacy_secret_reward:true}
+      });
+      seen.add(r.reward_slug);
+    }
+  });
+
+  merged.sort((a,b)=>new Date(b.earned_at||0)-new Date(a.earned_at||0));
+  earnedProgressRewards=merged;
   renderEarnedProgressRewards();
 }
 
