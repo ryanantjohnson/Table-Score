@@ -2143,7 +2143,15 @@ function renderProfile(){
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
   const username=profile?.username||"";
-  document.getElementById("profileName").textContent=name;
+  const profileNameEl=document.getElementById("profileName");
+  profileNameEl.textContent=name;
+  if(currentUser){
+    profileNameEl.dataset.userId=currentUser.id;
+    profileNameEl.dataset.accountName="true";
+    loadAccountMarks([currentUser.id]).then(markMap=>{
+      decorateNameWithMark(profileNameEl,markMap[currentUser.id]||[]);
+    });
+  }
   renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
   const profileTitleEl=document.getElementById("profileTitle"); if(profileTitleEl)profileTitleEl.textContent=profile?.active_title||"Table Regular";
@@ -2230,6 +2238,7 @@ async function loadSecretRewards(){
     if(!availableTitles.includes(r.reward_name))availableTitles.push(r.reward_name);
   }
   renderBadgePicker();
+  renderOwnBadges();
   renderTitlePicker();
 }
 
@@ -2348,6 +2357,18 @@ async function loadFoodBadges(){
   if(defErr)console.error("profile badges:",defErr);
   if(eqErr)console.error("equipped badges:",eqErr);
   availableBadges=defs?.length?defs.map(b=>({slug:b.slug,name:b.name,emoji:b.emoji})):STARTER_BADGES;
+
+  // Preserve already-earned secret badges on every badge refresh.
+  for(const r of (earnedSecretRewards||[]).filter(x=>x.reward_type==="badge")){
+    if(!availableBadges.some(b=>b.slug===r.reward_slug)){
+      availableBadges.push({
+        slug:r.reward_slug,
+        name:r.reward_name,
+        emoji:r.reward_slug==="secret-sauce"?"ð§ª":r.reward_emoji
+      });
+    }
+  }
+
   equippedBadgeSlugs=(equipped||[]).map(x=>x.badge_slug).slice(0,4);
   renderBadgePicker();
   renderOwnBadges();
@@ -3496,3 +3517,7 @@ document.addEventListener("DOMContentLoaded", () => {
       <button id="secretEquipBtn" class="primary" onclick="equipSecretReward()">Equip Now</button>
     </div>
   </div>
+</div>
+
+</body>
+</html>
