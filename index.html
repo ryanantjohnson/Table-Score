@@ -153,6 +153,24 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .edit-rating-actions .primary,
 .edit-rating-actions .secondary{margin:0}
 
+
+.settings-gear{
+  position:absolute;right:14px;top:18px;width:40px;height:40px;border-radius:50%;
+  border:1px solid var(--line);background:var(--card2);color:var(--ink);
+  display:grid;place-items:center;font-size:19px
+}
+.settings-row{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 0;border-bottom:1px solid var(--line)}
+.settings-row:last-child{border-bottom:0}
+.switch{position:relative;width:50px;height:29px;flex:0 0 auto}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;inset:0;border-radius:999px;background:#343a40;transition:.2s;border:1px solid #454c53}
+.slider:before{content:"";position:absolute;width:23px;height:23px;left:2px;top:2px;border-radius:50%;background:white;transition:.2s}
+.switch input:checked + .slider{background:var(--gold)}
+.switch input:checked + .slider:before{transform:translateX(21px)}
+.request-actions{display:flex;gap:7px}
+.request-actions button{width:auto;padding:8px 11px}
+.private-lock{font-size:34px;margin-bottom:8px}
+
 </style>
 </head>
 <body>
@@ -290,7 +308,8 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </section>
 
   <section id="profile" class="screen">
-    <div class="profilebox">
+    <div class="profilebox" style="position:relative">
+      <button id="settingsGear" class="settings-gear hidden" onclick="openSettings()" aria-label="Settings">&#9881;</button>
       <div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
       <input id="profilePhotoInput" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
       <div id="profilePhotoActions" class="photo-actions hidden">
@@ -377,6 +396,65 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </div>
 </div>
 
+
+<div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
+  <div class="sheet" style="max-height:88vh;overflow:auto">
+    <div class="section-head">
+      <div class="section-title">Settings</div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeSettings()">Close</button>
+    </div>
+
+    <div class="card" style="margin-top:8px">
+      <div class="section-title" style="font-size:15px">Privacy</div>
+      <div class="settings-row">
+        <div>
+          <div style="font-weight:900">Private Account</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">Only people you approve can see your ratings, photos, and activity.</div>
+        </div>
+        <label class="switch">
+          <input id="privateAccountToggle" type="checkbox" onchange="setPrivacyMode(this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="settings-row" style="cursor:pointer" onclick="showFollowRequests()">
+        <div>
+          <div style="font-weight:900">Follow Requests</div>
+          <div id="followRequestSummary" class="muted" style="font-size:11px;margin-top:3px">No pending requests</div>
+        </div>
+        <div style="color:var(--gold);font-weight:900">&rsaquo;</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="font-size:15px">Location</div>
+      <div class="settings-row">
+        <div>
+          <div style="font-weight:900">Home Area</div>
+          <div id="settingsArea" class="muted" style="font-size:11px;margin-top:3px">Not set</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="font-size:15px">Account</div>
+      <div class="settings-row">
+        <div><div style="font-weight:900">Username</div><div id="settingsUsername" class="muted" style="font-size:11px;margin-top:3px"></div></div>
+      </div>
+      <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
+    </div>
+  </div>
+</div>
+
+<div id="followRequestsModal" class="modal hidden" onclick="if(event.target===this)closeFollowRequests()">
+  <div class="sheet">
+    <div class="section-head">
+      <div class="section-title">Follow Requests</div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeFollowRequests()">Close</button>
+    </div>
+    <div id="followRequestsList" class="list" style="max-height:60vh;overflow:auto"></div>
+  </div>
+</div>
+
 <div id="connectionsModal" class="modal hidden" onclick="if(event.target===this)closeConnections()">
   <div class="sheet">
     <div class="section-head">
@@ -430,7 +508,9 @@ let returnValue="";
 let afterAuth=null;
 let exploreFilter="all";
 let followingIds=new Set();
+let pendingFollowingIds=new Set();
 let followerCount=0;
+let followRequestCount=0;
 let followingCount=0;
 let viewedProfile=null;
 let viewedProfileRatings=[];
@@ -969,10 +1049,10 @@ async function openPublicProfile(userId){
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
 
   const [{data:p,error:pErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
-    db.from("profiles").select("id,display_name,username,avatar_url,home_city").eq("id",userId).maybeSingle(),
+    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private").eq("id",userId).maybeSingle(),
     db.from("ratings").select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)").eq("user_id",userId).order("created_at",{ascending:false}).limit(50),
-    db.from("follows").select("follower_id").eq("following_id",userId),
-    db.from("follows").select("following_id").eq("follower_id",userId)
+    db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted"),
+    db.from("follows").select("following_id").eq("follower_id",userId).eq("status","accepted")
   ]);
 
   if(pErr||!p){
@@ -986,7 +1066,9 @@ async function openPublicProfile(userId){
   if(gErr)console.error(gErr);
 
   viewedProfile=p;
-  viewedProfileRatings=ratings||[];
+  const isAcceptedFollower=!!currentUser&&followingIds.has(userId);
+  const canSeePrivateContent=!p.is_private||isAcceptedFollower;
+  viewedProfileRatings=canSeePrivateContent?(ratings||[]):[];
 
   const av=document.getElementById("publicProfileAvatar");
   if(p.avatar_url){
@@ -1000,8 +1082,8 @@ async function openPublicProfile(userId){
   document.getElementById("publicProfileName").textContent=p.display_name||p.username||"TableScore User";
   document.getElementById("publicProfileUsername").textContent=p.username?"@"+p.username:"";
   document.getElementById("publicProfileArea").textContent=p.home_city||"TableScore member";
-  document.getElementById("publicRatingsCount").textContent=viewedProfileRatings.length;
-  document.getElementById("publicPlacesCount").textContent=new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size;
+  document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"â";
+  document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"â";
   document.getElementById("publicFollowersCount").textContent=(followers||[]).length;
   document.getElementById("publicFollowingCount").textContent=(following||[]).length;
 
@@ -1013,17 +1095,22 @@ async function openPublicProfile(userId){
   }else{
     followBtn.classList.remove("hidden");
     const yes=followingIds.has(userId);
-    followBtn.textContent=yes?"Following":"Follow";
-    followBtn.className=yes?"secondary":"primary";
+    const pending=pendingFollowingIds.has(userId);
+    followBtn.textContent=yes?"Following":pending?"Requested":"Follow";
+    followBtn.className=(yes||pending)?"secondary":"primary";
   }
   followBtn.style.width="auto";
   followBtn.style.minWidth="120px";
   followBtn.style.margin="14px auto 0";
 
   const out=document.getElementById("publicProfileRatings");
-  if(!viewedProfileRatings.length){
+  if(!canSeePrivateContent){
+    out.innerHTML='<div class="empty" style="padding:22px 8px"><div class="private-lock">&#128274;</div><div class="section-title">This account is private</div><p class="muted" style="font-size:12px;line-height:1.45">Follow this account to see their restaurant ratings, dish photos, and activity.</p></div>';
+  }else if(!viewedProfileRatings.length){
     out.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">No restaurant ratings yet.</div>';
   }else{
+    const photoMap=await getPhotosForRatings(viewedProfileRatings.map(r=>r.id));
+    viewedProfileRatings.forEach(r=>r._photos=photoMap.get(r.id)||[]);
     out.innerHTML=viewedProfileRatings.slice(0,15).map(r=>feedRatingCard(r,p)).join("");
   }
 }
@@ -1049,7 +1136,7 @@ async function togglePublicProfileFollow(){
 }
 
 async function getFollowerCount(userId){
-  const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId);
+  const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted");
   if(error)return 0;
   return (data||[]).length;
 }
@@ -1062,19 +1149,26 @@ function openViewedConnections(type){
 async function loadSocialCounts(){
   if(!currentUser){
     followingIds=new Set();
+    pendingFollowingIds=new Set();
     followerCount=0;
     followingCount=0;
+    followRequestCount=0;
     return;
   }
-  const [{data:following,error:e1},{data:followers,error:e2}]=await Promise.all([
-    db.from("follows").select("following_id").eq("follower_id",currentUser.id),
-    db.from("follows").select("follower_id").eq("following_id",currentUser.id)
+  const [{data:following,error:e1},{data:followers,error:e2},{data:requests,error:e3}]=await Promise.all([
+    db.from("follows").select("following_id,status").eq("follower_id",currentUser.id),
+    db.from("follows").select("follower_id,status").eq("following_id",currentUser.id).eq("status","accepted"),
+    db.from("follows").select("follower_id").eq("following_id",currentUser.id).eq("status","pending")
   ]);
   if(e1)console.error("following:",e1);
   if(e2)console.error("followers:",e2);
-  followingIds=new Set((following||[]).map(x=>x.following_id));
+  if(e3)console.error("requests:",e3);
+  followingIds=new Set((following||[]).filter(x=>x.status==="accepted").map(x=>x.following_id));
+  pendingFollowingIds=new Set((following||[]).filter(x=>x.status==="pending").map(x=>x.following_id));
   followingCount=followingIds.size;
   followerCount=(followers||[]).length;
+  followRequestCount=(requests||[]).length;
+  updateSettingsBadges();
 }
 
 function renderProfile(){
@@ -1094,9 +1188,77 @@ function renderProfile(){
   document.getElementById("signOutBtn").classList.toggle("hidden",!currentUser);
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
+  document.getElementById("settingsGear").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
 }
 
+
+
+function updateSettingsBadges(){
+  const summary=document.getElementById("followRequestSummary");
+  if(summary)summary.textContent=followRequestCount===1?"1 pending request":`${followRequestCount} pending requests`;
+}
+
+function openSettings(){
+  if(!currentUser)return openAccount();
+  document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
+  document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
+  document.getElementById("settingsUsername").textContent=profile?.username?"@"+profile.username:"Not set";
+  updateSettingsBadges();
+  document.getElementById("settingsModal").classList.remove("hidden");
+}
+function closeSettings(){document.getElementById("settingsModal").classList.add("hidden");}
+
+async function setPrivacyMode(enabled){
+  if(!currentUser)return;
+  const toggle=document.getElementById("privateAccountToggle");
+  toggle.disabled=true;
+  const {error}=await db.from("profiles").update({is_private:enabled}).eq("id",currentUser.id);
+  if(error){
+    toggle.checked=!enabled;
+    alert("Could not change privacy setting: "+error.message);
+  }else{
+    profile={...(profile||{}),is_private:enabled};
+  }
+  toggle.disabled=false;
+}
+
+async function showFollowRequests(){
+  if(!currentUser)return;
+  const list=document.getElementById("followRequestsList");
+  document.getElementById("followRequestsModal").classList.remove("hidden");
+  list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading requests...</div>';
+  const {data:reqs,error}=await db.from("follows").select("follower_id").eq("following_id",currentUser.id).eq("status","pending");
+  if(error){list.innerHTML='<div class="muted">Could not load follow requests.</div>';return;}
+  const ids=(reqs||[]).map(x=>x.follower_id);
+  if(!ids.length){list.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">No pending follow requests.</div>';return;}
+  const {data:people,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url,home_city").in("id",ids);
+  if(pErr){list.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
+  list.innerHTML=(people||[]).map(u=>`<div class="row" style="gap:10px">
+    <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
+    <div style="min-width:0;flex:1"><div class="row-name">${esc(u.display_name||u.username||"TableScore User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
+    <div class="request-actions">
+      <button class="primary" onclick="approveFollowRequest('${u.id}')">Confirm</button>
+      <button class="secondary" onclick="deleteFollowRequest('${u.id}')">Delete</button>
+    </div>
+  </div>`).join("");
+}
+function closeFollowRequests(){document.getElementById("followRequestsModal").classList.add("hidden");}
+
+async function approveFollowRequest(followerId){
+  const {error}=await db.from("follows").update({status:"accepted"}).eq("follower_id",followerId).eq("following_id",currentUser.id).eq("status","pending");
+  if(error)return alert(error.message);
+  await loadSocialCounts();
+  await showFollowRequests();
+  renderProfile();
+}
+async function deleteFollowRequest(followerId){
+  const {error}=await db.from("follows").delete().eq("follower_id",followerId).eq("following_id",currentUser.id);
+  if(error)return alert(error.message);
+  await loadSocialCounts();
+  await showFollowRequests();
+  renderProfile();
+}
 
 function renderAvatarUI(name){
   const profileAvatar=document.getElementById("profileAvatar");
@@ -1228,11 +1390,11 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
 
   let ids=[];
   if(type==="followers"){
-    const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId);
+    const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted");
     if(error){console.error(error);out.innerHTML='<div class="muted">Could not load followers.</div>';return;}
     ids=(data||[]).map(x=>x.follower_id);
   }else{
-    const {data,error}=await db.from("follows").select("following_id").eq("follower_id",userId);
+    const {data,error}=await db.from("follows").select("following_id").eq("follower_id",userId).eq("status","accepted");
     if(error){console.error(error);out.innerHTML='<div class="muted">Could not load following.</div>';return;}
     ids=(data||[]).map(x=>x.following_id);
   }
@@ -1243,7 +1405,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   }
 
   const {data:people,error}=await db.from("profiles")
-    .select("id,display_name,username,home_city,avatar_url")
+    .select("id,display_name,username,home_city,avatar_url,is_private")
     .in("id",ids);
   if(error){console.error(error);out.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
 
@@ -1316,6 +1478,7 @@ async function searchPeople(){
   }
   out.innerHTML=data.map(u=>{
     const isFollowing=followingIds.has(u.id);
+    const isPending=pendingFollowingIds.has(u.id);
     const display=u.display_name||u.username;
     return `<div class="row" style="gap:10px">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
@@ -1325,7 +1488,7 @@ async function searchPeople(){
           <div class="row-meta">@${esc(u.username)}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
         </button>
       </div>
-      <button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>
+      <button class="${isFollowing||isPending?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
     </div>`;
   }).join("");
 }
@@ -1333,19 +1496,31 @@ async function searchPeople(){
 async function toggleFollow(userId,btn){
   if(!currentUser)return;
   btn.disabled=true;
-  if(followingIds.has(userId)){
+
+  if(followingIds.has(userId)||pendingFollowingIds.has(userId)){
     const {error}=await db.from("follows").delete().eq("follower_id",currentUser.id).eq("following_id",userId);
     if(error){btn.disabled=false;return alert(error.message);}
     followingIds.delete(userId);
+    pendingFollowingIds.delete(userId);
     btn.textContent="Follow";
     btn.className="primary";
   }else{
-    const {error}=await db.from("follows").insert({follower_id:currentUser.id,following_id:userId});
+    const {data:target,error:pErr}=await db.from("profiles").select("is_private").eq("id",userId).maybeSingle();
+    if(pErr){btn.disabled=false;return alert(pErr.message);}
+    const status=target?.is_private?"pending":"accepted";
+    const {error}=await db.from("follows").insert({follower_id:currentUser.id,following_id:userId,status});
     if(error){btn.disabled=false;return alert(error.message);}
-    followingIds.add(userId);
-    btn.textContent="Following";
-    btn.className="secondary";
+    if(status==="pending"){
+      pendingFollowingIds.add(userId);
+      btn.textContent="Requested";
+      btn.className="secondary";
+    }else{
+      followingIds.add(userId);
+      btn.textContent="Following";
+      btn.className="secondary";
+    }
   }
+
   followingCount=followingIds.size;
   document.getElementById("profileFollowing").textContent=followingCount;
   btn.style.width="auto";
