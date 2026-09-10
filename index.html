@@ -634,7 +634,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <div style="font-weight:950">Account Marks</div>
         <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
         <div class="mark-admin-actions">
-          <button id="grantChefâs TableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chefâs Table</button>
+          <button id="grantChef's TableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chef's Table</button>
           <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
         </div>
       </div>
@@ -708,7 +708,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div id="chefsTableAdminCard" class="card hidden">
-      <div class="section-title" style="font-size:15px">Chefâs Table Applications</div>
+      <div class="section-title" style="font-size:15px">Chef's Table Applications</div>
       <div class="muted" style="font-size:11px;margin-top:4px">Private OG review queue.</div>
       <button class="primary" style="width:100%;margin-top:10px" onclick="openChefsTableAdmin()">Review Applications</button>
     </div>
@@ -720,9 +720,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div id="chefsTableApplyCard" class="card">
-      <div class="section-title" style="font-size:15px">Chefâs Table</div>
-      <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">The Chefâs Table recognizes established food creators and trusted voices in the dining community. Approved members receive the exclusive gold crossed fork-and-knife mark beside their name across TableScore. Admission is reviewed individually; audience size alone does not guarantee acceptance.</div>
-      <button class="primary" style="margin-top:12px;width:100%" onclick="openChefsTableApplication()">Apply for the Chefâs Table</button>
+      <div class="section-title" style="font-size:15px">Chef's Table</div>
+      <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">The Chef's Table recognizes established food creators and trusted voices in the dining community. Approved members receive the exclusive gold crossed fork-and-knife mark beside their name across TableScore. Admission is reviewed individually; audience size alone does not guarantee acceptance.</div>
+      <button class="primary" style="margin-top:12px;width:100%" onclick="openChefsTableApplication()">Apply for the Chef's Table</button>
       <div id="chefsTableApplicationStatus" class="muted" style="font-size:11px;margin-top:9px"></div>
     </div>
 
@@ -3363,15 +3363,15 @@ init();
 // SECURITY NOTE:
 // OG is bound to the account through auth metadata flag `tablescore_og`.
 // In production set that flag ONLY server-side for Ryan's immutable auth user UUID.
-// Chefâs Table/First Round grants live in public.account_marks and are read-only to normal clients.
+// Chef's Table/First Round grants live in public.account_marks and are read-only to normal clients.
 const ACCOUNT_MARK_META = {
   og: {
     title: "OG",
     copy: "Where the first table was set. Est. 2026."
   },
   chefs_table: {
-    title: "Chefâs Table",
-    copy: "A verified food creator or trusted dining voice invited to the TableScore Chefâs Table."
+    title: "Chef's Table",
+    copy: "A verified food creator or trusted dining voice invited to the TableScore Chef's Table."
   },
   first_round: {
     title: "First Round",
@@ -3542,9 +3542,9 @@ async function loadChefsTableStatus(){
   }else if(data.status==="pending_review"){
     status.textContent="Identity verified Â· Application awaiting TableScore review.";
   }else if(data.status==="approved"){
-    status.textContent="Welcome to the Chefâs Table. Your account has been approved.";
+    status.textContent="Welcome to the Chef's Table. Your account has been approved.";
   }else if(data.status==="denied"){
-    status.textContent="This Chefâs Table application was not approved.";
+    status.textContent="This Chef's Table application was not approved.";
   }
 }
 async function openChefsTableAdmin(){
@@ -3572,7 +3572,7 @@ async function openChefsTableAdmin(){
 }
 async function reviewChefApplication(id,action){
   if(!isOGAccount())return;
-  if(action==="approve"&&!confirm("Approve this creator for the Chefâs Table and grant the mark?"))return;
+  if(action==="approve"&&!confirm("Approve this creator for the Chef's Table and grant the mark?"))return;
   const {data,error}=await db.rpc("review_chefs_table_application",{p_application_id:id,p_action:action});
   if(error){console.error(error);return alert("Review action failed.");}
   if(!data)return alert("Action was not authorized or the application is not ready.");
@@ -3587,7 +3587,7 @@ function isOGAccount(){
 }
 
 function markLabel(kind){
-  return kind==="og"?"OG":kind==="chefs_table"?"Chefâs Table":"First Round";
+  return kind==="og"?"OG":kind==="chefs_table"?"Chef's Table":"First Round";
 }
 
 function renderAccountMarkPicker(owned=[],selected=null){
@@ -3628,11 +3628,11 @@ function renderMarkAdminControls(targetUserId,marks=[]){
   const canManage=isOGAccount() && targetUserId!==TABLESCORE_OG_USER_ID;
   card.classList.toggle("show",canManage);
   if(!canManage)return;
-  const t=document.getElementById("grantChefâs TableBtn");
+  const t=document.getElementById("grantChef's TableBtn");
   const f=document.getElementById("grantFirstRoundBtn");
   const hasT=marks.includes("chefs_table");
   const hasF=marks.includes("first_round");
-  t.textContent=hasT?"Revoke Chefâs Table":"Grant Chefâs Table";
+  t.textContent=hasT?"Revoke Chef's Table":"Grant Chef's Table";
   f.textContent=hasF?"Revoke First Round":"Grant First Round";
   t.classList.toggle("active",hasT);
   f.classList.toggle("active",hasF);
@@ -3765,7 +3765,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="modal-card" style="max-height:88vh;overflow:auto">
     <div class="modal-head">
       <div>
-        <div class="section-title">Apply for the Chefâs Table</div>
+        <div class="section-title">Apply for the Chef's Table</div>
         <div class="muted" style="font-size:11px;margin-top:3px">Verification is required before approval.</div>
       </div>
       <button class="icon-btn" onclick="closeChefsTableApplication()">â</button>
@@ -3786,7 +3786,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <label>Approximate followers</label>
     <input id="ctFollowers" type="number" min="0" inputmode="numeric" placeholder="Optional">
     <label>Tell us about your food content</label>
-    <textarea id="ctNotes" rows="4" placeholder="What do you cover and why should you have a seat at the Chefâs Table?"></textarea>
+    <textarea id="ctNotes" rows="4" placeholder="What do you cover and why should you have a seat at the Chef's Table?"></textarea>
     <button class="primary" style="width:100%;margin-top:12px" onclick="submitChefsTableApplication()">Submit Application</button>
   </div>
 </div>
@@ -3795,7 +3795,7 @@ document.addEventListener("DOMContentLoaded", () => {
 <div id="chefsTableAdminModal" class="modal hidden">
   <div class="modal-card" style="max-height:88vh;overflow:auto">
     <div class="modal-head">
-      <div class="section-title">Chefâs Table Applications</div>
+      <div class="section-title">Chef's Table Applications</div>
       <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')">â</button>
     </div>
     <div id="chefsTableAdminList"></div>
