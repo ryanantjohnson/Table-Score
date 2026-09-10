@@ -979,7 +979,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
     <div class="crop-actions">
       <button class="secondary" onclick="cancelBackgroundCrop()">Cancel</button>
-      <button id="saveBackgroundCropBtn" class="primary" onclick="saveProfileBackgroundCrop()">Use Background</button>
+      <button id="saveBackgroundCropBtn" type="button" class="primary">Use Background</button>
     </div>
   </div>
 </div>
@@ -3024,31 +3024,108 @@ function cancelBackgroundCrop(){
   if(backgroundObjectUrl){URL.revokeObjectURL(backgroundObjectUrl);backgroundObjectUrl="";}backgroundSourceFile=null;
 }
 async function saveProfileBackgroundCrop(){
-  if(!currentUser||!backgroundSourceFile||!backgroundNaturalW)return;
-  const btn=document.getElementById("saveBackgroundCropBtn");btn.disabled=true;btn.textContent="Saving...";
+  const btn=document.getElementById("saveBackgroundCropBtn");
+
+  if(!currentUser){
+    alert("Your TableScore session is not active. Sign in again and retry.");
+    return;
+  }
+  if(!backgroundSourceFile||!backgroundNaturalW||!backgroundNaturalH){
+    alert("Choose a background photo first.");
+    return;
+  }
+
+  btn.disabled=true;
+  btn.textContent="Saving...";
+
   try{
-    const stage=document.getElementById("backgroundCropStage"),scale=backgroundBaseScale*backgroundZoom;
-    const sourceW=stage.clientWidth/scale,sourceH=stage.clientHeight/scale;
-    const centerX=(backgroundNaturalW/2)-(backgroundX/scale),centerY=(backgroundNaturalH/2)-(backgroundY/scale);
+    const stage=document.getElementById("backgroundCropStage");
+    if(!stage||stage.clientWidth<1||stage.clientHeight<1){
+      throw new Error("The crop area is not ready yet. Close it and choose the photo again.");
+    }
+
+    const scale=backgroundBaseScale*backgroundZoom;
+    if(!Number.isFinite(scale)||scale<=0)throw new Error("The crop could not be calculated.");
+
+    const sourceW=stage.clientWidth/scale;
+    const sourceH=stage.clientHeight/scale;
+    const centerX=(backgroundNaturalW/2)-(backgroundX/scale);
+    const centerY=(backgroundNaturalH/2)-(backgroundY/scale);
     const sx=Math.max(0,Math.min(backgroundNaturalW-sourceW,centerX-sourceW/2));
     const sy=Math.max(0,Math.min(backgroundNaturalH-sourceH,centerY-sourceH/2));
-    const sourceImg=document.getElementById("backgroundCropImage"),canvas=document.createElement("canvas");
-    canvas.width=1600;canvas.height=900;canvas.getContext("2d").drawImage(sourceImg,sx,sy,sourceW,sourceH,0,0,1600,900);
-    const jpegBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not prepare that background.")),"image/jpeg",0.86));
-    const path=`${currentUser.id}/profile-background.jpg`;
-    const {error:uploadError}=await db.storage.from("avatars").upload(path,jpegBlob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});if(uploadError)throw uploadError;
-    const {data:urlData}=db.storage.from("avatars").getPublicUrl(path),publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
-    const {error:profileError}=await db.from("profiles").update({background_url:publicUrl}).eq("id",currentUser.id);if(profileError)throw profileError;
-    profile={...(profile||{}),background_url:publicUrl};cancelBackgroundCrop();renderProfile();
-  }catch(err){console.error("profile background:",err);alert(err.message||"Could not save your profile background.");}
-  finally{btn.disabled=false;btn.textContent="Use Background";}
+
+    const sourceImg=document.getElementById("backgroundCropImage");
+    if(!sourceImg?.complete||!sourceImg.naturalWidth){
+      throw new Error("The selected photo is still loading. Try again in a second.");
+    }
+
+    // Keep output modest for iPhone Safari reliability while still looking sharp.
+    const canvas=document.createElement("canvas");
+    canvas.width=1280;
+    canvas.height=720;
+    const ctx=canvas.getContext("2d");
+    if(!ctx)throw new Error("Your browser could not prepare the image.");
+
+    ctx.drawImage(
+      sourceImg,
+      sx,sy,sourceW,sourceH,
+      0,0,canvas.width,canvas.height
+    );
+
+    const jpegBlob=await new Promise((resolve,reject)=>{
+      canvas.toBlob(
+        blob=>blob?resolve(blob):reject(new Error("Could not prepare that background image.")),
+        "image/jpeg",
+        0.84
+      );
+    });
+
+    const storagePath=`${currentUser.id}/profile-background.jpg`;
+
+    const {error:uploadError}=await db.storage
+      .from("avatars")
+      .upload(storagePath,jpegBlob,{
+        contentType:"image/jpeg",
+        upsert:true,
+        cacheControl:"3600"
+      });
+
+    if(uploadError)throw new Error("Background upload failed: "+uploadError.message);
+
+    const {data:urlData}=db.storage.from("avatars").getPublicUrl(storagePath);
+    if(!urlData?.publicUrl)throw new Error("Could not create the background image URL.");
+
+    const publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
+
+    // Use the secure RPC so profile RLS cannot silently block this field.
+    const {data:saved,error:profileError}=await db.rpc(
+      "set_my_profile_background",
+      {p_background_url:publicUrl}
+    );
+
+    if(profileError)throw new Error("Could not save background to your profile: "+profileError.message);
+    if(!saved)throw new Error("TableScore could not save the background to your account.");
+
+    profile={...(profile||{}),background_url:publicUrl};
+    cancelBackgroundCrop();
+    renderProfile();
+  }catch(err){
+    console.error("profile background save:",err);
+    alert(err?.message||"Could not save your profile background.");
+  }finally{
+    btn.disabled=false;
+    btn.textContent="Use Background";
+  }
 }
+
 async function removeProfileBackground(){
   if(!currentUser||!profile?.background_url)return;
   if(!confirm("Remove your profile background?"))return;
   const path=`${currentUser.id}/profile-background.jpg`;
   const {error:storageError}=await db.storage.from("avatars").remove([path]);if(storageError)console.error("background remove:",storageError);
-  const {error}=await db.from("profiles").update({background_url:null}).eq("id",currentUser.id);if(error)return alert(error.message);
+  const {data:saved,error}=await db.rpc("set_my_profile_background",{p_background_url:null});
+  if(error)return alert("Could not remove background: "+error.message);
+  if(!saved)return alert("TableScore could not remove the background.");
   profile={...(profile||{}),background_url:null};renderProfile();
 }
 
@@ -3709,6 +3786,10 @@ if(backgroundCropStageEl){
   backgroundCropStageEl.addEventListener("pointermove",backgroundPointerMove);
   backgroundCropStageEl.addEventListener("pointerup",backgroundPointerUp);
   backgroundCropStageEl.addEventListener("pointercancel",backgroundPointerUp);
+}
+const saveBackgroundCropBtnEl=document.getElementById("saveBackgroundCropBtn");
+if(saveBackgroundCropBtnEl){
+  saveBackgroundCropBtnEl.addEventListener("click",saveProfileBackgroundCrop);
 }
 
 
