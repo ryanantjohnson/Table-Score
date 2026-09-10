@@ -345,6 +345,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   font-weight:800;
 }
 
+
+.profile-badge svg,.badge-emoji svg,.secret-icon svg{
+  display:block;
+  width:1.45em;
+  height:1.45em;
+  color:var(--gold);
+}
+.badge-emoji svg{margin:0 auto}
+.secret-icon svg{width:58px;height:58px}
+
 </style>
 </head>
 <body class="booting">
@@ -2246,7 +2256,9 @@ async function tryUnlockSecretReward(slug){
 function showSecretReward(reward){
   currentSecretReward=reward;
   const overlay=document.getElementById("secretRewardOverlay");
-  document.getElementById("secretRewardIcon").textContent=reward.reward_slug==="secret-sauce"?"ð§ª":(reward.reward_emoji||"â¨");
+  const secretIconEl=document.getElementById("secretRewardIcon");
+  if(reward.reward_slug==="secret-sauce")secretIconEl.innerHTML=secretSauceIconSvg();
+  else secretIconEl.textContent=reward.reward_emoji||"â¨";
   document.getElementById("secretRewardName").textContent=reward.reward_name||"Secret Reward";
   document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
   const req=document.getElementById("secretRewardRequirements");
@@ -2319,10 +2331,20 @@ async function loadFoodBadges(){
   renderOwnBadges();
 }
 
+
+function secretSauceIconSvg(){
+  return `<svg viewBox="0 0 64 64" width="34" height="34" aria-hidden="true">
+    <rect x="24" y="5" width="16" height="8" rx="3" fill="currentColor"/>
+    <path d="M22 13h20l4 10v27c0 5-4 9-9 9H27c-5 0-9-4-9-9V23l4-10z" fill="none" stroke="currentColor" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M20 32c7-5 17-5 24 0v13c-7 5-17 5-24 0V32z" fill="currentColor" opacity=".18"/>
+    <path d="M25 38h14" stroke="currentColor" stroke-width="4" stroke-linecap="round"/>
+  </svg>`;
+}
 function badgeBySlug(slug){return availableBadges.find(b=>b.slug===slug)||STARTER_BADGES.find(b=>b.slug===slug);}
 function badgeMarkup(slug){
   const b=badgeBySlug(slug);if(!b)return "";
-  return `<div class="profile-badge" title="${esc(b.name)}" aria-label="${esc(b.name)}">${b.emoji}</div>`;
+  const icon=slug==="secret-sauce"?secretSauceIconSvg():b.emoji;
+  return `<div class="profile-badge" title="${esc(b.name)}" aria-label="${esc(b.name)}">${icon}</div>`;
 }
 function renderOwnBadges(){
   const out=document.getElementById("profileBadges");if(!out)return;
@@ -2333,7 +2355,7 @@ function renderBadgePicker(){
   out.innerHTML=availableBadges.map(b=>{
     const active=equippedBadgeSlugs.includes(b.slug);
     return `<button class="badge-choice ${active?"active":""}" onclick="toggleFoodBadge('${b.slug}')">
-      <span class="badge-emoji">${b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
+      <span class="badge-emoji">${b.slug==="secret-sauce"?secretSauceIconSvg():b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
     </button>`;
   }).join("");
   const count=document.getElementById("badgeCount");if(count)count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
