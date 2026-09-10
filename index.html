@@ -202,11 +202,38 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
     <div class="profilebox">
       <div id="profileAvatar" class="profileavatar">G</div>
       <div id="profileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">Guest</div>
+      <div id="profileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
       <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
     </div>
+
     <div class="card">
-      <div class="stats2"><div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div><div class="stat"><div class="stat-label">RESTAURANTS</div><div id="profileRestaurants" class="stat-value">0</div></div></div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+        <div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">PLACES</div><div id="profileRestaurants" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">FOLLOWERS</div><div id="profileFollowers" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">FOLLOWING</div><div id="profileFollowing" class="stat-value">0</div></div>
+      </div>
     </div>
+
+    <div id="claimUsernameCard" class="card hidden">
+      <div class="section-title">Claim your TableScore username</div>
+      <p class="muted" style="font-size:12px;line-height:1.45">Your account was created before usernames were added. Pick a unique username to use the social features.</p>
+      <div class="field"><input id="claimUsernameInput" autocapitalize="none" spellcheck="false" placeholder="Choose a username"></div>
+      <button class="primary" onclick="claimUsername()">Save Username</button>
+    </div>
+
+    <div id="socialCard" class="card hidden">
+      <div class="section-head">
+        <div class="section-title">Find People</div>
+        <span class="muted" style="font-size:11px">TableScore Social</span>
+      </div>
+      <div class="search">
+        <input id="peopleSearch" autocapitalize="none" spellcheck="false" placeholder="Search username or name">
+        <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
+      </div>
+      <div id="peopleResults" class="list" style="margin-top:10px"></div>
+    </div>
+
     <button id="profileAuthBtn" class="primary" onclick="openAccount()">Create Account / Sign In</button>
     <div style="height:8px"></div>
     <button id="signOutBtn" class="secondary hidden" onclick="signOut()">Sign Out</button>
@@ -259,6 +286,9 @@ let selectedRestaurantName="";
 let returnValue="";
 let afterAuth=null;
 let exploreFilter="all";
+let followingIds=new Set();
+let followerCount=0;
+let followingCount=0;
 
 let locationEnabled=localStorage.getItem("ts_location_enabled")==="1";
 let area=localStorage.getItem("ts_area")||"";
@@ -559,6 +589,9 @@ async function signOut(){
   currentUser=null;
   profile=null;
   myRatings=[];
+  followingIds=new Set();
+  followerCount=0;
+  followingCount=0;
   renderSaved();
   renderProfile();
   showScreen("home");
@@ -580,6 +613,7 @@ async function refreshUserData(){
   if(rErr)console.error("ratings:",rErr);
   profile=p||null;
   myRatings=r||[];
+  await loadSocialCounts();
   renderSaved();
   renderProfile();
 }
@@ -600,17 +634,125 @@ function renderSaved(){
   }).join("");
 }
 
+async function loadSocialCounts(){
+  if(!currentUser){
+    followingIds=new Set();
+    followerCount=0;
+    followingCount=0;
+    return;
+  }
+  const [{data:following,error:e1},{data:followers,error:e2}]=await Promise.all([
+    db.from("follows").select("following_id").eq("follower_id",currentUser.id),
+    db.from("follows").select("follower_id").eq("following_id",currentUser.id)
+  ]);
+  if(e1)console.error("following:",e1);
+  if(e2)console.error("followers:",e2);
+  followingIds=new Set((following||[]).map(x=>x.following_id));
+  followingCount=followingIds.size;
+  followerCount=(followers||[]).length;
+}
+
 function renderProfile(){
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
+  const username=profile?.username||"";
   document.getElementById("profileName").textContent=name;
   document.getElementById("profileAvatar").textContent=(name[0]||"G").toUpperCase();
+  document.getElementById("profileUsername").textContent=username?"@"+username:"";
   document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableScore member":"Browse freely \u00b7 Account required to rate");
   document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
   document.getElementById("profileRestaurants").textContent=currentUser?new Set(myRatings.map(e=>e.restaurant_id)).size:0;
+  document.getElementById("profileFollowers").textContent=currentUser?followerCount:0;
+  document.getElementById("profileFollowing").textContent=currentUser?followingCount:0;
   document.getElementById("profileAuthBtn").textContent=currentUser?"Account Active":"Create Account / Sign In";
   document.getElementById("profileAuthBtn").disabled=!!currentUser;
   document.getElementById("signOutBtn").classList.toggle("hidden",!currentUser);
+  document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
+  document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
+  if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
+}
+
+async function claimUsername(){
+  if(!currentUser)return openAccount();
+  const input=document.getElementById("claimUsernameInput");
+  const username=input.value.trim().toLowerCase();
+  if(!/^[a-z0-9_]{3,30}$/.test(username)){
+    return alert("Username must be 3-30 characters and use only letters, numbers, or underscores.");
+  }
+  const {data:taken,error:checkError}=await db.from("profiles").select("id").ilike("username",username).limit(1);
+  if(checkError)return alert("Could not check that username. Please try again.");
+  if(taken&&taken.length)return alert("That username is already taken. Choose another one.");
+  const {error}=await db.from("profiles").update({username}).eq("id",currentUser.id);
+  if(error){
+    if(error.code==="23505")return alert("That username is already taken. Choose another one.");
+    return alert(error.message);
+  }
+  input.value="";
+  await refreshUserData();
+  alert("Username saved. Welcome to TableScore Social.");
+}
+
+async function searchPeople(){
+  if(!currentUser||!profile?.username)return;
+  const q=document.getElementById("peopleSearch").value.trim();
+  const out=document.getElementById("peopleResults");
+  if(q.length<2){
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Type at least 2 characters.</div>';
+    return;
+  }
+  out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Searching...</div>';
+  const safe=q.replace(/[%_,()]/g,"");
+  const {data,error}=await db
+    .from("profiles")
+    .select("id,display_name,username,home_city")
+    .neq("id",currentUser.id)
+    .not("username","is",null)
+    .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
+    .limit(20);
+  if(error){
+    console.error(error);
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Search could not load. Try again.</div>';
+    return;
+  }
+  if(!data||!data.length){
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No TableScore users found.</div>';
+    return;
+  }
+  out.innerHTML=data.map(u=>{
+    const isFollowing=followingIds.has(u.id);
+    const display=u.display_name||u.username;
+    return `<div class="row">
+      <div style="min-width:0">
+        <div class="row-name">${esc(display)}</div>
+        <div class="row-meta">@${esc(u.username)}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
+      </div>
+      <button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>
+    </div>`;
+  }).join("");
+}
+
+async function toggleFollow(userId,btn){
+  if(!currentUser)return;
+  btn.disabled=true;
+  if(followingIds.has(userId)){
+    const {error}=await db.from("follows").delete().eq("follower_id",currentUser.id).eq("following_id",userId);
+    if(error){btn.disabled=false;return alert(error.message);}
+    followingIds.delete(userId);
+    btn.textContent="Follow";
+    btn.className="primary";
+  }else{
+    const {error}=await db.from("follows").insert({follower_id:currentUser.id,following_id:userId});
+    if(error){btn.disabled=false;return alert(error.message);}
+    followingIds.add(userId);
+    btn.textContent="Following";
+    btn.className="secondary";
+  }
+  followingCount=followingIds.size;
+  document.getElementById("profileFollowing").textContent=followingCount;
+  btn.style.width="auto";
+  btn.style.minWidth="92px";
+  btn.style.padding="9px 12px";
+  btn.disabled=false;
 }
 
 const ratings=document.getElementById("ratings");
