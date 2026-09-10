@@ -125,6 +125,17 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableScore ratings shown in this version come only from the TableScore database.</p>
     </div>
 
+    <div id="followingFeedCard" class="card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Following</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Recent ratings from people you follow</div>
+        </div>
+        <button class="linkbtn" onclick="showScreen('profile')">Find people &rsaquo;</button>
+      </div>
+      <div id="followingFeed" style="margin-top:8px"></div>
+    </div>
+
     <div class="card">
       <div class="section-head"><div class="section-title">&#128293; Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
       <div id="hotNow"></div>
@@ -255,6 +266,37 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </div>
 </div>
 
+<div id="publicProfileModal" class="modal hidden" onclick="if(event.target===this)closePublicProfile()">
+  <div class="sheet" style="max-height:88vh;overflow:auto">
+    <div class="section-head">
+      <div class="section-title">TableScore Profile</div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePublicProfile()">Close</button>
+    </div>
+
+    <div class="profilebox" style="padding-top:10px">
+      <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
+      <div id="publicProfileName" style="font-family:Georgia,serif;font-size:25px;margin-top:12px">TableScore User</div>
+      <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
+      <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
+      <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
+    </div>
+
+    <div class="card" style="margin-top:0">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+        <div class="stat"><div class="stat-label">RATINGS</div><div id="publicRatingsCount" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">PLACES</div><div id="publicPlacesCount" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('followers')" style="cursor:pointer"><div class="stat-label">FOLLOWERS</div><div id="publicFollowersCount" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('following')" style="cursor:pointer"><div class="stat-label">FOLLOWING</div><div id="publicFollowingCount" class="stat-value">0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">Recent Ratings</div>
+      <div id="publicProfileRatings" style="margin-top:8px"></div>
+    </div>
+  </div>
+</div>
+
 <div id="connectionsModal" class="modal hidden" onclick="if(event.target===this)closeConnections()">
   <div class="sheet">
     <div class="section-head">
@@ -310,6 +352,8 @@ let exploreFilter="all";
 let followingIds=new Set();
 let followerCount=0;
 let followingCount=0;
+let viewedProfile=null;
+let viewedProfileRatings=[];
 
 // If the previous login was intentionally session-only, clear it after a true
 // browser/app restart. sessionStorage survives reloads but not a new session.
@@ -640,6 +684,7 @@ async function signOut(){
   followingCount=0;
   renderSaved();
   renderProfile();
+  renderFollowingFeedGuest();
   showScreen("home");
 }
 
@@ -647,8 +692,12 @@ async function refreshUserData(){
   if(!currentUser){
     profile=null;
     myRatings=[];
+    followingIds=new Set();
+    followerCount=0;
+    followingCount=0;
     renderSaved();
     renderProfile();
+    renderFollowingFeedGuest();
     return;
   }
   const [{data:p,error:pErr},{data:r,error:rErr}]=await Promise.all([
@@ -660,6 +709,7 @@ async function refreshUserData(){
   profile=p||null;
   myRatings=r||[];
   await loadSocialCounts();
+  await loadFollowingFeed();
   renderSaved();
   renderProfile();
 }
@@ -678,6 +728,221 @@ function renderSaved(){
     const name=e.restaurants?.name||"Restaurant";
     return `<div class="row"><div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} &middot; ${e.verified_visit?"Verified Visit":"Unverified"}</div></div><div class="row-score">${Number(e.overall_score).toFixed(2)}</div></div>`;
   }).join("");
+}
+
+
+function scoreWord(score){
+  const n=Number(score);
+  if(n>=9)return "Phenomenal";
+  if(n>=8.5)return "Great Pick";
+  if(n>=8)return "Good Pick";
+  return "TableScore";
+}
+
+function timeAgo(value){
+  const t=new Date(value).getTime();
+  if(!Number.isFinite(t))return "";
+  const seconds=Math.max(1,Math.floor((Date.now()-t)/1000));
+  if(seconds<60)return "just now";
+  const minutes=Math.floor(seconds/60);
+  if(minutes<60)return `${minutes}m ago`;
+  const hours=Math.floor(minutes/60);
+  if(hours<24)return `${hours}h ago`;
+  const days=Math.floor(hours/24);
+  if(days<7)return `${days}d ago`;
+  return new Date(value).toLocaleDateString();
+}
+
+function avatarMarkup(person,size=42){
+  const name=person?.display_name||person?.username||"T";
+  const initial=esc((name[0]||"T").toUpperCase());
+  const url=person?.avatar_url||"";
+  const bg=url?`background-image:url('${esc(url)}');background-size:cover;background-position:center;`:"";
+  return `<div style="width:${size}px;height:${size}px;border-radius:50%;flex:0 0 ${size}px;background:var(--gold);color:#111;display:grid;place-items:center;font-weight:950;border:1px solid rgba(229,184,91,.55);${bg}">${url?"":initial}</div>`;
+}
+
+function renderFollowingFeedGuest(){
+  const el=document.getElementById("followingFeed");
+  if(!el)return;
+  el.innerHTML='<div class="empty"><div class="section-title">Your food circle starts here</div><p class="muted" style="font-size:13px">Sign in to follow people and see their latest restaurant ratings.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
+}
+
+async function loadFollowingFeed(){
+  const el=document.getElementById("followingFeed");
+  if(!el)return;
+  if(!currentUser){
+    renderFollowingFeedGuest();
+    return;
+  }
+  if(!followingIds.size){
+    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('profile')">Find People</button></div>`;
+    return;
+  }
+
+  el.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading your feed...</div>';
+  const ids=[...followingIds];
+  const {data:ratings,error:rErr}=await db.from("ratings")
+    .select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)")
+    .in("user_id",ids)
+    .order("created_at",{ascending:false})
+    .limit(25);
+
+  if(rErr){
+    console.error("following feed ratings:",rErr);
+    el.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Could not load the Following feed.</div>';
+    return;
+  }
+  if(!ratings?.length){
+    el.innerHTML='<div class="empty"><div class="section-title">Quiet table for now</div><p class="muted" style="font-size:13px">The people you follow have not posted any restaurant ratings yet.</p></div>';
+    return;
+  }
+
+  const userIds=[...new Set(ratings.map(x=>x.user_id))];
+  const {data:people,error:pErr}=await db.from("profiles")
+    .select("id,display_name,username,avatar_url,home_city")
+    .in("id",userIds);
+  if(pErr)console.error("following feed profiles:",pErr);
+
+  const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
+  el.innerHTML=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id))).join("");
+}
+
+function feedRatingCard(r,person){
+  const p=person||{id:r.user_id,display_name:"TableScore User",username:"member"};
+  const restaurant=r.restaurants||{};
+  const score=Number(r.overall_score);
+  const details=[
+    Number.isFinite(Number(r.taste))?`Taste ${Number(r.taste).toFixed(1)}`:"",
+    Number.isFinite(Number(r.quality))?`Quality ${Number(r.quality).toFixed(1)}`:"",
+    Number.isFinite(Number(r.service))?`Service ${Number(r.service).toFixed(1)}`:""
+  ].filter(Boolean).join(" Â· ");
+
+  return `<div style="padding:14px 0;border-bottom:1px solid var(--line)">
+    <div style="display:flex;gap:10px;align-items:center">
+      <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
+      <div style="min-width:0;flex:1">
+        <button onclick="openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
+        <div class="row-meta">${p.username?"@"+esc(p.username)+" Â· ":""}${esc(timeAgo(r.created_at))}</div>
+      </div>
+      ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
+    </div>
+    <button onclick="openRestaurantById('${restaurant.id||r.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
+      <div style="font-family:Georgia,serif;font-size:19px;font-weight:800">${esc(restaurant.name||"Restaurant")}</div>
+      <div class="row-meta">${[restaurant.city,restaurant.state_region].filter(Boolean).map(esc).join(", ")}</div>
+    </button>
+    <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">
+      <div style="font-size:26px;font-weight:950;color:var(--gold)">${Number.isFinite(score)?score.toFixed(2):"--"}</div>
+      <div style="font-size:12px;font-weight:900">${esc(scoreWord(score))}</div>
+    </div>
+    ${details?`<div class="muted" style="font-size:11px;margin-top:3px">${details}</div>`:""}
+    ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">â${esc(r.quick_take)}â</div>`:""}
+    ${r.best_dish?`<div class="row-meta" style="margin-top:6px">Best dish: ${esc(r.best_dish)}</div>`:""}
+  </div>`;
+}
+
+async function openPublicProfile(userId){
+  if(!userId)return;
+  if(currentUser&&userId===currentUser.id){
+    closePublicProfile();
+    showScreen("profile");
+    return;
+  }
+
+  const modal=document.getElementById("publicProfileModal");
+  modal.classList.remove("hidden");
+  document.getElementById("publicProfileName").textContent="Loading...";
+  document.getElementById("publicProfileUsername").textContent="";
+  document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
+
+  const [{data:p,error:pErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
+    db.from("profiles").select("id,display_name,username,avatar_url,home_city").eq("id",userId).maybeSingle(),
+    db.from("ratings").select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)").eq("user_id",userId).order("created_at",{ascending:false}).limit(50),
+    db.from("follows").select("follower_id").eq("following_id",userId),
+    db.from("follows").select("following_id").eq("follower_id",userId)
+  ]);
+
+  if(pErr||!p){
+    console.error(pErr);
+    document.getElementById("publicProfileName").textContent="Profile unavailable";
+    document.getElementById("publicProfileRatings").innerHTML="";
+    return;
+  }
+  if(rErr)console.error(rErr);
+  if(fErr)console.error(fErr);
+  if(gErr)console.error(gErr);
+
+  viewedProfile=p;
+  viewedProfileRatings=ratings||[];
+
+  const av=document.getElementById("publicProfileAvatar");
+  if(p.avatar_url){
+    av.textContent="";
+    av.style.backgroundImage=`url("${p.avatar_url}")`;
+  }else{
+    av.style.backgroundImage="none";
+    av.textContent=(p.display_name||p.username||"T")[0].toUpperCase();
+  }
+
+  document.getElementById("publicProfileName").textContent=p.display_name||p.username||"TableScore User";
+  document.getElementById("publicProfileUsername").textContent=p.username?"@"+p.username:"";
+  document.getElementById("publicProfileArea").textContent=p.home_city||"TableScore member";
+  document.getElementById("publicRatingsCount").textContent=viewedProfileRatings.length;
+  document.getElementById("publicPlacesCount").textContent=new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size;
+  document.getElementById("publicFollowersCount").textContent=(followers||[]).length;
+  document.getElementById("publicFollowingCount").textContent=(following||[]).length;
+
+  const followBtn=document.getElementById("publicFollowBtn");
+  if(!currentUser){
+    followBtn.classList.remove("hidden");
+    followBtn.textContent="Sign in to Follow";
+    followBtn.className="secondary";
+  }else{
+    followBtn.classList.remove("hidden");
+    const yes=followingIds.has(userId);
+    followBtn.textContent=yes?"Following":"Follow";
+    followBtn.className=yes?"secondary":"primary";
+  }
+  followBtn.style.width="auto";
+  followBtn.style.minWidth="120px";
+  followBtn.style.margin="14px auto 0";
+
+  const out=document.getElementById("publicProfileRatings");
+  if(!viewedProfileRatings.length){
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">No restaurant ratings yet.</div>';
+  }else{
+    out.innerHTML=viewedProfileRatings.slice(0,15).map(r=>feedRatingCard(r,p)).join("");
+  }
+}
+
+function closePublicProfile(){
+  document.getElementById("publicProfileModal").classList.add("hidden");
+  viewedProfile=null;
+  viewedProfileRatings=[];
+}
+
+async function togglePublicProfileFollow(){
+  if(!viewedProfile)return;
+  if(!currentUser){
+    closePublicProfile();
+    openAccount(()=>openPublicProfile(viewedProfile.id));
+    return;
+  }
+  const btn=document.getElementById("publicFollowBtn");
+  await toggleFollow(viewedProfile.id,btn);
+  await loadSocialCounts();
+  await loadFollowingFeed();
+  document.getElementById("publicFollowersCount").textContent=await getFollowerCount(viewedProfile.id);
+}
+
+async function getFollowerCount(userId){
+  const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId);
+  if(error)return 0;
+  return (data||[]).length;
+}
+
+function openViewedConnections(type){
+  if(!viewedProfile)return;
+  openConnectionsFor(viewedProfile.id,type,viewedProfile.display_name||viewedProfile.username||"Profile");
 }
 
 async function loadSocialCounts(){
@@ -834,20 +1099,26 @@ async function removeProfilePhoto(){
 
 async function openConnections(type){
   if(!currentUser)return openAccount();
+  return openConnectionsFor(currentUser.id,type,"Your");
+}
+
+async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   const modal=document.getElementById("connectionsModal");
   const title=document.getElementById("connectionsTitle");
   const out=document.getElementById("connectionsList");
-  title.textContent=type==="followers"?"Followers":"Following";
+  title.textContent=userId===currentUser?.id
+    ? (type==="followers"?"Followers":"Following")
+    : `${ownerLabel} Â· ${type==="followers"?"Followers":"Following"}`;
   modal.classList.remove("hidden");
   out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading...</div>';
 
   let ids=[];
   if(type==="followers"){
-    const {data,error}=await db.from("follows").select("follower_id").eq("following_id",currentUser.id);
+    const {data,error}=await db.from("follows").select("follower_id").eq("following_id",userId);
     if(error){console.error(error);out.innerHTML='<div class="muted">Could not load followers.</div>';return;}
     ids=(data||[]).map(x=>x.follower_id);
   }else{
-    const {data,error}=await db.from("follows").select("following_id").eq("follower_id",currentUser.id);
+    const {data,error}=await db.from("follows").select("following_id").eq("follower_id",userId);
     if(error){console.error(error);out.innerHTML='<div class="muted">Could not load following.</div>';return;}
     ids=(data||[]).map(x=>x.following_id);
   }
@@ -858,19 +1129,23 @@ async function openConnections(type){
   }
 
   const {data:people,error}=await db.from("profiles")
-    .select("id,display_name,username,home_city")
+    .select("id,display_name,username,home_city,avatar_url")
     .in("id",ids);
   if(error){console.error(error);out.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
 
   out.innerHTML=(people||[]).map(u=>{
+    const isMe=u.id===currentUser?.id;
     const isFollowing=followingIds.has(u.id);
     const display=u.display_name||u.username||"TableScore User";
-    return `<div class="row">
+    return `<div class="row" style="gap:10px">
+      <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
       <div style="min-width:0;flex:1">
-        <div class="row-name">${esc(display)}</div>
-        <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
+        <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
+          <div class="row-name">${esc(display)}</div>
+          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" Â· "+esc(u.home_city):""}</div>
+        </button>
       </div>
-      ${u.id===currentUser.id?"":`<button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
+      ${isMe?"":`<button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
     </div>`;
   }).join("");
 }
@@ -911,7 +1186,7 @@ async function searchPeople(){
   const safe=q.replace(/[%_,()]/g,"");
   const {data,error}=await db
     .from("profiles")
-    .select("id,display_name,username,home_city")
+    .select("id,display_name,username,home_city,avatar_url")
     .neq("id",currentUser.id)
     .not("username","is",null)
     .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
@@ -928,10 +1203,13 @@ async function searchPeople(){
   out.innerHTML=data.map(u=>{
     const isFollowing=followingIds.has(u.id);
     const display=u.display_name||u.username;
-    return `<div class="row">
-      <div style="min-width:0">
-        <div class="row-name">${esc(display)}</div>
-        <div class="row-meta">@${esc(u.username)}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
+    return `<div class="row" style="gap:10px">
+      <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
+      <div style="min-width:0;flex:1">
+        <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
+          <div class="row-name">${esc(display)}</div>
+          <div class="row-meta">@${esc(u.username)}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
+        </button>
       </div>
       <button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>
     </div>`;
@@ -960,6 +1238,7 @@ async function toggleFollow(userId,btn){
   btn.style.minWidth="92px";
   btn.style.padding="9px 12px";
   btn.disabled=false;
+  loadFollowingFeed();
 }
 
 const ratings=document.getElementById("ratings");
