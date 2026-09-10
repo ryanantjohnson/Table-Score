@@ -2313,10 +2313,19 @@ function showRewardToast(names){
 
 async function checkProgressRewards({announce=true}={}){
   if(!currentUser)return;
-  const {data,error}=await db.rpc("check_my_rewards");
-  if(error){console.error("reward check:",error);return;}
-  const unlocked=(data||[]).filter(x=>x.newly_unlocked);
+
+  // Always load already-earned rewards first. A progression-check failure must
+  // never hide legacy rewards such as Secret Sauce.
   await loadProgressRewards();
+
+  const {data,error}=await db.rpc("check_my_rewards");
+  if(error){
+    console.error("reward check:",error);
+    return;
+  }
+
+  const unlocked=(data||[]).filter(x=>x.newly_unlocked);
+  if(unlocked.length)await loadProgressRewards();
   if(announce&&unlocked.length)showRewardToast(unlocked.map(x=>x.reward_name));
 }
 
@@ -3712,6 +3721,7 @@ async function init(){
   currentUser=session?.user||null;
   await Promise.all([loadRestaurantStats(),refreshUserData(),loadProfileTitles(),loadFoodBadges()]);
   await loadSecretRewards();
+  await loadProgressRewards();
   startNotificationPolling();
 
   const savedScreen=localStorage.getItem("ts_current_screen");
@@ -3727,6 +3737,8 @@ async function init(){
     currentUser=sessionNow?.user||null;
     if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
     await refreshUserData();
+    await loadSecretRewards();
+    await loadProgressRewards();
     notificationsInitialized=false;
     startNotificationPolling();
   });
