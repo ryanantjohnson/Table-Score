@@ -179,6 +179,8 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 
 
 body.booting .app, body.booting .nav{visibility:hidden}
+
+.delete-rating-btn{margin-top:12px;border:1px solid rgba(255,92,92,.45)!important;background:rgba(120,24,24,.18)!important;color:#ff8d8d!important}
 </style>
 </head>
 <body class="booting">
@@ -2007,6 +2009,74 @@ function validEditScore(v){
   return Number.isFinite(n)&&n>=0&&n<=10?n:null;
 }
 
+
+function storagePathFromRatingPhotoUrl(url){
+  try{
+    const marker="/storage/v1/object/public/rating-photos/";
+    const i=String(url||"").indexOf(marker);
+    if(i===-1)return null;
+    return decodeURIComponent(String(url).slice(i+marker.length).split("?")[0]);
+  }catch(e){
+    return null;
+  }
+}
+
+async function deleteCurrentRating(){
+  if(!editingRatingId||!currentUser)return;
+
+  const rating=getMyRatingById(editingRatingId);
+  const restaurantName=rating?.restaurants?.name||"this restaurant";
+  const confirmed=window.confirm(`Delete your rating for ${restaurantName}?\n\nThis permanently deletes the rating and its dish photos. This cannot be undone.`);
+  if(!confirmed)return;
+
+  const btn=document.getElementById("deleteRatingBtn");
+  const saveBtn=document.getElementById("saveEditedRatingBtn");
+  btn.disabled=true;
+  btn.textContent="Deleting...";
+  if(saveBtn)saveBtn.disabled=true;
+
+  const ratingId=editingRatingId;
+
+  try{
+    // Load the current photo URLs first so their Storage files can be removed too.
+    const {data:photos,error:photoLoadError}=await db.from("rating_photos")
+      .select("id,photo_url")
+      .eq("rating_id",ratingId)
+      .eq("user_id",currentUser.id);
+    if(photoLoadError)throw photoLoadError;
+
+    const storagePaths=(photos||[])
+      .map(p=>storagePathFromRatingPhotoUrl(p.photo_url))
+      .filter(Boolean);
+
+    // Delete the actual image files first. The rating delete below cascades the DB photo rows.
+    if(storagePaths.length){
+      const {error:storageError}=await db.storage.from("rating-photos").remove(storagePaths);
+      if(storageError)throw storageError;
+    }
+
+    const {error:deleteError}=await db.from("ratings")
+      .delete()
+      .eq("id",ratingId)
+      .eq("user_id",currentUser.id);
+    if(deleteError)throw deleteError;
+
+    closeEditRating();
+    await refreshUserData();
+    await loadRestaurantStats();
+    alert("Rating deleted.");
+  }catch(err){
+    console.error("delete rating:",err);
+    alert("Could not delete this rating: "+(err.message||"Unknown error"));
+  }finally{
+    if(btn){
+      btn.disabled=false;
+      btn.textContent="Delete Rating";
+    }
+    if(saveBtn)saveBtn.disabled=false;
+  }
+}
+
 async function saveEditedRating(){
   if(!editingRatingId||!currentUser)return;
   const ids=["editAtmosphere","editCleanliness","editTaste","editQuality","editPortions","editPrice","editService"];
@@ -2174,6 +2244,8 @@ init();
         <div id="editExistingPhotos" class="edit-photo-current"></div>
         <div id="editNewPhotoPreviews" class="photo-preview-grid"></div>
       </div>
+
+      <button id="deleteRatingBtn" class="secondary delete-rating-btn" onclick="deleteCurrentRating()">Delete Rating</button>
 
       <div class="edit-rating-actions">
         <button class="secondary" onclick="closeEditRating()">Cancel</button>
