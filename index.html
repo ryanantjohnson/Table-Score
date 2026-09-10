@@ -364,7 +364,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 /* V5.20 Account Marks */
 .account-mark{display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;margin-left:6px;vertical-align:-6px;cursor:pointer;flex:0 0 auto}
 .account-mark svg{width:24px;height:24px;display:block;filter:drop-shadow(0 2px 4px rgba(177,108,28,.25))}
-.account-mark.mark-og svg{width:25px;height:25px}
+.account-mark.mark-og{width:27px;height:27px;vertical-align:-7px}.account-mark.mark-og svg{width:27px;height:27px;overflow:visible}
 .account-mark-pop{position:fixed;inset:0;background:rgba(25,17,11,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:24px}
 .account-mark-card{width:min(390px,100%);background:var(--card,#fffaf1);color:var(--text,#2b211a);border-radius:24px;padding:24px;text-align:center;box-shadow:0 24px 70px rgba(0,0,0,.28)}
 .account-mark-hero{width:70px;height:70px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center}
@@ -3332,10 +3332,38 @@ const ACCOUNT_MARK_META = {
 function accountMarkSvg(kind){
   if(kind === "og"){
     return `<svg viewBox="0 0 64 64" aria-hidden="true">
-      <defs><linearGradient id="ogG" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#ffe29a"/><stop offset=".48" stop-color="#d99a35"/><stop offset="1" stop-color="#9c5b18"/></linearGradient></defs>
-      <path d="M13 29c-5-1-8-5-8-10 0-6 5-11 11-11 3 0 6 1 8 4 2-6 7-9 13-9s11 3 13 9c2-3 5-4 8-4 6 0 11 5 11 11 0 5-3 9-8 10v18H13V29z" fill="url(#ogG)" stroke="#6f3d10" stroke-width="2"/>
-      <path d="M15 47h34v9H15z" rx="3" fill="url(#ogG)" stroke="#6f3d10" stroke-width="2"/>
-      <text x="32" y="37" text-anchor="middle" font-family="Georgia,serif" font-size="15" font-weight="700" fill="#4b2a0c">OG</text>
+      <defs>
+        <linearGradient id="ogGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FFE6A0"/>
+          <stop offset=".48" stop-color="#E4A43B"/>
+          <stop offset="1" stop-color="#A96318"/>
+        </linearGradient>
+      </defs>
+      <!-- compact symmetrical chef toque -->
+      <path d="M16 31
+               C10 29 7 24 7 19
+               C7 12.5 12.2 7.5 18.5 7.5
+               C22 7.5 25 9.1 27 11.7
+               C28.3 6.9 32.4 4 37 4
+               C41.6 4 45.7 6.9 47 11.7
+               C49 9.1 52 7.5 55.5 7.5
+               C61.8 7.5 67 12.5 67 19
+               C67 24 64 29 58 31
+               L58 45
+               L16 45 Z"
+            transform="translate(-5 1)"
+            fill="url(#ogGold)" stroke="#70400F" stroke-width="2.4" stroke-linejoin="round"/>
+      <!-- subtle inner folds -->
+      <path d="M23 14c-2 6-2 12 0 18M32 10c-1 7-1 14 0 21M41 14c2 6 2 12 0 18"
+            fill="none" stroke="#FFF0BE" stroke-width="1.5" stroke-linecap="round" opacity=".72"/>
+      <!-- hat band -->
+      <rect x="13" y="44" width="38" height="11" rx="3.2"
+            fill="url(#ogGold)" stroke="#70400F" stroke-width="2.4"/>
+      <path d="M17 49h30" stroke="#FFF0BE" stroke-width="1.4" opacity=".7"/>
+      <!-- tiny OG -->
+      <text x="32" y="40" text-anchor="middle"
+            font-family="Georgia,serif" font-size="13.5" font-weight="700"
+            fill="#4B290A">OG</text>
     </svg>`;
   }
   if(kind === "tastemaker"){
