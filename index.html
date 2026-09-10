@@ -2325,7 +2325,7 @@ async function loadProgressRewards(){
 
   const [{data:progress,error:progressError},{data:legacy,error:legacyError}]=await Promise.all([
     db.rpc("get_my_earned_rewards"),
-    db.from("user_secret_rewards").select("reward_slug,earned_at").eq("user_id",currentUser.id)
+    db.from("user_secret_rewards").select("reward_slug,reward_type,reward_name,reward_emoji,unlocked_at").eq("user_id",currentUser.id)
   ]);
 
   if(progressError)console.error("earned rewards:",progressError);
@@ -2339,11 +2339,11 @@ async function loadProgressRewards(){
     if(r.reward_slug==="secret-sauce"){
       merged.push({
         reward_slug:"secret-sauce",
-        reward_name:"Secret Sauce",
-        reward_type:"badge",
+        reward_name:r.reward_name||"Secret Sauce",
+        reward_type:r.reward_type||"badge",
         is_secret:true,
         description:"You found something that wasn't on the menu.",
-        earned_at:r.earned_at,
+        earned_at:r.unlocked_at,
         metadata:{legacy_secret_reward:true}
       });
       seen.add(r.reward_slug);
