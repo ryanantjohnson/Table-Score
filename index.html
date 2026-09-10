@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#090b0d">
-<title onclick="secretTestTap()" style="cursor:pointer">TableScore</title>
+<title>TableScore</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -315,7 +315,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 <body class="booting">
 <div class="app">
   <div class="topbar">
-    <div><div class="brand">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
+    <div><div class="brand" onclick="secretTestTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
     <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
   </div>
 
