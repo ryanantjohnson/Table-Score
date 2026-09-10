@@ -115,6 +115,13 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .photo-lightbox-prev{left:8px}.photo-lightbox-next{right:8px}
 .photo-lightbox-count{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:white;font-size:13px;font-weight:800}
 
+
+.edit-rating-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.edit-rating-grid .field{margin:0}
+.edit-rating-grid input{width:100%}
+.edit-photo-current{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+.edit-photo-current .photo-preview-item button.photo-remove{z-index:2}
+
 </style>
 </head>
 <body>
@@ -711,7 +718,7 @@ async function signOut(){
   followingIds=new Set();
   followerCount=0;
   followingCount=0;
-  renderSaved();
+  await renderSaved();
   renderProfile();
   renderFollowingFeedGuest();
   showScreen("home");
@@ -724,14 +731,14 @@ async function refreshUserData(){
     followingIds=new Set();
     followerCount=0;
     followingCount=0;
-    renderSaved();
+    await renderSaved();
     renderProfile();
     renderFollowingFeedGuest();
     return;
   }
   const [{data:p,error:pErr},{data:r,error:rErr}]=await Promise.all([
     db.from("profiles").select("*").eq("id",currentUser.id).maybeSingle(),
-    db.from("ratings").select("id,restaurant_id,overall_score,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
+    db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
   ]);
   if(pErr)console.error("profile:",pErr);
   if(rErr)console.error("ratings:",rErr);
@@ -744,11 +751,11 @@ async function refreshUserData(){
   }
   await loadSocialCounts();
   await loadFollowingFeed();
-  renderSaved();
+  await renderSaved();
   renderProfile();
 }
 
-function renderSaved(){
+async function renderSaved(){
   const el=document.getElementById("savedList");
   if(!currentUser){
     el.innerHTML='<div class="card"><div class="section-title">Sign in to see your ratings</div><p class="muted" style="font-size:13px">Your cloud-saved TableScore visits will appear here.</p></div>';
@@ -758,9 +765,19 @@ function renderSaved(){
     el.innerHTML='<div class="card"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your submitted visits will appear here.</p></div>';
     return;
   }
+  const photoMap=await getPhotosForRatings(myRatings.map(r=>r.id));
+  myRatings.forEach(r=>r._photos=photoMap.get(r.id)||[]);
   el.innerHTML=myRatings.map(e=>{
     const name=e.restaurants?.name||"Restaurant";
-    return `<div class="row"><div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} &middot; ${e.verified_visit?"Verified Visit":"Unverified"}</div></div><div class="row-score">${Number(e.overall_score).toFixed(2)}</div></div>`;
+    return `<div class="card" style="margin:0">
+      <div class="row" style="border:0;padding:0;background:transparent">
+        <div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} &middot; ${e.verified_visit?"Verified Visit":"Unverified"}</div></div>
+        <div class="row-score">${Number(e.overall_score).toFixed(2)}</div>
+      </div>
+      ${e.quick_take?`<div style="font-size:13px;margin-top:9px">${esc(e.quick_take)}</div>`:""}
+      ${photoGridMarkup(e._photos)}
+      <button class="secondary" style="margin-top:10px" onclick="openEditRating('${e.id}')">Edit Rating</button>
+    </div>`;
   }).join("");
 }
 
@@ -1476,6 +1493,141 @@ async function uploadRatingPhotos(ratingId){
   if(error)throw error;
 }
 
+
+let editingRatingId=null;
+let editExistingPhotos=[];
+let editNewPhotos=[];
+let editDeletedPhotoIds=[];
+
+function getMyRatingById(id){return myRatings.find(r=>r.id===id);}
+
+async function openEditRating(id){
+  const r=getMyRatingById(id);
+  if(!r)return alert("Could not find that rating.");
+  editingRatingId=id;
+  editDeletedPhotoIds=[];
+  editNewPhotos=[];
+  document.getElementById("editRatingRestaurant").textContent=r.restaurants?.name||"Restaurant";
+  document.getElementById("editAtmosphere").value=r.atmosphere??"";
+  document.getElementById("editCleanliness").value=r.cleanliness??"";
+  document.getElementById("editTaste").value=r.taste??"";
+  document.getElementById("editQuality").value=r.quality??"";
+  document.getElementById("editPortions").value=r.portions??"";
+  document.getElementById("editPrice").value=r.price??"";
+  document.getElementById("editService").value=r.service??"";
+  document.getElementById("editBestDish").value=r.best_dish||"";
+  document.getElementById("editWouldReturn").value=r.would_return||"";
+  document.getElementById("editQuickTake").value=r.quick_take||"";
+  const {data,error}=await db.from("rating_photos").select("id,photo_url,sort_order").eq("rating_id",id).order("sort_order",{ascending:true});
+  if(error)console.error(error);
+  editExistingPhotos=data||[];
+  renderEditPhotos();
+  document.getElementById("editRatingModal").classList.remove("hidden");
+}
+
+function closeEditRating(){
+  editNewPhotos.forEach(p=>{if(p.preview)URL.revokeObjectURL(p.preview);});
+  editNewPhotos=[];
+  editingRatingId=null;
+  document.getElementById("editRatingModal").classList.add("hidden");
+}
+
+function renderEditPhotos(){
+  const visible=editExistingPhotos.filter(p=>!editDeletedPhotoIds.includes(p.id));
+  const urls=visible.map(p=>p.photo_url);
+  document.getElementById("editExistingPhotos").innerHTML=visible.map((p,i)=>`<div class="photo-preview-item">
+    <img src="${esc(p.photo_url)}" alt="Dish photo" onclick="openPhotoLightbox(${JSON.stringify(urls).replace(/"/g,"&quot;")},${i})">
+    <button type="button" class="photo-remove" onclick="removeExistingEditPhoto('${p.id}')">&times;</button>
+  </div>`).join("");
+  document.getElementById("editNewPhotoPreviews").innerHTML=editNewPhotos.map((p,i)=>`<div class="photo-preview-item">
+    <img src="${p.preview}" alt="New dish photo">
+    <button type="button" class="photo-remove" onclick="removeNewEditPhoto(${i})">&times;</button>
+  </div>`).join("");
+}
+
+function removeExistingEditPhoto(id){
+  if(!editDeletedPhotoIds.includes(id))editDeletedPhotoIds.push(id);
+  renderEditPhotos();
+}
+
+function removeNewEditPhoto(i){
+  const p=editNewPhotos[i]; if(p?.preview)URL.revokeObjectURL(p.preview);
+  editNewPhotos.splice(i,1); renderEditPhotos();
+}
+
+async function handleEditRatingPhotos(event){
+  const activeExisting=editExistingPhotos.filter(p=>!editDeletedPhotoIds.includes(p.id)).length;
+  const remaining=5-activeExisting-editNewPhotos.length;
+  const files=[...(event.target.files||[])];
+  if(remaining<=0){alert("This rating already has 5 photos.");event.target.value="";return;}
+  for(const file of files.slice(0,remaining)){
+    if(!file.type.startsWith("image/"))continue;
+    try{
+      const blob=await compressRatingPhoto(file);
+      editNewPhotos.push({blob,preview:URL.createObjectURL(blob)});
+    }catch(e){console.error(e);}
+  }
+  if(files.length>remaining)alert("TableScore allows up to 5 photos per rating.");
+  event.target.value="";
+  renderEditPhotos();
+}
+
+function validEditScore(v){
+  const n=Number(v);
+  return Number.isFinite(n)&&n>=0&&n<=10?n:null;
+}
+
+async function saveEditedRating(){
+  if(!editingRatingId||!currentUser)return;
+  const ids=["editAtmosphere","editCleanliness","editTaste","editQuality","editPortions","editPrice","editService"];
+  const vals=ids.map(id=>validEditScore(document.getElementById(id).value));
+  if(vals.some(v=>v===null))return alert("Each category must be between 0 and 10.");
+
+  const btn=document.getElementById("saveEditedRatingBtn");
+  btn.disabled=true; btn.textContent="Saving...";
+  try{
+    const payload={
+      atmosphere:vals[0],cleanliness:vals[1],taste:vals[2],quality:vals[3],
+      portions:vals[4],price:vals[5],service:vals[6],
+      best_dish:document.getElementById("editBestDish").value.trim()||null,
+      would_return:document.getElementById("editWouldReturn").value||null,
+      quick_take:document.getElementById("editQuickTake").value.trim()||null
+    };
+    const {error:updateError}=await db.from("ratings").update(payload).eq("id",editingRatingId).eq("user_id",currentUser.id);
+    if(updateError)throw updateError;
+
+    if(editDeletedPhotoIds.length){
+      const {error:deleteRowsError}=await db.from("rating_photos").delete().in("id",editDeletedPhotoIds).eq("user_id",currentUser.id);
+      if(deleteRowsError)throw deleteRowsError;
+    }
+
+    if(editNewPhotos.length){
+      const activeExisting=editExistingPhotos.filter(p=>!editDeletedPhotoIds.includes(p.id)).length;
+      const rows=[];
+      for(let i=0;i<editNewPhotos.length;i++){
+        const path=`${currentUser.id}/${editingRatingId}/${Date.now()}-edit-${i}.jpg`;
+        const {error:uploadError}=await db.storage.from("rating-photos").upload(path,editNewPhotos[i].blob,{contentType:"image/jpeg",cacheControl:"3600"});
+        if(uploadError)throw uploadError;
+        const {data}=db.storage.from("rating-photos").getPublicUrl(path);
+        rows.push({rating_id:editingRatingId,user_id:currentUser.id,photo_url:data.publicUrl,sort_order:activeExisting+i});
+      }
+      const {error:insertError}=await db.from("rating_photos").insert(rows);
+      if(insertError)throw insertError;
+    }
+
+    closeEditRating();
+    await refreshUserData();
+    await loadRestaurantStats();
+    alert("Rating updated.");
+  }catch(err){
+    console.error(err);
+    alert("Could not update this rating: "+(err.message||"Unknown error"));
+  }finally{
+    btn.disabled=false; btn.textContent="Save Changes";
+  }
+}
+
+
 async function submitRating(){
   if(!currentUser){openAccount(submitRating);return;}
   const name=document.getElementById("rateRestaurant").value.trim();
@@ -1548,6 +1700,46 @@ async function init(){
 }
 init();
 </script>
+
+  <div id="editRatingModal" class="modal hidden">
+    <div class="modal-sheet" style="max-height:92vh;overflow:auto">
+      <div class="section-head">
+        <div class="section-title">Edit Rating</div>
+        <button class="linkbtn" onclick="closeEditRating()">Close</button>
+      </div>
+      <div id="editRatingRestaurant" style="font-family:Georgia,serif;font-size:22px;font-weight:800;margin-bottom:12px"></div>
+
+      <div class="edit-rating-grid">
+        <div class="field"><label>Atmosphere</label><input id="editAtmosphere" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Cleanliness</label><input id="editCleanliness" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Taste</label><input id="editTaste" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Quality</label><input id="editQuality" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Portions</label><input id="editPortions" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Price</label><input id="editPrice" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Service</label><input id="editService" type="number" min="0" max="10" step="0.1"></div>
+      </div>
+
+      <div class="field"><label>Best Dish</label><input id="editBestDish" placeholder="What stood out?"></div>
+      <div class="field"><label>Would You Return?</label>
+        <select id="editWouldReturn" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:13px;color:var(--ink);padding:12px 13px">
+          <option value="">Not answered</option><option>Yes</option><option>Maybe</option><option>No</option>
+        </select>
+      </div>
+      <div class="field"><label>Quick Take</label><textarea id="editQuickTake" rows="4" placeholder="A quick note about your experience"></textarea></div>
+
+      <div class="field">
+        <label>Dish Photos</label>
+        <input id="editRatingPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="handleEditRatingPhotos(event)">
+        <button type="button" class="photo-add-btn" onclick="document.getElementById('editRatingPhotoInput').click()">&#128247; Add More Photos</button>
+        <div class="row-meta" style="margin-top:7px">Up to 5 total photos. Tap a photo to view it full screen.</div>
+        <div id="editExistingPhotos" class="edit-photo-current"></div>
+        <div id="editNewPhotoPreviews" class="photo-preview-grid"></div>
+      </div>
+
+      <button id="saveEditedRatingBtn" class="primary" onclick="saveEditedRating()">Save Changes</button>
+    </div>
+  </div>
+
 <div id="photoLightbox" class="photo-lightbox hidden" onclick="if(event.target===this)closePhotoLightbox()">
     <button class="photo-lightbox-close" onclick="closePhotoLightbox()" aria-label="Close">&times;</button>
     <button id="photoPrev" class="photo-lightbox-nav photo-lightbox-prev" onclick="changeLightboxPhoto(-1)" aria-label="Previous">&lsaquo;</button>
