@@ -410,6 +410,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .people-mutual-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block}
 .people-suggested-empty{font-size:11px;line-height:1.45;padding:8px 2px;color:var(--muted)}
 
+
+/* V5.25 Rewards & Progression */
+.reward-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.reward-chip{border:1px solid var(--line);border-radius:16px;padding:10px 7px;background:var(--card);text-align:center;min-height:92px;display:flex;flex-direction:column;justify-content:center;align-items:center;gap:5px}
+.reward-chip-icon{font-size:23px;line-height:1}
+.reward-chip-name{font-size:10px;font-weight:900;line-height:1.2}
+.reward-chip-type{font-size:8px;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.08em}
+.reward-toast{position:fixed;left:50%;bottom:94px;transform:translateX(-50%) translateY(18px);z-index:1200;background:var(--ink);color:var(--bg);border-radius:999px;padding:10px 15px;font-size:11px;font-weight:900;box-shadow:0 12px 32px rgba(0,0,0,.22);opacity:0;pointer-events:none;transition:.25s}
+.reward-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
 </style>
 </head>
 <body class="booting">
@@ -621,6 +631,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         </div>
         <div id="peopleSuggestions" class="list"></div>
       </div>
+    </div>
+
+    <div id="earnedRewardsCard" class="card hidden">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Earned Rewards</div>
+          <div class="muted" style="font-size:11px;margin-top:4px">Achievements you have unlocked on TableScore.</div>
+        </div>
+        <div id="earnedRewardsCount" class="muted" style="font-size:11px"></div>
+      </div>
+      <div id="earnedRewardsGrid" class="reward-grid" style="margin-top:12px"></div>
     </div>
 
     <div id="myProfileRatingsCard" class="card hidden">
@@ -1580,6 +1601,7 @@ async function refreshUserData(){
   await loadSocialCounts();
   await loadFollowingFeed();
   await renderSaved();
+  await checkProgressRewards({announce:true});
   renderProfile();
   updateSaveRestaurantButton();
 }
@@ -2232,6 +2254,79 @@ async function loadSocialCounts(){
   updateSettingsBadges();
 }
 
+
+let earnedProgressRewards=[];
+
+function rewardIconMarkup(slug){
+  const icons={
+    "first-five":"5",
+    "table-for-ten":"10",
+    "25-plates-later":"25",
+    "half-century":"50",
+    "century-club":"100",
+    "regular-status":"R",
+    "they-know-my-order":"5x",
+    "cuisine-explorer":"C",
+    "neighborhood-expert":"N",
+    "worth-the-miles":"M",
+    "conversation-starter":"10",
+    "table-talk":"25",
+    "never-short-on-words":"50",
+    "good-take":"25",
+    "crowd-favorite":"100",
+    "this-one-hit":"100!",
+    "hidden-gem-hunter":"GEM",
+    "second-chance":"+",
+    "plot-twist":"-",
+    "before-it-was-cool":"OG"
+  };
+  return icons[slug]||"*";
+}
+
+function renderEarnedProgressRewards(){
+  const card=document.getElementById("earnedRewardsCard");
+  const grid=document.getElementById("earnedRewardsGrid");
+  const count=document.getElementById("earnedRewardsCount");
+  if(!card||!grid||!count)return;
+  if(!currentUser){card.classList.add("hidden");return;}
+  card.classList.remove("hidden");
+  count.textContent=earnedProgressRewards.length?`${earnedProgressRewards.length} unlocked`:"";
+  if(!earnedProgressRewards.length){
+    grid.innerHTML='<div class="muted" style="grid-column:1/-1;font-size:11px;line-height:1.45">Keep rating, exploring and joining the conversation. Rewards will appear here when you earn them.</div>';
+    return;
+  }
+  grid.innerHTML=earnedProgressRewards.map(r=>`<div class="reward-chip">
+    <div class="reward-chip-icon">${esc(rewardIconMarkup(r.reward_slug))}</div>
+    <div class="reward-chip-name">${esc(r.reward_name)}</div>
+    <div class="reward-chip-type">${r.is_secret?"Secret Found":esc(r.reward_type||"Badge")}</div>
+  </div>`).join("");
+}
+
+function showRewardToast(names){
+  if(!names?.length)return;
+  const el=document.getElementById("rewardToast"); if(!el)return;
+  el.textContent=names.length===1?`Reward unlocked: ${names[0]}`:`${names.length} rewards unlocked`;
+  el.classList.add("show");
+  setTimeout(()=>el.classList.remove("show"),4200);
+}
+
+async function checkProgressRewards({announce=true}={}){
+  if(!currentUser)return;
+  const {data,error}=await db.rpc("check_my_rewards");
+  if(error){console.error("reward check:",error);return;}
+  const unlocked=(data||[]).filter(x=>x.newly_unlocked);
+  await loadProgressRewards();
+  if(announce&&unlocked.length)showRewardToast(unlocked.map(x=>x.reward_name));
+}
+
+async function loadProgressRewards(){
+  if(!currentUser){earnedProgressRewards=[];renderEarnedProgressRewards();return;}
+  const {data,error}=await db.rpc("get_my_earned_rewards");
+  if(error){console.error("earned rewards:",error);return;}
+  earnedProgressRewards=data||[];
+  renderEarnedProgressRewards();
+}
+
 function renderProfile(){
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
@@ -2264,6 +2359,7 @@ function renderProfile(){
   document.getElementById("myProfileRatingsCard").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
   renderMyProfileRatings();
+  renderEarnedProgressRewards();
   loadPeopleSuggestions();
 }
 
@@ -4070,5 +4166,6 @@ document.addEventListener("DOMContentLoaded", () => {
   </div>
 </div>
 
+<div id="rewardToast" class="reward-toast"></div>
 </body>
 </html>
