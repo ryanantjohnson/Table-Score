@@ -329,6 +329,22 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 @keyframes rewardFlash{0%{opacity:.8}100%{opacity:0}}
 @keyframes rewardConfetti{0%{opacity:0;transform:translateY(-20px) rotate(var(--rot)) scale(.6)}10%{opacity:1}100%{opacity:0;transform:translate(var(--drift),105vh) rotate(calc(var(--rot) + 620deg)) scale(1.1)}}
 
+
+/* ===== V5.19.4 Emoji/Symbol Rendering Fix ===== */
+.profile-badge,
+.badge-emoji,
+.secret-icon,
+.secret-particle,
+.secret-confetti-piece,
+.secret-requirement::before{
+  font-family:-apple-system,BlinkMacSystemFont,"Apple Color Emoji","Segoe UI Emoji","Segoe UI Symbol",sans-serif !important;
+  font-variant-emoji:emoji;
+}
+.secret-requirement::before{
+  content:"â";
+  font-weight:800;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -1130,7 +1146,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
 
   const userIds=[...new Set(ratings.map(r=>r.user_id).filter(Boolean))];
   const {data:people,error:pErr}=userIds.length
-    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private,active_title").in("id",userIds)
+    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private").in("id",userIds)
     : {data:[],error:null};
 
   if(pErr)console.error("restaurant rating profiles:",pErr);
@@ -1163,7 +1179,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
           ${avatarMarkup(p,42)}
           <div style="min-width:0;flex:1">
             <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
-            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>${p?.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
+            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>
           </div>
         </button>
         <div style="text-align:right;flex:0 0 auto">
@@ -1714,7 +1730,7 @@ async function openRatingDetail(ratingId){
     ${avatarMarkup(p,44)}
     <div style="min-width:0">
       <div style="font-weight:950">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
-      <div class="row-meta">${p?.username?"@"+esc(p.username):""}</div>${p?.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
+      <div class="row-meta">${p?.username?"@"+esc(p.username):""}</div>
     </div>
   </button>`;
 
@@ -1903,7 +1919,7 @@ async function loadFollowingFeed(){
 
   const userIds=[...new Set(ratings.map(x=>x.user_id))];
   const {data:people,error:pErr}=await db.from("profiles")
-    .select("id,display_name,username,avatar_url,home_city,active_title")
+    .select("id,display_name,username,avatar_url,home_city")
     .in("id",userIds);
   if(pErr)console.error("following feed profiles:",pErr);
 
@@ -1929,7 +1945,7 @@ function feedRatingCard(r,person){
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
         <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
-        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>${p.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
+        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
