@@ -3387,7 +3387,7 @@ async function loadAccountMarks(userIds=[]){
   const missing = ids.filter(id => !accountMarkCache.has(id));
   if(missing.length){
     try{
-      const { data, error } = await supabaseClient
+      const { data, error } = await db
         .from("account_marks")
         .select("user_id,mark_type,is_active")
         .in("user_id", missing)
