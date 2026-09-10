@@ -100,6 +100,21 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .authgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .empty{text-align:center;padding:20px 10px}
 @media(max-width:420px){.hero h1{font-size:35px}.grid3{gap:6px}.mini{padding:8px}.numgrid{grid-template-columns:repeat(4,1fr)}}
+
+.rating-photo-picker{margin-top:10px}
+.photo-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:1px dashed #6b572f;border-radius:14px;background:#15130e;color:var(--gold2);font-weight:900}
+.photo-preview-grid,.rating-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
+.photo-preview-item,.rating-photo-thumb{position:relative;aspect-ratio:1/1;border-radius:12px;overflow:hidden;background:var(--card2);border:1px solid var(--line)}
+.photo-preview-item img,.rating-photo-thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.photo-remove{position:absolute;top:5px;right:5px;width:27px;height:27px;border:0;border-radius:50%;background:rgba(0,0,0,.78);color:white;font-size:17px;line-height:27px;padding:0}
+.rating-photo-thumb{border:0;padding:0;width:100%}
+.photo-lightbox{position:fixed;inset:0;z-index:1000;background:rgba(0,0,0,.96);display:flex;align-items:center;justify-content:center;padding:54px 12px calc(34px + env(safe-area-inset-bottom))}
+.photo-lightbox img{max-width:100%;max-height:84vh;object-fit:contain;border-radius:8px}
+.photo-lightbox-close{position:absolute;top:calc(12px + env(safe-area-inset-top));right:16px;width:42px;height:42px;border-radius:50%;border:1px solid #555;background:rgba(20,20,20,.85);color:white;font-size:25px}
+.photo-lightbox-nav{position:absolute;top:50%;transform:translateY(-50%);width:44px;height:52px;border:0;border-radius:12px;background:rgba(20,20,20,.72);color:white;font-size:32px}
+.photo-lightbox-prev{left:8px}.photo-lightbox-next{right:8px}
+.photo-lightbox-count{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));left:0;right:0;text-align:center;color:white;font-size:13px;font-weight:800}
+
 </style>
 </head>
 <body>
@@ -199,6 +214,15 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       <div class="field"><label>Best Dish (optional)</label><input id="dish" placeholder="What stood out?"></div>
       <div class="field"><label>Would You Return?</label><div class="toggle" id="returnToggle"><button data-v="Yes">Yes</button><button data-v="Maybe">Maybe</button><button data-v="No">No</button></div></div>
       <div class="field"><label>Quick Take (optional)</label><textarea id="notes" rows="4" placeholder="A quick note about your experience"></textarea></div>
+      <div class="field">
+        <label>Dish Photos (optional)</label>
+        <div class="rating-photo-picker">
+          <input id="ratingPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="handleRatingPhotos(event)">
+          <button type="button" class="photo-add-btn" onclick="document.getElementById('ratingPhotoInput').click()">&#128247; Add Dish Photos</button>
+          <div class="row-meta" style="margin-top:7px">Add up to 5 photos. Tap a photo anywhere in TableScore to view it full screen.</div>
+          <div id="ratingPhotoPreviews" class="photo-preview-grid"></div>
+        </div>
+      </div>
       <div class="notice">Consistency is never rated by users. TableScore calculates it automatically from rating history.</div>
     </div>
     <button id="submitBtn" class="primary" onclick="submitRating()">Submit TableScore</button>
@@ -814,6 +838,8 @@ async function loadFollowingFeed(){
   if(pErr)console.error("following feed profiles:",pErr);
 
   const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
+  const photoMap=await getPhotosForRatings((ratings||[]).map(r=>r.id));
+  (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
   el.innerHTML=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id))).join("");
 }
 
@@ -845,7 +871,8 @@ function feedRatingCard(r,person){
       <div style="font-size:12px;font-weight:900">${esc(scoreWord(score))}</div>
     </div>
     ${details?`<div class="muted" style="font-size:11px;margin-top:3px">${details}</div>`:""}
-    ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">&ldquo;${esc(r.quick_take)}&rdquo;</div>`:""}
+    ${photoGridMarkup(r._photos)}
+      ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">&ldquo;${esc(r.quick_take)}&rdquo;</div>`:""}
     ${r.best_dish?`<div class="row-meta" style="margin-top:6px">Best dish: ${esc(r.best_dish)}</div>`:""}
   </div>`;
 }
@@ -1326,6 +1353,129 @@ async function findOrCreateRestaurant(name){
   return created;
 }
 
+
+let pendingRatingPhotos=[];
+let lightboxPhotos=[];
+let lightboxIndex=0;
+
+async function compressRatingPhoto(file){
+  const img=await new Promise((resolve,reject)=>{
+    const i=new Image();
+    i.onload=()=>resolve(i);
+    i.onerror=reject;
+    i.src=URL.createObjectURL(file);
+  });
+  const max=1600;
+  const scale=Math.min(1,max/Math.max(img.width,img.height));
+  const canvas=document.createElement("canvas");
+  canvas.width=Math.round(img.width*scale);
+  canvas.height=Math.round(img.height*scale);
+  canvas.getContext("2d").drawImage(img,0,0,canvas.width,canvas.height);
+  const blob=await new Promise(resolve=>canvas.toBlob(resolve,"image/jpeg",0.84));
+  URL.revokeObjectURL(img.src);
+  return blob;
+}
+
+async function handleRatingPhotos(event){
+  const files=[...(event.target.files||[])];
+  const remaining=5-pendingRatingPhotos.length;
+  if(remaining<=0){alert("You can add up to 5 dish photos.");event.target.value="";return;}
+  for(const file of files.slice(0,remaining)){
+    if(!file.type.startsWith("image/"))continue;
+    try{
+      const blob=await compressRatingPhoto(file);
+      pendingRatingPhotos.push({blob,preview:URL.createObjectURL(blob)});
+    }catch(e){console.error("photo compression:",e);}
+  }
+  if(files.length>remaining)alert("TableScore allows up to 5 photos per rating.");
+  event.target.value="";
+  renderRatingPhotoPreviews();
+}
+
+function renderRatingPhotoPreviews(){
+  const el=document.getElementById("ratingPhotoPreviews");
+  if(!el)return;
+  el.innerHTML=pendingRatingPhotos.map((p,i)=>`<div class="photo-preview-item">
+    <img src="${p.preview}" alt="Dish photo ${i+1}" onclick="openPhotoLightbox(${JSON.stringify(pendingRatingPhotos.map(x=>x.preview)).replace(/"/g,"&quot;")},${i})">
+    <button type="button" class="photo-remove" onclick="removePendingRatingPhoto(${i})">&times;</button>
+  </div>`).join("");
+}
+
+function removePendingRatingPhoto(i){
+  const p=pendingRatingPhotos[i];
+  if(p?.preview)URL.revokeObjectURL(p.preview);
+  pendingRatingPhotos.splice(i,1);
+  renderRatingPhotoPreviews();
+}
+
+function clearPendingRatingPhotos(){
+  pendingRatingPhotos.forEach(p=>{if(p.preview)URL.revokeObjectURL(p.preview);});
+  pendingRatingPhotos=[];
+  renderRatingPhotoPreviews();
+}
+
+function openPhotoLightbox(urls,index=0){
+  lightboxPhotos=(urls||[]).filter(Boolean);
+  if(!lightboxPhotos.length)return;
+  lightboxIndex=Math.max(0,Math.min(index,lightboxPhotos.length-1));
+  document.getElementById("photoLightbox").classList.remove("hidden");
+  renderLightboxPhoto();
+}
+
+function closePhotoLightbox(){
+  document.getElementById("photoLightbox").classList.add("hidden");
+}
+
+function changeLightboxPhoto(delta){
+  if(!lightboxPhotos.length)return;
+  lightboxIndex=(lightboxIndex+delta+lightboxPhotos.length)%lightboxPhotos.length;
+  renderLightboxPhoto();
+}
+
+function renderLightboxPhoto(){
+  document.getElementById("photoLightboxImage").src=lightboxPhotos[lightboxIndex];
+  document.getElementById("photoLightboxCount").textContent=`${lightboxIndex+1} / ${lightboxPhotos.length}`;
+  document.getElementById("photoPrev").classList.toggle("hidden",lightboxPhotos.length<2);
+  document.getElementById("photoNext").classList.toggle("hidden",lightboxPhotos.length<2);
+}
+
+function photoGridMarkup(photos){
+  const urls=(photos||[]).map(p=>typeof p==="string"?p:p.photo_url).filter(Boolean);
+  if(!urls.length)return "";
+  const encoded=encodeURIComponent(JSON.stringify(urls));
+  return `<div class="rating-photo-grid">${urls.slice(0,5).map((url,i)=>`<button class="rating-photo-thumb" onclick="event.stopPropagation();openEncodedPhotoLightbox('${encoded}',${i})"><img src="${esc(url)}" alt="Dish photo"></button>`).join("")}</div>`;
+}
+
+function openEncodedPhotoLightbox(encoded,index){
+  try{openPhotoLightbox(JSON.parse(decodeURIComponent(encoded)),index);}catch(e){console.error(e);}
+}
+
+async function getPhotosForRatings(ratingIds){
+  if(!ratingIds?.length)return new Map();
+  const {data,error}=await db.from("rating_photos").select("rating_id,photo_url,sort_order").in("rating_id",ratingIds).order("sort_order",{ascending:true});
+  if(error){console.error("rating photos:",error);return new Map();}
+  const map=new Map();
+  (data||[]).forEach(p=>{
+    if(!map.has(p.rating_id))map.set(p.rating_id,[]);
+    map.get(p.rating_id).push(p);
+  });
+  return map;
+}
+
+async function uploadRatingPhotos(ratingId){
+  if(!pendingRatingPhotos.length)return;
+  const rows=[];
+  for(let i=0;i<pendingRatingPhotos.length;i++){
+    const path=`${currentUser.id}/${ratingId}/${Date.now()}-${i}.jpg`;
+    const {error}=await db.storage.from("rating-photos").upload(path,pendingRatingPhotos[i].blob,{contentType:"image/jpeg",cacheControl:"3600"});
+    if(error)throw error;
+    const {data}=db.storage.from("rating-photos").getPublicUrl(path);
+    rows.push({rating_id:ratingId,user_id:currentUser.id,photo_url:data.publicUrl,sort_order:i});
+  }
+  const {error}=await db.from("rating_photos").insert(rows);
+  if(error)throw error;
+}
+
 async function submitRating(){
   if(!currentUser){openAccount(submitRating);return;}
   const name=document.getElementById("rateRestaurant").value.trim();
@@ -1360,8 +1510,11 @@ async function submitRating(){
       visit_longitude:Number.isFinite(lon)?lon:null
     };
 
-    const {data,error}=await db.from("ratings").insert(payload).select("overall_score").single();
+    const {data,error}=await db.from("ratings").insert(payload).select("id,overall_score").single();
     if(error)throw error;
+
+    if(pendingRatingPhotos.length)await uploadRatingPhotos(data.id);
+    clearPendingRatingPhotos();
 
     alert(`TableScore submitted: ${Number(data.overall_score).toFixed(2)}/10`);
     selectedRestaurantId=restaurant.id;
@@ -1395,5 +1548,12 @@ async function init(){
 }
 init();
 </script>
+<div id="photoLightbox" class="photo-lightbox hidden" onclick="if(event.target===this)closePhotoLightbox()">
+    <button class="photo-lightbox-close" onclick="closePhotoLightbox()" aria-label="Close">&times;</button>
+    <button id="photoPrev" class="photo-lightbox-nav photo-lightbox-prev" onclick="changeLightboxPhoto(-1)" aria-label="Previous">&lsaquo;</button>
+    <img id="photoLightboxImage" alt="Dish photo">
+    <button id="photoNext" class="photo-lightbox-nav photo-lightbox-next" onclick="changeLightboxPhoto(1)" aria-label="Next">&rsaquo;</button>
+    <div id="photoLightboxCount" class="photo-lightbox-count"></div>
+  </div>
 </body>
 </html>
