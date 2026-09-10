@@ -2969,13 +2969,25 @@ async function handleProfileBackground(event){
   backgroundSourceFile=file;backgroundObjectUrl=URL.createObjectURL(file);
   const img=document.getElementById("backgroundCropImage");
   img.onload=()=>{
-    backgroundNaturalW=img.naturalWidth;backgroundNaturalH=img.naturalHeight;
-    const stage=document.getElementById("backgroundCropStage");
-    backgroundBaseScale=Math.max(stage.clientWidth/backgroundNaturalW,stage.clientHeight/backgroundNaturalH);
-    backgroundZoom=1;backgroundX=0;backgroundY=0;
-    document.getElementById("backgroundCropZoom").value="1";
-    updateBackgroundCropTransform();
+    backgroundNaturalW=img.naturalWidth;
+    backgroundNaturalH=img.naturalHeight;
+
+    // Show the modal BEFORE measuring the crop stage. When the modal is hidden,
+    // Safari reports a 0x0 stage, which made the selected image render at 0px.
     document.getElementById("backgroundCropModal").classList.remove("hidden");
+
+    requestAnimationFrame(()=>{
+      const stage=document.getElementById("backgroundCropStage");
+      backgroundBaseScale=Math.max(
+        stage.clientWidth/backgroundNaturalW,
+        stage.clientHeight/backgroundNaturalH
+      );
+      backgroundZoom=1;
+      backgroundX=0;
+      backgroundY=0;
+      document.getElementById("backgroundCropZoom").value="1";
+      updateBackgroundCropTransform();
+    });
   };
   img.onerror=()=>{cancelBackgroundCrop();alert("That photo could not be opened.");};
   img.src=backgroundObjectUrl;
