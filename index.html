@@ -171,6 +171,12 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .request-actions button{width:auto;padding:8px 11px}
 .private-lock{font-size:34px;margin-bottom:8px}
 
+
+.saved-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0 14px}
+.saved-tabs button{padding:11px 10px;border-radius:12px;border:1px solid var(--line);background:var(--card2);color:var(--muted);font-weight:900}
+.saved-tabs button.active{background:var(--gold);color:#111;border-color:var(--gold)}
+.save-restaurant-btn{display:flex;align-items:center;justify-content:center;gap:8px}
+
 </style>
 </head>
 <body>
@@ -265,6 +271,8 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
       </div>
     </div>
     <div class="card"><div class="section-title">Category Breakdown</div><div id="breakdown"></div></div>
+    <button id="saveRestaurantBtn" class="secondary save-restaurant-btn" onclick="toggleSaveRestaurant()">&#9825; Save Restaurant</button>
+    <div style="height:8px"></div>
     <button class="primary" onclick="startRating(selectedRestaurantName)">Rate This Restaurant</button>
   </section>
 
@@ -303,7 +311,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
   </section>
 
   <section id="saved" class="screen">
-    <div class="page-title" style="padding-top:18px">My Ratings</div>
+    <div class="page-title" style="padding-top:18px">Saved</div>
+    <div class="saved-tabs">
+      <button id="savedRatingsTab" class="active" onclick="setSavedView('ratings')">My Ratings</button>
+      <button id="savedRestaurantsTab" onclick="setSavedView('restaurants')">Saved Restaurants</button>
+    </div>
     <div id="savedList" class="list"></div>
   </section>
 
@@ -502,6 +514,9 @@ let currentUser=null;
 let profile=null;
 let myRatings=[];
 let restaurantStats=[];
+let savedRestaurantIds=new Set();
+let savedRestaurants=[];
+let savedView="ratings";
 let selectedRestaurantId=null;
 let selectedRestaurantName="";
 let returnValue="";
@@ -741,6 +756,7 @@ async function openRestaurantById(id){
     const v=raw===null?null:Number(raw);
     return `<div class="breakrow"><span>${c}</span><div class="bar"><i style="width:${v===null?0:v*10}%"></i></div><b>${v===null?"--":v.toFixed(1)}</b></div>`;
   }).join("");
+  updateSaveRestaurantButton();
   showScreen("restaurant");
 }
 
@@ -868,43 +884,89 @@ async function refreshUserData(){
   if(!currentUser){
     profile=null;
     myRatings=[];
+    savedRestaurantIds=new Set();
+    savedRestaurants=[];
     followingIds=new Set();
+    pendingFollowingIds=new Set();
     followerCount=0;
     followingCount=0;
+    followRequestCount=0;
     await renderSaved();
     renderProfile();
     renderFollowingFeedGuest();
+    updateSaveRestaurantButton();
     return;
   }
-  const [{data:p,error:pErr},{data:r,error:rErr}]=await Promise.all([
+
+  const [{data:p,error:pErr},{data:r,error:rErr},{data:saved,error:sErr}]=await Promise.all([
     db.from("profiles").select("*").eq("id",currentUser.id).maybeSingle(),
-    db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
+    db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false}),
+    db.from("saved_restaurants").select("restaurant_id,created_at,restaurants(id,name,cuisine,city,state_region)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
   ]);
+
   if(pErr)console.error("profile:",pErr);
   if(rErr)console.error("ratings:",rErr);
+  if(sErr)console.error("saved restaurants:",sErr);
+
   profile=p||null;
   myRatings=r||[];
+  savedRestaurants=saved||[];
+  savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
+
   if(profile?.home_city){
     area=profile.home_city;
     localStorage.setItem("ts_area",area);
     updateArea();
   }
+
   await loadSocialCounts();
   await loadFollowingFeed();
   await renderSaved();
   renderProfile();
+  updateSaveRestaurantButton();
 }
 
 async function renderSaved(){
   const el=document.getElementById("savedList");
+  const ratingsTab=document.getElementById("savedRatingsTab");
+  const restaurantsTab=document.getElementById("savedRestaurantsTab");
+  if(ratingsTab)ratingsTab.classList.toggle("active",savedView==="ratings");
+  if(restaurantsTab)restaurantsTab.classList.toggle("active",savedView==="restaurants");
+
   if(!currentUser){
-    el.innerHTML='<div class="card"><div class="section-title">Sign in to see your ratings</div><p class="muted" style="font-size:13px">Your cloud-saved TableScore visits will appear here.</p></div>';
+    el.innerHTML='<div class="card"><div class="section-title">Sign in to use Saved</div><p class="muted" style="font-size:13px">Your ratings and saved restaurants will stay connected to your TableScore account.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
     return;
   }
+
+  if(savedView==="restaurants"){
+    if(!savedRestaurants.length){
+      el.innerHTML='<div class="card"><div class="section-title">No saved restaurants yet</div><p class="muted" style="font-size:13px">Tap Save Restaurant on a restaurant page and it will show up here.</p></div>';
+      return;
+    }
+
+    el.innerHTML=savedRestaurants.map(item=>{
+      const r=item.restaurants||{};
+      return `<div class="card" style="margin:0">
+        <button onclick="openRestaurantById('${item.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left">
+          <div class="row" style="border:0;padding:0;background:transparent">
+            <div style="min-width:0">
+              <div class="row-name">${esc(r.name||"Restaurant")}</div>
+              <div class="row-meta">${[r.cuisine,r.city,r.state_region].filter(Boolean).map(esc).join(" &middot; ")||"Saved restaurant"}</div>
+            </div>
+            <div style="font-size:24px;color:var(--gold)">&#9829;</div>
+          </div>
+        </button>
+        <button class="secondary" style="margin-top:10px" onclick="removeSavedRestaurant('${item.restaurant_id}')">Remove from Saved</button>
+      </div>`;
+    }).join("");
+    return;
+  }
+
   if(!myRatings.length){
     el.innerHTML='<div class="card"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your submitted visits will appear here.</p></div>';
     return;
   }
+
   const photoMap=await getPhotosForRatings(myRatings.map(r=>r.id));
   myRatings.forEach(r=>r._photos=photoMap.get(r.id)||[]);
   el.innerHTML=myRatings.map(e=>{
@@ -921,6 +983,83 @@ async function renderSaved(){
   }).join("");
 }
 
+function setSavedView(view){
+  savedView=view==="restaurants"?"restaurants":"ratings";
+  renderSaved();
+}
+
+async function toggleSaveRestaurant(){
+  if(!selectedRestaurantId)return;
+  if(!currentUser){
+    openAccount(()=>toggleSaveRestaurant());
+    return;
+  }
+
+  const btn=document.getElementById("saveRestaurantBtn");
+  if(btn)btn.disabled=true;
+
+  if(savedRestaurantIds.has(selectedRestaurantId)){
+    const {error}=await db.from("saved_restaurants").delete()
+      .eq("user_id",currentUser.id)
+      .eq("restaurant_id",selectedRestaurantId);
+    if(error){
+      if(btn)btn.disabled=false;
+      return alert("Could not remove this restaurant: "+error.message);
+    }
+  }else{
+    const {error}=await db.from("saved_restaurants").insert({
+      user_id:currentUser.id,
+      restaurant_id:selectedRestaurantId
+    });
+    if(error){
+      if(btn)btn.disabled=false;
+      return alert("Could not save this restaurant: "+error.message);
+    }
+  }
+
+  await loadSavedRestaurants();
+  updateSaveRestaurantButton();
+  if(btn)btn.disabled=false;
+  if(document.getElementById("saved")?.classList.contains("active"))renderSaved();
+}
+
+async function removeSavedRestaurant(restaurantId){
+  if(!currentUser)return;
+  const {error}=await db.from("saved_restaurants").delete()
+    .eq("user_id",currentUser.id)
+    .eq("restaurant_id",restaurantId);
+  if(error)return alert("Could not remove this restaurant: "+error.message);
+  await loadSavedRestaurants();
+  renderSaved();
+  updateSaveRestaurantButton();
+}
+
+async function loadSavedRestaurants(){
+  if(!currentUser){
+    savedRestaurantIds=new Set();
+    savedRestaurants=[];
+    return;
+  }
+  const {data,error}=await db.from("saved_restaurants")
+    .select("restaurant_id,created_at,restaurants(id,name,cuisine,city,state_region)")
+    .eq("user_id",currentUser.id)
+    .order("created_at",{ascending:false});
+
+  if(error){
+    console.error("saved restaurants:",error);
+    return;
+  }
+  savedRestaurants=data||[];
+  savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
+}
+
+function updateSaveRestaurantButton(){
+  const btn=document.getElementById("saveRestaurantBtn");
+  if(!btn)return;
+  const saved=!!selectedRestaurantId&&savedRestaurantIds.has(selectedRestaurantId);
+  btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save Restaurant";
+  btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+}
 
 function scoreWord(score){
   const n=Number(score);
