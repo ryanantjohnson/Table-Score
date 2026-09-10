@@ -363,6 +363,14 @@ body.booting .app, body.booting .nav{visibility:hidden}
       <div id="peopleResults" class="list" style="margin-top:10px"></div>
     </div>
 
+    <div id="myProfileRatingsCard" class="card hidden">
+      <div class="section-head">
+        <div class="section-title">Recent Ratings</div>
+        <span class="muted" style="font-size:11px">Your posts</span>
+      </div>
+      <div id="myProfileRatings" style="margin-top:8px"></div>
+    </div>
+
     <button id="profileAuthBtn" class="primary" onclick="openAccount()">Create Account / Sign In</button>
     <div style="height:8px"></div>
     <button id="signOutBtn" class="secondary hidden" onclick="signOut()">Sign Out</button>
@@ -1112,7 +1120,11 @@ async function loadFollowingFeed(){
   }
 
   el.innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading your feed...</div>';
-  const ids=[...followingIds];
+  const ids=[...followingIds].filter(id=>id!==currentUser.id);
+  if(!ids.length){
+    el.innerHTML='<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Your own ratings live on your Profile. Follow people to see their posts here.</p></div>';
+    return;
+  }
   const {data:ratings,error:rErr}=await db.from("ratings")
     .select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)")
     .in("user_id",ids)
@@ -1330,9 +1342,51 @@ function renderProfile(){
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
   document.getElementById("settingsGear").classList.toggle("hidden",!currentUser);
+  document.getElementById("myProfileRatingsCard").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
+  renderMyProfileRatings();
 }
 
+
+
+async function renderMyProfileRatings(){
+  const el=document.getElementById("myProfileRatings");
+  if(!el)return;
+  if(!currentUser){
+    el.innerHTML="";
+    return;
+  }
+  if(!myRatings.length){
+    el.innerHTML='<div class="empty"><div class="section-title">No ratings yet</div><p class="muted" style="font-size:13px">Your restaurant ratings will appear here after you post them.</p></div>';
+    return;
+  }
+
+  const recent=myRatings.slice(0,10);
+  const photoMap=await getPhotosForRatings(recent.map(r=>r.id));
+  recent.forEach(r=>r._photos=photoMap.get(r.id)||[]);
+
+  el.innerHTML=recent.map(r=>{
+    const restaurantName=r.restaurants?.name||"Restaurant";
+    const label=scoreWord(r.overall_score);
+    return `<div class="card" style="margin:0 0 10px;padding:12px">
+      <div class="row" style="border:0;padding:0;background:transparent;align-items:flex-start">
+        <div style="min-width:0;flex:1">
+          <button onclick="${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
+            <div class="row-name">${esc(restaurantName)}</div>
+          </button>
+          <div class="row-meta">${new Date(r.created_at).toLocaleDateString()} &middot; ${r.verified_visit?"Verified Visit":"Unverified"}</div>
+        </div>
+        <div style="text-align:right">
+          <div class="row-score">${Number(r.overall_score).toFixed(2)}</div>
+          <div class="row-meta" style="color:var(--gold)">${esc(label)}</div>
+        </div>
+      </div>
+      ${r.best_dish?`<div class="row-meta" style="margin-top:9px"><b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}</div>`:""}
+      ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:8px">${esc(r.quick_take)}</div>`:""}
+      ${photoGridMarkup(r._photos)}
+    </div>`;
+  }).join("");
+}
 
 
 function updateSettingsBadges(){
