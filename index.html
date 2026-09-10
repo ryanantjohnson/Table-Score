@@ -223,7 +223,7 @@ html[data-theme="night"]{--bg:#090b0d;--card:#111519;--card2:#151a1f;--ink:#f7f4
 body{background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}.app{padding-left:12px;padding-right:12px}.topbar{background:var(--topBg);border-bottom:1px solid var(--line)}.brand{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif;letter-spacing:-.04em;font-size:22px;font-weight:950}.loc{color:var(--gold)}.hero{margin:8px 0 4px;padding:20px 16px 18px;border-radius:24px;background:var(--heroSoft)}.hero h1,.page-title,.hot-title,.sheet h2,#profileName,#publicProfileName,#editRatingRestaurant{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif}.hero h1{font-size:38px;letter-spacing:-.045em}.kicker{letter-spacing:.11em}.card{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.hot,.mini,.row,.stat,.community-cat{background:var(--card2);border-color:var(--line)}.search input,.field input,.field textarea,.scorebox input,.modal-sheet select{background:var(--inputBg)!important;color:var(--ink)!important;border-color:var(--line)!important}.chip{background:var(--chipBg);color:var(--ink);border-color:var(--line)}.chip.active,.numgrid button.sel,.toggle button.on,.saved-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}.primary{background:var(--gold);color:var(--accentText);box-shadow:0 6px 18px rgba(0,0,0,.08)}.secondary{border-color:var(--gold);color:var(--gold2)}.nav{background:var(--navBg);border-color:var(--line)}.nav button.active{color:var(--gold)}.sheet,.modal-sheet{background:var(--sheetBg)!important;border-color:var(--line)!important}.edit-rating-header,.edit-rating-actions{background:var(--sheetBg)!important}.mapfake{background:linear-gradient(135deg,var(--card2),var(--card))}.bar{background:var(--line)}.bar i{background:var(--gold)}.steps i{background:var(--line)}.steps i.on{background:var(--gold)}.numgrid button,.adjust button,.toggle button{background:var(--card2);color:var(--ink);border-color:var(--line)}.total{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.photo-add-btn{background:var(--card2);border-color:var(--gold);color:var(--gold)}.pill{background:var(--card2);border-color:var(--gold);color:var(--gold)}.profileavatar,.avatar{background-color:var(--gold)!important;color:var(--accentText)}.settings-gear{background:var(--card);border-color:var(--line)}.slider{background:var(--card2);border-color:var(--line)}.switch input:checked + .slider{background:var(--gold)}.engagement-btn.dug{border-color:var(--gold)!important;background:var(--card2)!important;color:var(--gold)!important}.community-score,.row-score,.mini-score,.big{color:var(--gold2)}.community-score-label,.community-verified,.community-own,#profileUsername,#publicProfileUsername{color:var(--gold)}.restaurant-hero{box-shadow:var(--shadow)}.rating-photo-thumb{border-radius:14px}.engagement-row{gap:10px}.engagement-btn{font-size:12px!important;padding:8px 11px!important}.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.theme-choice{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:8px 5px;color:var(--ink);font-size:10px;font-weight:900;text-align:center}.theme-choice.active{outline:2px solid var(--gold);outline-offset:1px}.theme-swatch{display:block;width:30px;height:30px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(0,0,0,.12)}.sw-classic{background:linear-gradient(135deg,#fbfbfa 50%,#4e946c 50%)}.sw-fresh{background:linear-gradient(135deg,#f7faf9 50%,#22a9ad 50%)}.sw-warm{background:linear-gradient(135deg,#fff8f0 50%,#ee8446 50%)}.sw-electric{background:linear-gradient(135deg,#0a0b0b 50%,#caff2f 50%)}.sw-night{background:linear-gradient(135deg,#090b0d 50%,#e3b55f 50%)}@media(max-width:420px){.theme-grid{gap:6px}.theme-choice{padding:7px 3px;font-size:9px}.theme-swatch{width:27px;height:27px}.hero{padding:18px 14px}.hero h1{font-size:34px}}
 
 
-/* ===== V5.17 Rating cards + account controls ===== */
+/* ===== V5.16.1 Rating cards + account controls ===== */
 .feed-rating-card,.community-rating{background:var(--card);border:1px solid var(--line)!important;border-radius:18px;padding:14px!important;margin:10px 0!important;box-shadow:var(--shadow)}
 .feed-rating-card{border-bottom:1px solid var(--line)!important}
 .community-rating:last-child{border-bottom:1px solid var(--line)!important}
@@ -236,37 +236,43 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 
 /* ===== V5.17 Titles + Croppable Avatars + Header Settings ===== */
-.header-settings{
-  width:38px;height:38px;border-radius:50%;border:1px solid var(--line);
-  background:var(--card);color:var(--ink);display:grid;place-items:center;
-  font-size:20px;font-weight:900;box-shadow:var(--shadow);padding:0
+.top-settings{width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);display:grid;place-items:center;font-size:19px;font-weight:900;box-shadow:var(--shadow);padding:0}
+.profile-title{display:inline-flex;align-items:center;justify-content:center;margin-top:7px;padding:5px 10px;border-radius:999px;border:1px solid var(--line);background:var(--card2);color:var(--gold);font-size:11px;font-weight:950;letter-spacing:.02em}
+.identity-title{font-size:10px;font-weight:900;color:var(--gold);margin-top:2px}
+.title-picker{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.title-choice{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:14px;padding:11px 9px;font-size:11px;font-weight:900;text-align:center}
+.title-choice.active{border-color:var(--gold);background:var(--card);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.crop-stage{position:relative;width:min(82vw,360px);aspect-ratio:1/1;margin:14px auto;overflow:hidden;border-radius:20px;background:#0b0d0f;touch-action:none;border:1px solid var(--line)}
+.crop-stage img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-drag:none;transform-origin:center center;pointer-events:none}
+.crop-mask{position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at center,transparent 0 43%,rgba(0,0,0,.58) 43.5% 100%)}
+.crop-ring{position:absolute;left:7%;top:7%;width:86%;height:86%;border-radius:50%;border:2px solid rgba(255,255,255,.88);pointer-events:none;box-shadow:0 0 0 1px rgba(0,0,0,.28)}
+.crop-controls{margin-top:8px}.crop-controls input[type="range"]{width:100%;accent-color:var(--gold)}
+.crop-help{text-align:center;font-size:11px;color:var(--muted);line-height:1.4;margin-top:7px}
+.crop-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+
+
+/* ===== V5.18 Food Badges ===== */
+.profile-badges{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:9px;min-height:0}
+.profile-badge{
+  width:38px;height:38px;border-radius:13px;border:1px solid var(--line);
+  background:var(--card2);display:grid;place-items:center;font-size:21px;
+  box-shadow:0 4px 12px rgba(0,0,0,.04)
 }
-.profile-title{
-  display:inline-flex;align-items:center;justify-content:center;
-  margin-top:7px;padding:5px 10px;border-radius:999px;
-  background:var(--card2);border:1px solid var(--line);
-  color:var(--gold);font-size:11px;font-weight:950;letter-spacing:.02em
+.badge-picker{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-top:12px}
+.badge-choice{
+  position:relative;border:1px solid var(--line);background:var(--card2);color:var(--ink);
+  border-radius:15px;padding:10px 4px 8px;text-align:center;min-height:72px
 }
-.title-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
-.title-choice{
-  min-height:48px;border:1px solid var(--line);border-radius:14px;
-  background:var(--card2);color:var(--ink);font-size:12px;font-weight:900;
-  padding:10px;text-align:left
+.badge-choice.active{border-color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.badge-choice .badge-emoji{display:block;font-size:25px;line-height:1.1;margin-bottom:5px}
+.badge-choice .badge-name{display:block;font-size:9px;font-weight:900;line-height:1.15}
+.badge-choice .badge-check{
+  position:absolute;right:5px;top:5px;width:16px;height:16px;border-radius:50%;
+  display:none;place-items:center;background:var(--gold);color:white;font-size:10px;font-weight:950
 }
-.title-choice.active{border:2px solid var(--gold);color:var(--gold);background:var(--card)}
-.crop-stage{
-  width:min(78vw,320px);height:min(78vw,320px);margin:12px auto 16px;
-  border-radius:22px;overflow:hidden;position:relative;background:#090909;
-  touch-action:none;box-shadow:var(--shadow)
-}
-#avatarCropCanvas{width:100%;height:100%;display:block;touch-action:none}
-.crop-ring{
-  position:absolute;inset:9%;border:2px solid rgba(255,255,255,.9);
-  border-radius:50%;pointer-events:none;box-shadow:0 0 0 999px rgba(0,0,0,.42)
-}
-.crop-help{text-align:center;font-size:11px;color:var(--muted);line-height:1.4}
-.crop-range{width:100%;accent-color:var(--gold)}
-@media(max-width:420px){.title-grid{grid-template-columns:repeat(2,1fr)}}
+.badge-choice.active .badge-check{display:grid}
+.badge-count{font-size:11px;font-weight:900;color:var(--gold);margin-top:7px}
+@media(max-width:380px){.badge-picker{grid-template-columns:repeat(3,1fr)}}
 
 </style>
 </head>
@@ -274,7 +280,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 <div class="app">
   <div class="topbar">
     <div><div class="brand">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
-    <button id="headerSettingsBtn" class="header-settings" onclick="openHeaderSettings()" aria-label="Settings">&#9881;</button>
+    <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
   </div>
 
   <section id="home" class="screen active">
@@ -426,6 +432,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
   <section id="profile" class="screen">
     <div class="profilebox" style="position:relative">
+      <button id="settingsGear" class="settings-gear hidden" onclick="openSettings()" aria-label="Settings">&#9881;</button>
       <div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
       <input id="profilePhotoInput" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
       <div id="profilePhotoActions" class="photo-actions hidden">
@@ -434,7 +441,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <div id="profileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">Guest</div>
       <div id="profileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
-      <div id="profileTitle" class="profile-title hidden"></div>
+      <div id="profileTitle" class="profile-title">Table Regular</div>
+      <div id="profileBadges" class="profile-badges"></div>
       <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
     </div>
 
@@ -501,7 +509,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
       <div id="publicProfileName" style="font-family:Georgia,serif;font-size:25px;margin-top:12px">TableScore User</div>
       <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
-      <div id="publicProfileTitle" class="profile-title hidden"></div>
+      <div id="publicProfileTitle" class="profile-title">Table Regular</div>
+      <div id="publicProfileBadges" class="profile-badges"></div>
       <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
       <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
     </div>
@@ -522,23 +531,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
-
-
-<div id="avatarCropModal" class="modal hidden">
-  <div class="sheet" style="max-height:92vh;overflow:auto">
-    <div class="section-head">
-      <div class="section-title">Crop Profile Photo</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeAvatarCrop()">Cancel</button>
-    </div>
-    <div class="crop-stage" id="avatarCropStage">
-      <canvas id="avatarCropCanvas" width="720" height="720"></canvas>
-      <div class="crop-ring"></div>
-    </div>
-    <div class="crop-help">Drag to reposition. Use the slider or pinch to zoom.</div>
-    <input id="avatarZoom" class="crop-range" type="range" min="1" max="3" value="1" step="0.01" oninput="setAvatarZoom(this.value)">
-    <button class="primary" style="margin-top:14px" onclick="saveCroppedAvatar()">Use This Photo</button>
-  </div>
-</div>
 
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
   <div class="sheet" style="max-height:88vh;overflow:auto">
@@ -569,10 +561,25 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
 
+
     <div class="card">
       <div class="section-title" style="font-size:15px">Profile Title</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Choose the title shown under your username. More titles will be discoverable later.</div>
-      <div id="starterTitleGrid" class="title-grid"></div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Pick the title shown under your username. More titles will become unlockable later.</div>
+      <div id="titlePicker" class="title-picker">
+        <div class="muted" style="grid-column:1/-1;font-size:11px">Loading titles...</div>
+      </div>
+    </div>
+
+
+    <div class="card">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Food Badges</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Choose up to 4 badges to show on your profile.</div>
+          <div id="badgeCount" class="badge-count">0 / 4 equipped</div>
+        </div>
+      </div>
+      <div id="badgePicker" class="badge-picker"></div>
     </div>
 
     <div class="card">
@@ -699,6 +706,28 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+
+<div id="profileCropModal" class="modal hidden" onclick="if(event.target===this)cancelProfileCrop()">
+  <div class="sheet">
+    <div class="section-head">
+      <div><div class="section-title">Crop Profile Photo</div><div class="muted" style="font-size:11px;margin-top:3px">Move and zoom until it looks right.</div></div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="cancelProfileCrop()">Cancel</button>
+    </div>
+    <div id="cropStage" class="crop-stage">
+      <img id="cropImage" alt="Profile photo crop preview">
+      <div class="crop-mask"></div><div class="crop-ring"></div>
+    </div>
+    <div class="crop-controls">
+      <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="setCropZoom(this.value)">
+      <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
+    </div>
+    <div class="crop-actions">
+      <button class="secondary" onclick="cancelProfileCrop()">Cancel</button>
+      <button id="saveCropBtn" class="primary" onclick="saveProfileCrop()">Use Photo</button>
+    </div>
+  </div>
+</div>
+
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
     <h2>TableScore Account</h2>
@@ -753,175 +782,37 @@ let followingCount=0;
 let viewedProfile=null;
 let viewedProfileRatings=[];
 
-const STARTER_TITLES=[
-  "Table Regular","Good Taste","Menu Scout","Local Bite",
-  "First Round","Plate Chaser","Neighborhood Critic","Worth the Drive",
-  "Order Up","Taste Tester","Fork First","The Usual",
-  "Hidden Gem Hunter","One More Bite","Table Talk"
+const STARTER_TITLES=["Table Regular","Menu Scout","First Bite","Dish Hunter","Taste Tester","Fork Forward","Good Pick Energy","Table Hopper","Local Plate","Second Helping","Worth The Drive","Order Up","Seat Saved","Flavor Finder","Clean Plate Club"];
+let availableTitles=[...STARTER_TITLES];
+
+const STARTER_BADGES=[
+  {slug:"burger-lover",emoji:"ð",name:"Burger Lover"},
+  {slug:"taco-fiend",emoji:"ð®",name:"Taco Fiend"},
+  {slug:"pizza-person",emoji:"ð",name:"Pizza Person"},
+  {slug:"steak-hunter",emoji:"ð¥©",name:"Steak Hunter"},
+  {slug:"noodle-head",emoji:"ð",name:"Noodle Head"},
+  {slug:"heat-seeker",emoji:"ð¶ï¸",name:"Heat Seeker"},
+  {slug:"brunch-regular",emoji:"ð³",name:"Brunch Regular"},
+  {slug:"coffee-run",emoji:"â",name:"Coffee Run"},
+  {slug:"sweet-tooth",emoji:"ð°",name:"Sweet Tooth"},
+  {slug:"bakery-hopper",emoji:"ð¥",name:"Bakery Hopper"},
+  {slug:"fresh-eater",emoji:"ð¥",name:"Fresh Eater"},
+  {slug:"wing-expert",emoji:"ð",name:"Wing Expert"},
+  {slug:"cheese-please",emoji:"ð§",name:"Cheese Please"},
+  {slug:"late-night",emoji:"ð",name:"Late-Night Eater"},
+  {slug:"worth-the-drive",emoji:"ð",name:"Worth the Drive"},
+  {slug:"hidden-gem",emoji:"ð",name:"Hidden Gem Hunter"},
+  {slug:"sushi-side",emoji:"ð£",name:"Sushi Side"},
+  {slug:"bbq-mode",emoji:"ð¥",name:"BBQ Mode"},
+  {slug:"breakfast-club",emoji:"ð¥",name:"Breakfast Club"},
+  {slug:"dessert-first",emoji:"ð¦",name:"Dessert First"}
 ];
-let cropImage=null,cropScale=1,cropMinScale=1,cropOffsetX=0,cropOffsetY=0;
-let cropPointer=null,cropLastX=0,cropLastY=0,cropPinchDistance=0,cropStartScale=1;
+let availableBadges=[...STARTER_BADGES];
+let equippedBadgeSlugs=[];
 
-function openHeaderSettings(){
-  if(currentUser)openSettings();
-  else openAccount();
-}
 
-function renderProfileTitle(elId,title){
-  const el=document.getElementById(elId);
-  if(!el)return;
-  const value=(title||"").trim();
-  el.textContent=value;
-  el.classList.toggle("hidden",!value);
-}
-
-function renderStarterTitles(){
-  const grid=document.getElementById("starterTitleGrid");
-  if(!grid)return;
-  const active=profile?.selected_title||"Table Regular";
-  grid.innerHTML=STARTER_TITLES.map(t=>`
-    <button class="title-choice ${t===active?"active":""}" onclick='selectProfileTitle(${JSON.stringify(t)})'>${esc(t)}</button>
-  `).join("");
-}
-
-async function selectProfileTitle(title){
-  if(!currentUser)return openAccount();
-  if(!STARTER_TITLES.includes(title))return;
-  const {error}=await db.from("profiles").update({selected_title:title}).eq("id",currentUser.id);
-  if(error)return alert("Could not change title: "+error.message);
-  profile={...(profile||{}),selected_title:title};
-  renderStarterTitles();
-  renderProfileTitle("profileTitle",title);
-}
-
-function closeAvatarCrop(){
-  document.getElementById("avatarCropModal").classList.add("hidden");
-  cropImage=null;cropPointer=null;cropPinchDistance=0;
-}
-
-function cropCanvas(){
-  return document.getElementById("avatarCropCanvas");
-}
-
-function drawAvatarCrop(){
-  const canvas=cropCanvas();
-  if(!canvas||!cropImage)return;
-  const ctx=canvas.getContext("2d");
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  const w=cropImage.naturalWidth*cropScale;
-  const h=cropImage.naturalHeight*cropScale;
-  ctx.drawImage(cropImage,canvas.width/2-w/2+cropOffsetX,canvas.height/2-h/2+cropOffsetY,w,h);
-}
-
-function clampCrop(){
-  if(!cropImage)return;
-  const canvas=cropCanvas();
-  const ringSize=canvas.width*.82;
-  const w=cropImage.naturalWidth*cropScale;
-  const h=cropImage.naturalHeight*cropScale;
-  const maxX=Math.max(0,(w-ringSize)/2);
-  const maxY=Math.max(0,(h-ringSize)/2);
-  cropOffsetX=Math.max(-maxX,Math.min(maxX,cropOffsetX));
-  cropOffsetY=Math.max(-maxY,Math.min(maxY,cropOffsetY));
-}
-
-function setAvatarZoom(value){
-  if(!cropImage)return;
-  cropScale=cropMinScale*Number(value);
-  clampCrop();drawAvatarCrop();
-}
-
-function initCropGestures(){
-  const stage=document.getElementById("avatarCropStage");
-  if(!stage||stage.dataset.ready)return;
-  stage.dataset.ready="1";
-
-  stage.addEventListener("pointerdown",e=>{
-    stage.setPointerCapture?.(e.pointerId);
-    cropPointer=e.pointerId;cropLastX=e.clientX;cropLastY=e.clientY;
-  });
-  stage.addEventListener("pointermove",e=>{
-    if(cropPointer!==e.pointerId||!cropImage)return;
-    const rect=stage.getBoundingClientRect();
-    const ratio=720/rect.width;
-    cropOffsetX+=(e.clientX-cropLastX)*ratio;
-    cropOffsetY+=(e.clientY-cropLastY)*ratio;
-    cropLastX=e.clientX;cropLastY=e.clientY;
-    clampCrop();drawAvatarCrop();
-  });
-  const stop=e=>{if(cropPointer===e.pointerId)cropPointer=null};
-  stage.addEventListener("pointerup",stop);
-  stage.addEventListener("pointercancel",stop);
-
-  stage.addEventListener("touchstart",e=>{
-    if(e.touches.length===2){
-      const a=e.touches[0],b=e.touches[1];
-      cropPinchDistance=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-      cropStartScale=cropScale;
-    }
-  },{passive:true});
-  stage.addEventListener("touchmove",e=>{
-    if(e.touches.length===2&&cropPinchDistance&&cropImage){
-      const a=e.touches[0],b=e.touches[1];
-      const d=Math.hypot(a.clientX-b.clientX,a.clientY-b.clientY);
-      cropScale=Math.max(cropMinScale,Math.min(cropMinScale*3,cropStartScale*(d/cropPinchDistance)));
-      document.getElementById("avatarZoom").value=(cropScale/cropMinScale).toFixed(2);
-      clampCrop();drawAvatarCrop();
-    }
-  },{passive:true});
-}
-
-async function openAvatarCrop(file){
-  const dataUrl=await new Promise((resolve,reject)=>{
-    const reader=new FileReader();
-    reader.onload=()=>resolve(reader.result);
-    reader.onerror=()=>reject(new Error("Could not read that photo."));
-    reader.readAsDataURL(file);
-  });
-  const img=await new Promise((resolve,reject)=>{
-    const i=new Image();
-    i.onload=()=>resolve(i);
-    i.onerror=()=>reject(new Error("That photo format could not be opened."));
-    i.src=dataUrl;
-  });
-  cropImage=img;
-  const ringSize=720*.82;
-  cropMinScale=Math.max(ringSize/img.naturalWidth,ringSize/img.naturalHeight);
-  cropScale=cropMinScale;cropOffsetX=0;cropOffsetY=0;
-  document.getElementById("avatarZoom").value="1";
-  document.getElementById("avatarCropModal").classList.remove("hidden");
-  initCropGestures();drawAvatarCrop();
-}
-
-async function saveCroppedAvatar(){
-  if(!currentUser||!cropImage)return;
-  const source=cropCanvas();
-  const output=document.createElement("canvas");
-  output.width=900;output.height=900;
-  const ctx=output.getContext("2d");
-  const ringStart=720*.09,ringSize=720*.82;
-  ctx.drawImage(source,ringStart,ringStart,ringSize,ringSize,0,0,900,900);
-  const blob=await new Promise(resolve=>output.toBlob(resolve,"image/jpeg",.9));
-  if(!blob)return alert("Could not prepare your cropped photo.");
-
-  const btn=document.querySelector("#avatarCropModal .primary");
-  if(btn){btn.disabled=true;btn.textContent="Savingâ¦";}
-  try{
-    const path=`${currentUser.id}/avatar.jpg`;
-    const {error:uploadError}=await db.storage.from("avatars").upload(path,blob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});
-    if(uploadError)throw uploadError;
-    const {data:urlData}=db.storage.from("avatars").getPublicUrl(path);
-    const publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
-    const {error:profileError}=await db.from("profiles").update({avatar_url:publicUrl}).eq("id",currentUser.id);
-    if(profileError)throw profileError;
-    profile={...(profile||{}),avatar_url:publicUrl};
-    closeAvatarCrop();renderProfile();
-  }catch(err){
-    console.error(err);alert(err.message||"Could not upload your profile photo.");
-  }finally{
-    if(btn){btn.disabled=false;btn.textContent="Use This Photo";}
-  }
-}
+let cropSourceFile=null,cropObjectUrl="",cropImageNaturalW=0,cropImageNaturalH=0,cropBaseScale=1,cropZoom=1,cropX=0,cropY=0;
+let cropPointers=new Map(),cropPinchStartDistance=0,cropPinchStartZoom=1,cropDragStart=null;
 
 
 const TABLESCORE_THEMES=["classic","fresh","warm","electric","night"];
@@ -1179,7 +1070,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
 
   const userIds=[...new Set(ratings.map(r=>r.user_id).filter(Boolean))];
   const {data:people,error:pErr}=userIds.length
-    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private").in("id",userIds)
+    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private,active_title").in("id",userIds)
     : {data:[],error:null};
 
   if(pErr)console.error("restaurant rating profiles:",pErr);
@@ -1212,7 +1103,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
           ${avatarMarkup(p,42)}
           <div style="min-width:0;flex:1">
             <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
-            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>
+            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>${p?.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
           </div>
         </button>
         <div style="text-align:right;flex:0 0 auto">
@@ -1733,7 +1624,7 @@ async function openRatingDetail(ratingId){
   }
 
   const {data:p,error:pErr}=await db.from("profiles")
-    .select("id,display_name,username,avatar_url,is_private")
+    .select("id,display_name,username,avatar_url,is_private,active_title")
     .eq("id",r.user_id)
     .maybeSingle();
 
@@ -1763,7 +1654,7 @@ async function openRatingDetail(ratingId){
     ${avatarMarkup(p,44)}
     <div style="min-width:0">
       <div style="font-weight:950">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
-      <div class="row-meta">${p?.username?"@"+esc(p.username):""}</div>
+      <div class="row-meta">${p?.username?"@"+esc(p.username):""}</div>${p?.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
     </div>
   </button>`;
 
@@ -1952,7 +1843,7 @@ async function loadFollowingFeed(){
 
   const userIds=[...new Set(ratings.map(x=>x.user_id))];
   const {data:people,error:pErr}=await db.from("profiles")
-    .select("id,display_name,username,avatar_url,home_city")
+    .select("id,display_name,username,avatar_url,home_city,active_title")
     .in("id",userIds);
   if(pErr)console.error("following feed profiles:",pErr);
 
@@ -1978,7 +1869,7 @@ function feedRatingCard(r,person){
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
         <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
-        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>
+        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>${p.active_title?`<div class="identity-title">${esc(p.active_title)}</div>`:""}
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
@@ -2010,11 +1901,10 @@ async function openPublicProfile(userId){
   modal.classList.remove("hidden");
   document.getElementById("publicProfileName").textContent="Loading...";
   document.getElementById("publicProfileUsername").textContent="";
-  renderProfileTitle("publicProfileTitle","");
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
 
   const [{data:p,error:pErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
-    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,selected_title").eq("id",userId).maybeSingle(),
+    db.from("profiles").select("id,display_name,username,avatar_url,home_city,is_private,active_title").eq("id",userId).maybeSingle(),
     db.from("ratings").select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)").eq("user_id",userId).order("created_at",{ascending:false}).limit(50),
     db.from("follows").select("follower_id").eq("following_id",userId).eq("status","accepted"),
     db.from("follows").select("following_id").eq("follower_id",userId).eq("status","accepted")
@@ -2046,7 +1936,9 @@ async function openPublicProfile(userId){
 
   document.getElementById("publicProfileName").textContent=p.display_name||p.username||"TableScore User";
   document.getElementById("publicProfileUsername").textContent=p.username?"@"+p.username:"";
-  renderProfileTitle("publicProfileTitle",p.selected_title||"Table Regular");
+  const publicTitleEl=document.getElementById("publicProfileTitle"); if(publicTitleEl)publicTitleEl.textContent=p.active_title||"Table Regular";
+  const publicBadgeSlugs=await loadPublicBadges(userId);
+  const publicBadgesEl=document.getElementById("publicProfileBadges");if(publicBadgesEl)publicBadgesEl.innerHTML=publicBadgeSlugs.map(badgeMarkup).join("");
   document.getElementById("publicProfileArea").textContent=p.home_city||"TableScore member";
   document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"â";
   document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"â";
@@ -2146,7 +2038,7 @@ function renderProfile(){
   document.getElementById("profileName").textContent=name;
   renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
-  renderProfileTitle("profileTitle",profile?.selected_title||"Table Regular");
+  const profileTitleEl=document.getElementById("profileTitle"); if(profileTitleEl)profileTitleEl.textContent=profile?.active_title||"Table Regular";
   document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableScore member":"Browse freely \u00b7 Account required to rate");
   document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
   document.getElementById("profileRestaurants").textContent=currentUser?new Set(myRatings.map(e=>e.restaurant_id)).size:0;
@@ -2157,6 +2049,7 @@ function renderProfile(){
   document.getElementById("signOutBtn").classList.toggle("hidden",!currentUser);
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
+  document.getElementById("settingsGear").classList.toggle("hidden",!currentUser);
   document.getElementById("myProfileRatingsCard").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
   renderMyProfileRatings();
@@ -2206,6 +2099,82 @@ async function renderMyProfileRatings(){
 }
 
 
+
+
+async function loadFoodBadges(){
+  if(!currentUser){availableBadges=[...STARTER_BADGES];equippedBadgeSlugs=[];renderBadgePicker();return;}
+  const [{data:defs,error:defErr},{data:equipped,error:eqErr}]=await Promise.all([
+    db.from("profile_badges").select("slug,name,emoji,is_starter,sort_order").eq("is_starter",true).order("sort_order",{ascending:true}),
+    db.from("user_profile_badges").select("badge_slug,slot").eq("user_id",currentUser.id).order("slot",{ascending:true})
+  ]);
+  if(defErr)console.error("profile badges:",defErr);
+  if(eqErr)console.error("equipped badges:",eqErr);
+  availableBadges=defs?.length?defs.map(b=>({slug:b.slug,name:b.name,emoji:b.emoji})):STARTER_BADGES;
+  equippedBadgeSlugs=(equipped||[]).map(x=>x.badge_slug).slice(0,4);
+  renderBadgePicker();
+  renderOwnBadges();
+}
+
+function badgeBySlug(slug){return availableBadges.find(b=>b.slug===slug)||STARTER_BADGES.find(b=>b.slug===slug);}
+function badgeMarkup(slug){
+  const b=badgeBySlug(slug);if(!b)return "";
+  return `<div class="profile-badge" title="${esc(b.name)}" aria-label="${esc(b.name)}">${b.emoji}</div>`;
+}
+function renderOwnBadges(){
+  const out=document.getElementById("profileBadges");if(!out)return;
+  out.innerHTML=equippedBadgeSlugs.map(badgeMarkup).join("");
+}
+function renderBadgePicker(){
+  const out=document.getElementById("badgePicker");if(!out)return;
+  out.innerHTML=availableBadges.map(b=>{
+    const active=equippedBadgeSlugs.includes(b.slug);
+    return `<button class="badge-choice ${active?"active":""}" onclick="toggleFoodBadge('${b.slug}')">
+      <span class="badge-check">â</span><span class="badge-emoji">${b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
+    </button>`;
+  }).join("");
+  const count=document.getElementById("badgeCount");if(count)count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
+}
+async function toggleFoodBadge(slug){
+  if(!currentUser)return openAccount();
+  const exists=equippedBadgeSlugs.includes(slug);
+  let next=exists?equippedBadgeSlugs.filter(s=>s!==slug):[...equippedBadgeSlugs,slug];
+  if(next.length>4)return alert("You can equip up to 4 food badges.");
+  const {error:deleteError}=await db.from("user_profile_badges").delete().eq("user_id",currentUser.id);
+  if(deleteError)return alert("Could not update badges: "+deleteError.message);
+  if(next.length){
+    const rows=next.map((badge_slug,i)=>({user_id:currentUser.id,badge_slug,slot:i+1}));
+    const {error:insertError}=await db.from("user_profile_badges").insert(rows);
+    if(insertError){await loadFoodBadges();return alert("Could not update badges: "+insertError.message);}
+  }
+  equippedBadgeSlugs=next;renderBadgePicker();renderOwnBadges();
+}
+async function loadPublicBadges(userId){
+  const {data,error}=await db.from("user_profile_badges").select("badge_slug,slot").eq("user_id",userId).order("slot",{ascending:true});
+  if(error){console.error("public badges:",error);return [];}
+  return (data||[]).map(x=>x.badge_slug).slice(0,4);
+}
+
+async function loadProfileTitles(){
+  const {data,error}=await db.from("profile_titles").select("name,is_starter,sort_order").eq("is_starter",true).order("sort_order",{ascending:true});
+  if(error){console.error("profile titles:",error);availableTitles=[...STARTER_TITLES];}
+  else if(data?.length){availableTitles=data.map(t=>t.name);}
+  else availableTitles=[...STARTER_TITLES];
+  renderTitlePicker();
+}
+function renderTitlePicker(){
+  const out=document.getElementById("titlePicker"); if(!out)return;
+  const active=profile?.active_title||"Table Regular";
+  out.innerHTML=availableTitles.map(title=>`<button class="title-choice ${title===active?"active":""}" onclick="setActiveTitle(${JSON.stringify(title)})">${esc(title)}</button>`).join("");
+}
+async function setActiveTitle(title){
+  if(!currentUser)return openAccount();
+  if(!availableTitles.includes(title))return;
+  const {error}=await db.from("profiles").update({active_title:title}).eq("id",currentUser.id);
+  if(error)return alert("Could not change your title: "+error.message);
+  profile={...(profile||{}),active_title:title};
+  renderTitlePicker(); renderProfile();
+}
+
 function updateSettingsBadges(){
   const summary=document.getElementById("followRequestSummary");
   if(summary)summary.textContent=followRequestCount===1?"1 pending request":`${followRequestCount} pending requests`;
@@ -2214,7 +2183,7 @@ function updateSettingsBadges(){
 function openSettings(){
   if(!currentUser)return openAccount();
   renderThemeChoices();
-  renderStarterTitles();
+  renderTitlePicker();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
   document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
   document.getElementById("settingsUsername").textContent=profile?.username?"Current: @"+profile.username:"No username set";
@@ -2248,7 +2217,7 @@ async function showFollowRequests(){
   if(error){list.innerHTML='<div class="muted">Could not load follow requests.</div>';return;}
   const ids=(reqs||[]).map(x=>x.follower_id);
   if(!ids.length){list.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">No pending follow requests.</div>';return;}
-  const {data:people,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url,home_city").in("id",ids);
+  const {data:people,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url,home_city,active_title").in("id",ids);
   if(pErr){list.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
   list.innerHTML=(people||[]).map(u=>`<div class="row" style="gap:10px">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
@@ -2282,15 +2251,8 @@ function renderAvatarUI(name){
   const removeBtn=document.getElementById("removePhotoBtn");
   const initial=(name?.[0]||"G").toUpperCase();
   const url=profile?.avatar_url||"";
-
-  if(url){
-    profileAvatar.textContent="";
-    profileAvatar.style.backgroundImage=`url("${url}")`;
-  }else{
-    profileAvatar.style.backgroundImage="none";
-    profileAvatar.textContent=initial;
-  }
-
+  if(url){profileAvatar.textContent="";profileAvatar.style.backgroundImage=`url("${url}")`;}
+  else{profileAvatar.style.backgroundImage="none";profileAvatar.textContent=initial;}
   actions.classList.toggle("hidden",!currentUser);
   removeBtn.classList.toggle("hidden",!currentUser||!url);
 }
@@ -2330,16 +2292,71 @@ async function imageFileToJpeg(file){
 
 async function handleProfilePhoto(event){
   if(!currentUser)return;
-  const file=event.target.files?.[0];
-  event.target.value="";
+  const file=event.target.files?.[0]; event.target.value="";
   if(!file)return;
   if(file.size>20*1024*1024)return alert("That photo is too large. Choose an image under 20 MB.");
+  if(!file.type.startsWith("image/"))return alert("Choose an image file.");
+  cancelProfileCrop();
+  cropSourceFile=file; cropObjectUrl=URL.createObjectURL(file);
+  const img=document.getElementById("cropImage");
+  img.onload=()=>{
+    cropImageNaturalW=img.naturalWidth; cropImageNaturalH=img.naturalHeight;
+    const size=document.getElementById("cropStage").clientWidth;
+    cropBaseScale=Math.max(size/cropImageNaturalW,size/cropImageNaturalH);
+    cropZoom=1;cropX=0;cropY=0;document.getElementById("cropZoom").value="1";
+    updateCropTransform();document.getElementById("profileCropModal").classList.remove("hidden");
+  };
+  img.onerror=()=>{cancelProfileCrop();alert("That photo could not be opened.");};
+  img.src=cropObjectUrl;
+}
+function clampCropPosition(){
+  const stage=document.getElementById("cropStage"); if(!stage||!cropImageNaturalW)return;
+  const cropSize=stage.clientWidth*.86,scale=cropBaseScale*cropZoom,shownW=cropImageNaturalW*scale,shownH=cropImageNaturalH*scale;
+  const maxX=Math.max(0,(shownW-cropSize)/2),maxY=Math.max(0,(shownH-cropSize)/2);
+  cropX=Math.max(-maxX,Math.min(maxX,cropX));cropY=Math.max(-maxY,Math.min(maxY,cropY));
+}
+function updateCropTransform(){
+  const img=document.getElementById("cropImage"); if(!img||!cropImageNaturalW)return;
+  const scale=cropBaseScale*cropZoom;img.style.width=(cropImageNaturalW*scale)+"px";img.style.height=(cropImageNaturalH*scale)+"px";
+  clampCropPosition();img.style.transform=`translate(calc(-50% + ${cropX}px),calc(-50% + ${cropY}px))`;
+}
+function setCropZoom(v){cropZoom=Math.max(1,Math.min(3,Number(v)||1));updateCropTransform();}
+function cropPointerDown(e){
+  const stage=document.getElementById("cropStage");stage.setPointerCapture?.(e.pointerId);cropPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(cropPointers.size===1)cropDragStart={x:e.clientX,y:e.clientY,startX:cropX,startY:cropY};
+  else if(cropPointers.size===2){const p=[...cropPointers.values()];cropPinchStartDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;cropPinchStartZoom=cropZoom;}
+}
+function cropPointerMove(e){
+  if(!cropPointers.has(e.pointerId))return;cropPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(cropPointers.size===1&&cropDragStart){cropX=cropDragStart.startX+(e.clientX-cropDragStart.x);cropY=cropDragStart.startY+(e.clientY-cropDragStart.y);updateCropTransform();}
+  else if(cropPointers.size===2){const p=[...cropPointers.values()],d=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;cropZoom=Math.max(1,Math.min(3,cropPinchStartZoom*(d/cropPinchStartDistance)));document.getElementById("cropZoom").value=String(cropZoom);updateCropTransform();}
+}
+function cropPointerUp(e){
+  cropPointers.delete(e.pointerId);
+  if(cropPointers.size===1){const p=[...cropPointers.values()][0];cropDragStart={x:p.x,y:p.y,startX:cropX,startY:cropY};} else cropDragStart=null;
+}
+function cancelProfileCrop(){
+  document.getElementById("profileCropModal")?.classList.add("hidden");cropPointers.clear();cropDragStart=null;
+  if(cropObjectUrl){URL.revokeObjectURL(cropObjectUrl);cropObjectUrl="";}cropSourceFile=null;
+}
+async function saveProfileCrop(){
+  if(!currentUser||!cropSourceFile||!cropImageNaturalW)return;
+  const btn=document.getElementById("saveCropBtn");btn.disabled=true;btn.textContent="Saving...";
   try{
-    await openAvatarCrop(file);
-  }catch(err){
-    console.error(err);
-    alert(err.message||"Could not open that profile photo.");
-  }
+    const stage=document.getElementById("cropStage"),cropDisplaySize=stage.clientWidth*.86,scale=cropBaseScale*cropZoom;
+    const sourceCropSize=cropDisplaySize/scale,sourceCenterX=(cropImageNaturalW/2)-(cropX/scale),sourceCenterY=(cropImageNaturalH/2)-(cropY/scale);
+    let sx=Math.max(0,Math.min(cropImageNaturalW-sourceCropSize,sourceCenterX-sourceCropSize/2));
+    let sy=Math.max(0,Math.min(cropImageNaturalH-sourceCropSize,sourceCenterY-sourceCropSize/2));
+    const sourceImg=document.getElementById("cropImage"),canvas=document.createElement("canvas");canvas.width=1200;canvas.height=1200;
+    canvas.getContext("2d").drawImage(sourceImg,sx,sy,sourceCropSize,sourceCropSize,0,0,1200,1200);
+    const jpegBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not prepare that photo.")),"image/jpeg",0.88));
+    const path=`${currentUser.id}/avatar.jpg`;
+    const {error:uploadError}=await db.storage.from("avatars").upload(path,jpegBlob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});if(uploadError)throw uploadError;
+    const {data:urlData}=db.storage.from("avatars").getPublicUrl(path),publicUrl=`${urlData.publicUrl}?v=${Date.now()}`;
+    const {error:profileError}=await db.from("profiles").update({avatar_url:publicUrl}).eq("id",currentUser.id);if(profileError)throw profileError;
+    profile={...(profile||{}),avatar_url:publicUrl};cancelProfileCrop();renderProfile();
+  }catch(err){console.error(err);alert(err.message||"Could not save your profile photo.");}
+  finally{btn.disabled=false;btn.textContent="Use Photo";}
 }
 
 async function removeProfilePhoto(){
@@ -2973,13 +2990,21 @@ async function submitRating(){
 
 document.getElementById("homeSearch").addEventListener("focus",()=>showScreen("explore"));
 
+const cropStageEl=document.getElementById("cropStage");
+if(cropStageEl){
+  cropStageEl.addEventListener("pointerdown",cropPointerDown);
+  cropStageEl.addEventListener("pointermove",cropPointerMove);
+  cropStageEl.addEventListener("pointerup",cropPointerUp);
+  cropStageEl.addEventListener("pointercancel",cropPointerUp);
+}
+
 async function init(){
   updateArea();
   calculate();
 
   const {data:{session}}=await db.auth.getSession();
   currentUser=session?.user||null;
-  await Promise.all([loadRestaurantStats(),refreshUserData()]);
+  await Promise.all([loadRestaurantStats(),refreshUserData(),loadProfileTitles(),loadFoodBadges()]);
 
   const savedScreen=localStorage.getItem("ts_current_screen");
   if(["home","explore","feed","saved","profile"].includes(savedScreen)){
