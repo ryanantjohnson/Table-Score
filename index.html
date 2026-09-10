@@ -310,12 +310,31 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 @keyframes secretReqIn{to{opacity:1;transform:translateY(0)}}
 @keyframes secretParticle{0%{opacity:0;transform:translate(0,0) scale(.5) rotate(var(--rot))}18%{opacity:1}100%{opacity:0;transform:translate(var(--x),var(--y)) scale(1.25) rotate(calc(var(--rot) + 160deg))}}
 
+
+/* ===== V5.19.2 Home Easter Egg + Bigger Reveal ===== */
+.secret-reward-overlay{animation:rewardBackdropIn .35s ease both}
+.secret-reward-overlay::before{content:"";position:absolute;inset:-35%;pointer-events:none;background:conic-gradient(from 0deg,transparent 0 12%,color-mix(in srgb,var(--gold) 20%,transparent) 13% 15%,transparent 16% 28%,color-mix(in srgb,var(--gold) 14%,transparent) 29% 31%,transparent 32% 100%);animation:rewardRays 8s linear infinite;opacity:.75}
+.secret-reward-card{overflow:visible}
+.secret-reward-card::before{content:"";position:absolute;inset:-3px;border-radius:30px;pointer-events:none;border:2px solid color-mix(in srgb,var(--gold) 75%,white);opacity:0;animation:rewardRing 1.25s .25s ease-out both}
+.secret-icon{position:relative;z-index:2;animation:secretIconPop .78s .18s cubic-bezier(.2,1.4,.35,1) both,rewardGlow 1.35s 1s ease-in-out infinite alternate}
+.secret-icon::after{content:"";position:absolute;inset:-18px;border-radius:40px;border:2px solid var(--gold);opacity:0;animation:rewardPulse 1.25s .55s ease-out 2}
+.secret-flash{position:fixed;inset:0;pointer-events:none;z-index:10000;background:white;opacity:0;animation:rewardFlash .65s ease-out both}
+.secret-confetti{position:fixed;inset:0;pointer-events:none;z-index:10001;overflow:hidden}
+.secret-confetti-piece{position:absolute;top:-30px;left:var(--left);font-size:var(--size);animation:rewardConfetti var(--dur) var(--delay) cubic-bezier(.15,.75,.25,1) forwards;transform:rotate(var(--rot))}
+@keyframes rewardBackdropIn{from{background:rgba(8,10,12,0);backdrop-filter:blur(0)}to{background:rgba(8,10,12,.86);backdrop-filter:blur(12px)}}
+@keyframes rewardRays{to{transform:rotate(360deg)}}
+@keyframes rewardRing{0%{opacity:0;transform:scale(.88)}30%{opacity:1}100%{opacity:0;transform:scale(1.08)}}
+@keyframes rewardGlow{from{filter:drop-shadow(0 0 2px transparent)}to{filter:drop-shadow(0 0 18px var(--gold))}}
+@keyframes rewardPulse{0%{opacity:.9;transform:scale(.7)}100%{opacity:0;transform:scale(1.35)}}
+@keyframes rewardFlash{0%{opacity:.8}100%{opacity:0}}
+@keyframes rewardConfetti{0%{opacity:0;transform:translateY(-20px) rotate(var(--rot)) scale(.6)}10%{opacity:1}100%{opacity:0;transform:translate(var(--drift),105vh) rotate(calc(var(--rot) + 620deg)) scale(1.1)}}
+
 </style>
 </head>
 <body class="booting">
 <div class="app">
   <div class="topbar">
-    <div><div class="brand" onclick="secretTestTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
+    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
     <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
   </div>
 
@@ -2166,14 +2185,11 @@ async function loadSecretRewards(){
   renderTitlePicker();
 }
 
-function secretTestTap(){
+function secretLogoTap(){
+  showScreen("home");
   if(!currentUser)return;
-  secretTestTapCount++;
-  clearTimeout(secretTestTapTimer);
-  secretTestTapTimer=setTimeout(()=>secretTestTapCount=0,1800);
-  if(secretTestTapCount>=5){
-    secretTestTapCount=0;
-    tryUnlockSecretReward("secret-sauce");
+  if(!earnedSecretRewards.some(r=>r.reward_slug==="secret-sauce")){
+    setTimeout(()=>tryUnlockSecretReward("secret-sauce"),300);
   }
 }
 
@@ -2219,6 +2235,16 @@ function showSecretReward(reward){
   document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
   const req=document.getElementById("secretRewardRequirements");
   req.innerHTML=(reward.requirements||[]).map((x,i)=>`<div class="secret-requirement" style="animation-delay:${.92+i*.16}s">${esc(x)}</div>`).join("");
+  const flash=document.getElementById("secretRewardFlash");
+  if(flash){flash.style.animation="none";void flash.offsetWidth;flash.style.animation="rewardFlash .65s ease-out both";}
+  const confetti=document.getElementById("secretRewardConfetti");
+  if(confetti){
+    const pieces=["â¨","â","â¦","â","â","ð´","â§"];
+    confetti.innerHTML=Array.from({length:42},(_,i)=>{
+      const left=(3+Math.random()*94).toFixed(1)+"%",delay=(Math.random()*.55).toFixed(2)+"s",dur=(1.7+Math.random()*1.15).toFixed(2)+"s",size=(10+Math.random()*13).toFixed(0)+"px",rot=(Math.random()*260).toFixed(0)+"deg",drift=((Math.random()-.5)*170).toFixed(0)+"px";
+      return `<span class="secret-confetti-piece" style="--left:${left};--delay:${delay};--dur:${dur};--size:${size};--rot:${rot};--drift:${drift}">${pieces[i%pieces.length]}</span>`;
+    }).join("");
+  }
   const burst=document.getElementById("secretRewardBurst");
   const bits=["â¨","â¦","â¢","ð´","â","â§","â¢","â¨","â¦","â","ð´","â§"];
   burst.innerHTML=bits.map((b,i)=>{
@@ -2229,7 +2255,7 @@ function showSecretReward(reward){
   const equip=document.getElementById("secretEquipBtn");
   equip.textContent=reward.reward_type==="title"?"Equip Title":"Equip Badge";
   overlay.classList.remove("hidden");
-  if(navigator.vibrate)navigator.vibrate([35,35,70]);
+  if(navigator.vibrate)navigator.vibrate([45,35,85,45,120]);
 }
 
 function closeSecretReward(){
@@ -3240,6 +3266,8 @@ init();
   </div>
 
 <div id="secretRewardOverlay" class="secret-reward-overlay hidden">
+  <div id="secretRewardFlash" class="secret-flash"></div>
+  <div id="secretRewardConfetti" class="secret-confetti"></div>
   <div class="secret-reward-card">
     <div id="secretRewardBurst" class="secret-reward-burst"></div>
     <div id="secretRewardIcon" class="secret-icon">ð½ï¸</div>
