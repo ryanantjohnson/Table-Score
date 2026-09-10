@@ -390,13 +390,32 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .account-mark-choice .account-mark{margin:0;width:32px;height:32px}
 .account-mark-choice .account-mark svg{width:31px;height:31px}
 
+
+/* V5.23 Notifications Foundation */
+.top-actions{display:flex;align-items:center;gap:8px}
+.top-notifications{position:relative;width:38px;height:38px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--ink);display:grid;place-items:center;font-size:18px;box-shadow:var(--shadow);padding:0}
+.notification-count{position:absolute;right:-3px;top:-4px;min-width:17px;height:17px;border-radius:999px;padding:0 4px;background:var(--gold);color:#111;font-size:9px;font-weight:950;display:flex;align-items:center;justify-content:center;border:2px solid var(--bg)}
+.notification-list{display:grid;gap:9px;margin-top:10px}
+.notification-item{border:1px solid var(--line);border-radius:16px;background:var(--card2);padding:12px;text-align:left}
+.notification-item.unread{border-color:var(--gold);box-shadow:inset 3px 0 0 var(--gold)}
+.notification-title{font-weight:950;font-size:13px}
+.notification-body{font-size:11px;line-height:1.45;margin-top:4px;color:var(--muted)}
+.notification-time{font-size:9px;color:var(--muted);margin-top:7px}
+.notification-empty{text-align:center;padding:26px 8px}
+.notification-permission{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card2);margin-top:10px}
+
 </style>
 </head>
 <body class="booting">
 <div class="app">
   <div class="topbar">
     <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
-    <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+    <div class="top-actions">
+      <button id="topNotificationsBtn" class="top-notifications hidden" onclick="openNotifications()" aria-label="Notifications">
+        &#128276;<span id="notificationCount" class="notification-count hidden">0</span>
+      </button>
+      <button id="topSettingsBtn" class="top-settings" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+    </div>
   </div>
 
   <section id="home" class="screen active">
@@ -634,7 +653,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <div style="font-weight:950">Account Marks</div>
         <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
         <div class="mark-admin-actions">
-          <button id="grantChef's TableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chef's Table</button>
+          <button id="grantChefsTableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chef's Table</button>
           <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
         </div>
       </div>
@@ -665,6 +684,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div class="card" style="margin-top:8px">
+      <div class="section-title" style="font-size:15px">Notifications</div>
+      <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">TableScore will keep an in-app notification history for account marks and important activity.</div>
+      <div class="notification-permission">
+        <div style="font-weight:900">Browser alerts</div>
+        <div id="browserNotificationStatus" class="muted" style="font-size:10px;line-height:1.4;margin-top:3px">Checking support...</div>
+        <button id="browserNotificationBtn" class="secondary" style="margin-top:9px" onclick="requestBrowserNotifications()">Enable Alerts</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="section-title" style="font-size:15px">Privacy</div>
       <div class="settings-row">
         <div>
@@ -2527,6 +2556,7 @@ function openSettings(){
   const settingsUsernameInput=document.getElementById("settingsUsernameInput");
   if(settingsUsernameInput)settingsUsernameInput.value="";
   updateSettingsBadges();
+  updateBrowserNotificationUI();
   document.getElementById("settingsModal").classList.remove("hidden");
 }
 function closeSettings(){document.getElementById("settingsModal").classList.add("hidden");}
@@ -3335,6 +3365,173 @@ if(cropStageEl){
   cropStageEl.addEventListener("pointercancel",cropPointerUp);
 }
 
+
+// ===== V5.23 Notifications Foundation =====
+let tableScoreNotifications=[];
+let notificationPollTimer=null;
+let notificationsInitialized=false;
+
+function notificationIcon(type){
+  if(type==="first_round_granted") return "ð½ï¸";
+  if(type==="chefs_table_approved") return "ð´";
+  if(type==="chefs_table_application") return "ð";
+  if(type==="account_mark_revoked") return "â¹ï¸";
+  return "ð";
+}
+
+function notificationAge(ts){
+  const d=new Date(ts), diff=Math.max(0,Date.now()-d.getTime());
+  const mins=Math.floor(diff/60000);
+  if(mins<1)return "Just now";
+  if(mins<60)return mins+"m ago";
+  const hrs=Math.floor(mins/60);
+  if(hrs<24)return hrs+"h ago";
+  const days=Math.floor(hrs/24);
+  return days+"d ago";
+}
+
+async function loadNotifications({showSystemAlerts=false}={}){
+  const bell=document.getElementById("topNotificationsBtn");
+  if(!currentUser){
+    tableScoreNotifications=[];
+    if(bell)bell.classList.add("hidden");
+    updateNotificationBadge();
+    return;
+  }
+  if(bell)bell.classList.remove("hidden");
+
+  const previousIds=new Set(tableScoreNotifications.map(n=>n.id));
+  const {data,error}=await db.from("notifications")
+    .select("id,type,title,body,is_read,created_at,metadata")
+    .eq("user_id",currentUser.id)
+    .order("created_at",{ascending:false})
+    .limit(50);
+  if(error){
+    console.warn("notifications:",error);
+    return;
+  }
+
+  tableScoreNotifications=data||[];
+  updateNotificationBadge();
+  renderNotifications();
+
+  if(showSystemAlerts && notificationsInitialized){
+    const fresh=tableScoreNotifications.filter(n=>!previousIds.has(n.id));
+    for(const n of fresh) showBrowserNotification(n);
+  }
+  notificationsInitialized=true;
+}
+
+function updateNotificationBadge(){
+  const count=tableScoreNotifications.filter(n=>!n.is_read).length;
+  const badge=document.getElementById("notificationCount");
+  if(!badge)return;
+  badge.textContent=count>99?"99+":String(count);
+  badge.classList.toggle("hidden",count===0);
+}
+
+function renderNotifications(){
+  const list=document.getElementById("notificationsList");
+  if(!list)return;
+  if(!tableScoreNotifications.length){
+    list.innerHTML=`<div class="notification-empty"><div style="font-size:30px">ð</div><div class="section-title" style="font-size:15px;margin-top:8px">Nothing new yet</div><div class="muted" style="font-size:11px;margin-top:4px">First Round gifts, Chef's Table approvals, and other activity will appear here.</div></div>`;
+    return;
+  }
+  list.innerHTML=tableScoreNotifications.map(n=>`<button class="notification-item ${n.is_read?"":"unread"}" onclick="openNotification('${n.id}')">
+    <div style="display:flex;gap:9px;align-items:flex-start">
+      <div style="font-size:21px">${notificationIcon(n.type)}</div>
+      <div style="min-width:0;flex:1">
+        <div class="notification-title">${esc(n.title||"TableScore")}</div>
+        <div class="notification-body">${esc(n.body||"")}</div>
+        <div class="notification-time">${notificationAge(n.created_at)}</div>
+      </div>
+    </div>
+  </button>`).join("");
+}
+
+async function openNotifications(){
+  if(!currentUser)return openAccount();
+  document.getElementById("notificationsModal").classList.remove("hidden");
+  await loadNotifications();
+}
+
+function closeNotifications(){
+  document.getElementById("notificationsModal").classList.add("hidden");
+}
+
+async function openNotification(id){
+  const n=tableScoreNotifications.find(x=>x.id===id);
+  if(!n)return;
+  if(!n.is_read){
+    const {error}=await db.from("notifications").update({is_read:true}).eq("id",id).eq("user_id",currentUser.id);
+    if(!error){
+      n.is_read=true;
+      updateNotificationBadge();
+      renderNotifications();
+    }
+  }
+}
+
+async function markAllNotificationsRead(){
+  if(!currentUser)return;
+  const {error}=await db.from("notifications").update({is_read:true}).eq("user_id",currentUser.id).eq("is_read",false);
+  if(error)return alert("Could not update notifications.");
+  tableScoreNotifications.forEach(n=>n.is_read=true);
+  updateNotificationBadge();
+  renderNotifications();
+}
+
+function updateBrowserNotificationUI(){
+  const status=document.getElementById("browserNotificationStatus");
+  const btn=document.getElementById("browserNotificationBtn");
+  if(!status||!btn)return;
+
+  if(!("Notification" in window)){
+    status.textContent="This browser does not support page-level notification alerts. Full background push will come with TableScore's PWA/native notification service.";
+    btn.classList.add("hidden");
+    return;
+  }
+  if(Notification.permission==="granted"){
+    status.textContent="Enabled. TableScore can show browser alerts while this web session is active.";
+    btn.textContent="Alerts Enabled";
+    btn.disabled=true;
+  }else if(Notification.permission==="denied"){
+    status.textContent="Alerts are blocked in browser settings.";
+    btn.textContent="Alerts Blocked";
+    btn.disabled=true;
+  }else{
+    status.textContent="Optional: allow browser alerts while TableScore is active. This is not yet full background push.";
+    btn.textContent="Enable Alerts";
+    btn.disabled=false;
+  }
+}
+
+async function requestBrowserNotifications(){
+  if(!("Notification" in window))return updateBrowserNotificationUI();
+  try{
+    await Notification.requestPermission();
+  }catch(e){
+    console.warn(e);
+  }
+  updateBrowserNotificationUI();
+}
+
+function showBrowserNotification(n){
+  if(!("Notification" in window) || Notification.permission!=="granted")return;
+  try{
+    new Notification(n.title||"TableScore",{body:n.body||"",tag:"tablescore-"+n.id});
+  }catch(e){
+    console.warn("Browser notification unavailable:",e);
+  }
+}
+
+function startNotificationPolling(){
+  clearInterval(notificationPollTimer);
+  if(!currentUser)return;
+  loadNotifications();
+  notificationPollTimer=setInterval(()=>loadNotifications({showSystemAlerts:true}),30000);
+}
+
 async function init(){
   updateArea();
   calculate();
@@ -3343,6 +3540,7 @@ async function init(){
   currentUser=session?.user||null;
   await Promise.all([loadRestaurantStats(),refreshUserData(),loadProfileTitles(),loadFoodBadges()]);
   await loadSecretRewards();
+  startNotificationPolling();
 
   const savedScreen=localStorage.getItem("ts_current_screen");
   if(["home","explore","feed","saved","profile"].includes(savedScreen)){
@@ -3357,6 +3555,8 @@ async function init(){
     currentUser=sessionNow?.user||null;
     if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
     await refreshUserData();
+    notificationsInitialized=false;
+    startNotificationPolling();
   });
 }
 init();
@@ -3631,7 +3831,7 @@ function renderMarkAdminControls(targetUserId,marks=[]){
   const canManage=isOGAccount() && targetUserId!==TABLESCORE_OG_USER_ID;
   card.classList.toggle("show",canManage);
   if(!canManage)return;
-  const t=document.getElementById("grantChef's TableBtn");
+  const t=document.getElementById("grantChefsTableBtn");
   const f=document.getElementById("grantFirstRoundBtn");
   const hasT=marks.includes("chefs_table");
   const hasF=marks.includes("first_round");
@@ -3802,6 +4002,23 @@ document.addEventListener("DOMContentLoaded", () => {
       <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')">â</button>
     </div>
     <div id="chefsTableAdminList"></div>
+  </div>
+</div>
+
+
+<div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
+  <div class="sheet" style="max-height:88vh;overflow:auto">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Notifications</div>
+        <div class="muted" style="font-size:10px;margin-top:2px">Your TableScore activity and account distinctions.</div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNotifications()">Close</button>
+    </div>
+    <div style="display:flex;justify-content:flex-end">
+      <button class="linkbtn" onclick="markAllNotificationsRead()">Mark all read</button>
+    </div>
+    <div id="notificationsList" class="notification-list"></div>
   </div>
 </div>
 
