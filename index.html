@@ -177,9 +177,11 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .saved-tabs button.active{background:var(--gold);color:#111;border-color:var(--gold)}
 .save-restaurant-btn{display:flex;align-items:center;justify-content:center;gap:8px}
 
+
+body.booting .app, body.booting .nav{visibility:hidden}
 </style>
 </head>
-<body>
+<body class="booting">
 <div class="app">
   <div class="topbar">
     <div><div class="brand">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
@@ -2070,7 +2072,11 @@ async function init(){
   const savedScreen=localStorage.getItem("ts_current_screen");
   if(["home","explore","feed","saved","profile"].includes(savedScreen)){
     showScreen(savedScreen,{restore:true});
+  }else{
+    showScreen("home",{restore:true});
   }
+
+  document.body.classList.remove("booting");
 
   db.auth.onAuthStateChange(async (_event,sessionNow)=>{
     currentUser=sessionNow?.user||null;
