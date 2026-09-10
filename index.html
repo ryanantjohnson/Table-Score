@@ -404,6 +404,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .notification-empty{text-align:center;padding:26px 8px}
 .notification-permission{padding:12px;border:1px solid var(--line);border-radius:14px;background:var(--card2);margin-top:10px}
 
+
+/* V5.24 People Discovery */
+.people-mutual{display:inline-flex;align-items:center;gap:5px;margin-top:4px;font-size:10px;color:var(--gold);font-weight:850}
+.people-mutual-dot{width:5px;height:5px;border-radius:50%;background:var(--gold);display:inline-block}
+.people-suggested-empty{font-size:11px;line-height:1.45;padding:8px 2px;color:var(--muted)}
+
 </style>
 </head>
 <body class="booting">
@@ -603,10 +609,18 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <span class="muted" style="font-size:11px">TableScore Social</span>
       </div>
       <div class="search">
-        <input id="peopleSearch" autocapitalize="none" spellcheck="false" placeholder="Search username or name">
+        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search @username" onkeydown="if(event.key==='Enter')searchPeople()">
         <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
       </div>
       <div id="peopleResults" class="list" style="margin-top:10px"></div>
+
+      <div id="peopleSuggestionsWrap" style="margin-top:16px">
+        <div class="section-head" style="margin-bottom:7px">
+          <div class="section-title" style="font-size:15px">Suggested for You</div>
+          <span class="muted" style="font-size:10px">Based on connections</span>
+        </div>
+        <div id="peopleSuggestions" class="list"></div>
+      </div>
     </div>
 
     <div id="myProfileRatingsCard" class="card hidden">
@@ -2250,6 +2264,7 @@ function renderProfile(){
   document.getElementById("myProfileRatingsCard").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
   renderMyProfileRatings();
+  loadPeopleSuggestions();
 }
 
 
@@ -2818,47 +2833,74 @@ async function claimUsername(){
   alert("Username saved. Welcome to TableScore Social.");
 }
 
+function peopleRowMarkup(u,{showMutual=false}={}){
+  const isFollowing=followingIds.has(u.id);
+  const isPending=pendingFollowingIds.has(u.id);
+  const display=u.display_name||u.username||"TableScore User";
+  const mutualCount=Number(u.mutual_count||0);
+  return `<div class="row" style="gap:10px">
+    <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
+    <div style="min-width:0;flex:1">
+      <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
+        <div class="row-name">${esc(display)}</div>
+        <div class="row-meta">@${esc(u.username||"")}${u.home_city?" Â· "+esc(u.home_city):""}</div>
+        ${showMutual&&mutualCount>0?`<div class="people-mutual"><span class="people-mutual-dot"></span>${mutualCount} mutual connection${mutualCount===1?"":"s"}</div>`:""}
+      </button>
+    </div>
+    <button class="${isFollowing||isPending?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
+  </div>`;
+}
+
 async function searchPeople(){
   if(!currentUser||!profile?.username)return;
-  const q=document.getElementById("peopleSearch").value.trim();
+  let q=document.getElementById("peopleSearch").value.trim().toLowerCase();
   const out=document.getElementById("peopleResults");
+  if(q.startsWith("@"))q=q.slice(1);
   if(q.length<2){
-    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Type at least 2 characters.</div>';
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Type at least 2 characters of a username.</div>';
     return;
   }
-  out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Searching...</div>';
-  const safe=q.replace(/[%_,()]/g,"");
-  const {data,error}=await db
-    .from("profiles")
-    .select("id,display_name,username,home_city,avatar_url")
-    .neq("id",currentUser.id)
-    .not("username","is",null)
-    .or(`username.ilike.%${safe}%,display_name.ilike.%${safe}%`)
-    .limit(20);
+  out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Searching usernames...</div>';
+
+  const {data,error}=await db.rpc("search_people_by_username",{p_query:q});
   if(error){
     console.error(error);
     out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Search could not load. Try again.</div>';
     return;
   }
   if(!data||!data.length){
-    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No TableScore users found.</div>';
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No matching @username found.</div>';
     return;
   }
-  out.innerHTML=data.map(u=>{
-    const isFollowing=followingIds.has(u.id);
-    const isPending=pendingFollowingIds.has(u.id);
-    const display=u.display_name||u.username;
-    return `<div class="row" style="gap:10px">
-      <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
-      <div style="min-width:0;flex:1">
-        <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
-          <div class="row-name">${esc(display)}</div>
-          <div class="row-meta">@${esc(u.username)}${u.home_city?" \u00b7 "+esc(u.home_city):""}</div>
-        </button>
-      </div>
-      <button class="${isFollowing||isPending?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
-    </div>`;
-  }).join("");
+  out.innerHTML=data.map(u=>peopleRowMarkup(u)).join("");
+}
+
+async function loadPeopleSuggestions(){
+  const wrap=document.getElementById("peopleSuggestionsWrap");
+  const out=document.getElementById("peopleSuggestions");
+  if(!wrap||!out)return;
+
+  if(!currentUser||!profile?.username){
+    wrap.classList.add("hidden");
+    out.innerHTML="";
+    return;
+  }
+
+  wrap.classList.remove("hidden");
+  out.innerHTML='<div class="people-suggested-empty">Finding people you may know...</div>';
+
+  const {data,error}=await db.rpc("get_people_suggestions",{p_limit:8});
+  if(error){
+    console.error("people suggestions:",error);
+    out.innerHTML='<div class="people-suggested-empty">Suggestions could not load right now.</div>';
+    return;
+  }
+  if(!data||!data.length){
+    out.innerHTML='<div class="people-suggested-empty">No suggestions yet. As more people connect on TableScore, mutual connections will appear here.</div>';
+    return;
+  }
+
+  out.innerHTML=data.map(u=>peopleRowMarkup(u,{showMutual:true})).join("");
 }
 
 async function toggleFollow(userId,btn){
@@ -2896,6 +2938,7 @@ async function toggleFollow(userId,btn){
   btn.style.padding="9px 12px";
   btn.disabled=false;
   loadFollowingFeed();
+  loadPeopleSuggestions();
 }
 
 const ratings=document.getElementById("ratings");
