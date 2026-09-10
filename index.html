@@ -427,7 +427,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
   <section id="profile" class="screen">
     <div class="profilebox" style="position:relative">
-      <button id="settingsGear" class="settings-gear hidden" onclick="openSettings()" aria-label="Settings">&#9881;</button>
+      
       <div id="profileAvatar" class="profileavatar" onclick="chooseProfilePhoto()">G</div>
       <input id="profilePhotoInput" type="file" accept="image/*" class="hidden" onchange="handleProfilePhoto(event)">
       <div id="profilePhotoActions" class="photo-actions hidden">
@@ -2043,7 +2043,7 @@ function renderProfile(){
   document.getElementById("signOutBtn").classList.toggle("hidden",!currentUser);
   document.getElementById("claimUsernameCard").classList.toggle("hidden",!currentUser||!!username);
   document.getElementById("socialCard").classList.toggle("hidden",!currentUser||!username);
-  document.getElementById("settingsGear").classList.toggle("hidden",!currentUser);
+
   document.getElementById("myProfileRatingsCard").classList.toggle("hidden",!currentUser);
   if(!currentUser||!username)document.getElementById("peopleResults").innerHTML="";
   renderMyProfileRatings();
