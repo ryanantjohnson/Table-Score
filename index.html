@@ -431,14 +431,24 @@ function esc(v){
   return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
 
-function showScreen(id){
+function showScreen(id,options={}){
+  const screen=document.getElementById(id);
+  if(!screen)return;
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
-  document.getElementById(id).classList.add("active");
+  screen.classList.add("active");
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s===id));
+
+  // Remember the user's main page so a browser refresh returns here.
+  // Do not persist temporary rating-flow screens.
+  const persistentScreens=["home","explore","saved","profile"];
+  if(persistentScreens.includes(id)){
+    localStorage.setItem("ts_current_screen",id);
+  }
+
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
   if(id==="explore") renderExplore();
-  window.scrollTo({top:0,behavior:"smooth"});
+  if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
 }
 
 function useLocation(){
@@ -1723,6 +1733,11 @@ async function init(){
   const {data:{session}}=await db.auth.getSession();
   currentUser=session?.user||null;
   await Promise.all([loadRestaurantStats(),refreshUserData()]);
+
+  const savedScreen=localStorage.getItem("ts_current_screen");
+  if(["home","explore","saved","profile"].includes(savedScreen)){
+    showScreen(savedScreen,{restore:true});
+  }
 
   db.auth.onAuthStateChange(async (_event,sessionNow)=>{
     currentUser=sessionNow?.user||null;
