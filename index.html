@@ -438,6 +438,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .background-crop-stage{position:relative;width:min(88vw,420px);aspect-ratio:16/9;margin:14px auto;overflow:hidden;border-radius:20px;background:#0b0d0f;touch-action:none;border:1px solid var(--line)}
 .background-crop-stage img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-drag:none;transform-origin:center center;pointer-events:none}
 .background-crop-guide{position:absolute;inset:0;pointer-events:none;border:2px solid rgba(255,255,255,.88);box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)}
+#backgroundCropModal button{touch-action:manipulation;position:relative;z-index:5}
 
 </style>
 </head>
@@ -967,7 +968,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   <div class="sheet">
     <div class="section-head">
       <div><div class="section-title">Profile Background</div><div class="muted" style="font-size:11px;margin-top:3px">Move and zoom your photo to frame the profile header.</div></div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="cancelBackgroundCrop()">Cancel</button>
+      <button id="cancelBackgroundCropTopBtn" type="button" class="secondary" style="width:auto;padding:8px 12px">Cancel</button>
     </div>
     <div id="backgroundCropStage" class="background-crop-stage">
       <img id="backgroundCropImage" alt="Profile background crop preview">
@@ -978,7 +979,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
     </div>
     <div class="crop-actions">
-      <button class="secondary" onclick="cancelBackgroundCrop()">Cancel</button>
+      <button id="cancelBackgroundCropBottomBtn" type="button" class="secondary">Cancel</button>
       <button id="saveBackgroundCropBtn" type="button" class="primary">Use Background</button>
     </div>
   </div>
@@ -3006,7 +3007,7 @@ function updateBackgroundCropTransform(){
 }
 function setBackgroundCropZoom(v){backgroundZoom=Math.max(1,Math.min(3,Number(v)||1));updateBackgroundCropTransform();}
 function backgroundPointerDown(e){
-  const stage=document.getElementById("backgroundCropStage");stage.setPointerCapture?.(e.pointerId);backgroundPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  const stage=document.getElementById("backgroundCropStage");backgroundPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(backgroundPointers.size===1)backgroundDragStart={x:e.clientX,y:e.clientY,startX:backgroundX,startY:backgroundY};
   else if(backgroundPointers.size===2){const p=[...backgroundPointers.values()];backgroundPinchStartDistance=Math.hypot(p[0].x-p[1].x,p[0].y-p[1].y)||1;backgroundPinchStartZoom=backgroundZoom;}
 }
@@ -3786,11 +3787,31 @@ if(backgroundCropStageEl){
   backgroundCropStageEl.addEventListener("pointermove",backgroundPointerMove);
   backgroundCropStageEl.addEventListener("pointerup",backgroundPointerUp);
   backgroundCropStageEl.addEventListener("pointercancel",backgroundPointerUp);
+  backgroundCropStageEl.addEventListener("pointerleave",backgroundPointerUp);
 }
 const saveBackgroundCropBtnEl=document.getElementById("saveBackgroundCropBtn");
-if(saveBackgroundCropBtnEl){
-  saveBackgroundCropBtnEl.addEventListener("click",saveProfileBackgroundCrop);
+const cancelBackgroundCropTopBtnEl=document.getElementById("cancelBackgroundCropTopBtn");
+const cancelBackgroundCropBottomBtnEl=document.getElementById("cancelBackgroundCropBottomBtn");
+
+function bindImmediateModalButton(el,handler){
+  if(!el)return;
+  let handled=false;
+  el.addEventListener("pointerdown",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+    if(handled)return;
+    handled=true;
+    Promise.resolve(handler()).finally(()=>setTimeout(()=>{handled=false;},350));
+  });
+  el.addEventListener("click",e=>{
+    e.preventDefault();
+    e.stopPropagation();
+  });
 }
+
+bindImmediateModalButton(saveBackgroundCropBtnEl,saveProfileBackgroundCrop);
+bindImmediateModalButton(cancelBackgroundCropTopBtnEl,cancelBackgroundCrop);
+bindImmediateModalButton(cancelBackgroundCropBottomBtnEl,cancelBackgroundCrop);
 
 
 // ===== V5.23 Notifications Foundation =====
