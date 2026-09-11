@@ -750,6 +750,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+<div id="secretBadgeLabModal" class="modal hidden">
+  <div class="modal-card" style="max-width:520px">
+    <div class="modal-head">
+      <div>
+        <div class="page-title" style="margin:0">Secret Badge Lab</div>
+        <div class="muted" style="font-size:11px;margin-top:4px">OG preview only Â· nothing here is awarded</div>
+      </div>
+      <button class="closebtn" onclick="closeSecretBadgeLab()">Ã</button>
+    </div>
+    <div id="secretBadgeLabGrid" class="reward-grid" style="margin-top:14px"></div>
+  </div>
+</div>
+
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
   <div class="sheet" style="max-height:88vh;overflow:auto">
     <div class="section-head">
@@ -856,6 +869,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="inline-actions" style="margin-top:10px">
         <input id="settingsBirthDate" type="date" style="flex:1;min-width:0;background:var(--inputBg);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:11px 12px">
         <button class="primary" onclick="saveBirthDate()">Save</button>
+      </div>
+    </div>
+
+    <div id="secretBadgeLabCard" class="card hidden">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Secret Badge Lab</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">OG-only preview. This does not unlock or award anything.</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:8px 11px" onclick="openSecretBadgeLab()">Preview</button>
       </div>
     </div>
 
@@ -3164,8 +3187,54 @@ function updateSettingsBadges(){
   if(summary)summary.textContent=followRequestCount===1?"1 pending request":`${followRequestCount} pending requests`;
 }
 
+
+const SECRET_BADGE_LAB_ITEMS=[
+  {slug:"secret-sauce",name:"Secret Sauce",note:"Live"},
+  {slug:"hidden-gem",name:"Hidden Gem Hunter",note:"Live"},
+  {slug:"og-encounter",name:"OG Encounter",note:"Live"},
+  {slug:"after-hours",name:"After Hours",note:"V5.29"},
+  {slug:"early-bite",name:"Early Bite",note:"V5.29"},
+  {slug:"same-table",name:"Same Table",note:"V5.29"},
+  {slug:"off-the-menu",name:"Off the Menu",note:"V5.29"},
+  {slug:"crowd-favorite",name:"Crowd Favorite",note:"V5.29"},
+  {slug:"local-legend",name:"Local Legend",note:"V5.29"},
+  {slug:"conversation-starter",name:"Conversation Starter",note:"V5.29"},
+  {slug:"food-explorer",name:"Food Explorer",note:"V5.29"},
+  {slug:"under-the-radar",name:"Under the Radar",note:"V5.29"},
+  {slug:"road-tripper",name:"Road Tripper",note:"V5.29"},
+  {slug:"global-taste",name:"Global Taste",note:"V5.29"},
+  {slug:"trend-spotter",name:"Trend Spotter",note:"V5.29"},
+  {slug:"birthday-bite",name:"Birthday Bite",note:"V5.29"},
+  {slug:"second-helping",name:"Second Helping",note:"V5.29"},
+  {slug:"taste-twins",name:"Taste Twins",note:"V5.29"}
+];
+
+function renderSecretBadgeLab(){
+  const grid=document.getElementById("secretBadgeLabGrid");
+  if(!grid)return;
+  grid.innerHTML=SECRET_BADGE_LAB_ITEMS.map(item=>`
+    <div class="reward-chip" style="min-height:108px">
+      <div class="reward-chip-icon">${rewardVisualMarkup(item.slug)}</div>
+      <div class="reward-chip-name" style="font-size:10px">${esc(item.name)}</div>
+      <div class="reward-chip-type">${esc(item.note)}</div>
+    </div>
+  `).join("");
+}
+
+function openSecretBadgeLab(){
+  if(currentUser?.id!==TABLESCORE_OG_USER_ID)return;
+  renderSecretBadgeLab();
+  document.getElementById("secretBadgeLabModal")?.classList.remove("hidden");
+}
+
+function closeSecretBadgeLab(){
+  document.getElementById("secretBadgeLabModal")?.classList.add("hidden");
+}
+
 function openSettings(){
   if(!currentUser)return openAccount();
+  const badgeLabCard=document.getElementById("secretBadgeLabCard");
+  if(badgeLabCard)badgeLabCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
   renderThemeChoices();
   renderTitlePicker();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
