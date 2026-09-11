@@ -1842,10 +1842,13 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
     const admin8=administrative.find(x=>Number(x?.adminLevel)===8)?.name || null;
     const admin7=administrative.find(x=>Number(x?.adminLevel)===7)?.name || null;
 
-    const municipal=admin8 || admin7 || null;
+    // For TableScore's browsing label, the reverse geocoder's locality is the
+    // best representation of the place the GPS point is actually in.
+    // BigDataCloud's city/admin values can identify a nearby/significant city.
     const placeName=
-      municipal ||
       data.locality ||
+      admin8 ||
+      admin7 ||
       data.city ||
       data.principalSubdivision ||
       null;
