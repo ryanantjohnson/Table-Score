@@ -251,6 +251,30 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .crop-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
 
 
+
+/* ===== V5.30 Badge Folder ===== */
+.badge-folder-btn{width:100%;display:flex;align-items:center;gap:12px;text-align:left;padding:14px 15px;border:1px solid var(--line);border-radius:18px;background:var(--card2);color:var(--ink)}
+.badge-folder-icon{width:44px;height:38px;border-radius:11px;background:var(--gold);color:var(--accentText);display:grid;place-items:center;flex:0 0 auto}
+.badge-folder-icon svg{width:23px;height:23px}
+.badge-folder-copy{min-width:0;flex:1}.badge-folder-title{font-weight:950;font-size:15px}.badge-folder-sub{font-size:10px;color:var(--muted);margin-top:3px;line-height:1.35}
+.badge-folder-arrow{font-size:22px;color:var(--gold);font-weight:900}
+.badge-folder-sheet{position:relative;max-width:560px!important;max-height:90vh;overflow:auto;padding-top:60px!important}
+.badge-folder-close{position:absolute;right:14px;top:14px;width:38px!important;height:38px!important;padding:0!important;border-radius:50%!important;display:grid!important;place-items:center!important;z-index:5}
+.badge-folder-close svg{width:18px;height:18px}
+.badge-folder-section{margin-top:18px}
+.badge-folder-section:first-of-type{margin-top:0}
+.badge-folder-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;margin-top:10px}
+.badge-folder-item{position:relative;min-height:112px;border:1px solid var(--line);border-radius:18px;background:var(--card2);padding:11px 6px 9px;text-align:center;color:var(--ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px}
+.badge-folder-item.selectable{cursor:pointer}
+.badge-folder-item.equipped{outline:2px solid var(--gold);outline-offset:1px}
+.badge-folder-item.target{animation:badgeTargetPulse 1s ease-in-out 3}
+.badge-folder-item .badge-emoji{font-size:27px;min-height:43px;display:grid;place-items:center}
+.badge-folder-item .badge-emoji svg{width:42px;height:42px}
+.badge-folder-item-name{font-size:10px;font-weight:900;line-height:1.15}
+.badge-folder-item-meta{font-size:8px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;font-weight:900}
+@keyframes badgeTargetPulse{0%,100%{box-shadow:0 0 0 0 rgba(202,255,47,0)}50%{box-shadow:0 0 0 6px rgba(202,255,47,.28)}}
+@media(max-width:420px){.badge-folder-grid{grid-template-columns:repeat(3,minmax(0,1fr))}.badge-folder-item{min-height:108px}}
+
 /* ===== V5.18 Food Badges ===== */
 .profile-badges{display:flex;gap:7px;justify-content:center;align-items:center;flex-wrap:wrap;margin-top:9px;min-height:0}
 .profile-badge{
@@ -641,6 +665,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
+    <div id="profileBadgeFolderCard" class="card hidden">
+      <button class="badge-folder-btn" onclick="openOwnBadgeFolder()">
+        <span class="badge-folder-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 7.5h7l2 2H21v9.5H3zM3 7.5V5h6l2 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="badge-folder-copy">
+          <span class="badge-folder-title">Badges</span>
+          <span id="profileBadgeFolderSub" class="badge-folder-sub">View earned badges and choose what appears on your profile.</span>
+        </span>
+        <span class="badge-folder-arrow">&rsaquo;</span>
+      </button>
+    </div>
+
     <div id="claimUsernameCard" class="card hidden">
       <div class="section-title">Claim your TableScore username</div>
       <p class="muted" style="font-size:12px;line-height:1.45">Your account was created before usernames were added. Pick a unique username to use the social features.</p>
@@ -667,19 +704,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <div id="peopleSuggestions" class="list"></div>
       </div>
     </div>
-
-    <div id="earnedRewardsCard" class="card hidden">
-      <div class="section-head">
-        <div>
-          <div class="section-title" style="font-size:15px">Earned Rewards</div>
-          <div class="muted" style="font-size:11px;margin-top:4px">Achievements you have unlocked on TableScore.</div>
-        </div>
-        <div id="earnedRewardsCount" class="muted" style="font-size:11px"></div>
-      </div>
-      <div id="earnedRewardsGrid" class="reward-grid" style="margin-top:12px"></div>
-    </div>
-
-    <div id="myProfileRatingsCard" class="card hidden">
+<div id="myProfileRatingsCard" class="card hidden">
       <div class="section-head">
         <div class="section-title">Recent Ratings</div>
         <span class="muted" style="font-size:11px">Your posts</span>
@@ -721,6 +746,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
+    <div id="publicBadgeFolderCard" class="card">
+      <button class="badge-folder-btn" onclick="openPublicBadgeFolder()">
+        <span class="badge-folder-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24"><path d="M3 7.5h7l2 2H21v9.5H3zM3 7.5V5h6l2 2.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </span>
+        <span class="badge-folder-copy">
+          <span class="badge-folder-title">Badges</span>
+          <span id="publicBadgeFolderSub" class="badge-folder-sub">See the badges this member has earned.</span>
+        </span>
+        <span class="badge-folder-arrow">&rsaquo;</span>
+      </button>
+    </div>
+
     <div class="card">
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
         <div class="stat"><div class="stat-label">RATINGS</div><div id="publicRatingsCount" class="stat-value">0</div></div>
@@ -750,14 +788,48 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+<div id="badgeFolderModal" class="modal hidden" onclick="if(event.target===this)closeBadgeFolder()">
+  <div class="sheet badge-folder-sheet">
+    <button class="secondary badge-folder-close" onclick="closeBadgeFolder()" aria-label="Close badges">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+    </button>
+    <div class="section-title" id="badgeFolderTitle" style="font-size:24px">Badges</div>
+    <div id="badgeFolderSubtitle" class="muted" style="font-size:11px;line-height:1.45;margin-top:4px"></div>
+
+    <div id="badgeFolderEquippedSection" class="badge-folder-section">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Displayed on Profile</div>
+          <div id="badgeFolderEquipHint" class="muted" style="font-size:10px;margin-top:3px">Choose up to 4.</div>
+        </div>
+        <div id="badgeFolderCount" class="badge-count"></div>
+      </div>
+      <div id="badgeFolderEquippedGrid" class="badge-folder-grid"></div>
+    </div>
+
+    <div class="badge-folder-section">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Earned Badges</div>
+          <div class="muted" style="font-size:10px;margin-top:3px">Rewards stay here permanently after you unlock them.</div>
+        </div>
+        <div id="badgeFolderEarnedCount" class="muted" style="font-size:10px"></div>
+      </div>
+      <div id="badgeFolderEarnedGrid" class="badge-folder-grid"></div>
+    </div>
+  </div>
+</div>
+
 <div id="secretBadgeLabModal" class="modal hidden">
-  <div class="modal-card" style="max-width:520px">
-    <div class="modal-head">
+  <div class="sheet badge-folder-sheet">
+    <div>
       <div>
         <div class="page-title" style="margin:0">Secret Badge Lab</div>
-        <div class="muted" style="font-size:11px;margin-top:4px">OG preview only Â· nothing here is awarded</div>
+        <div class="muted" style="font-size:11px;margin-top:4px">OG preview only - nothing here is awarded</div>
       </div>
-      <button class="closebtn" onclick="closeSecretBadgeLab()">Ã</button>
+      <button class="secondary badge-folder-close" onclick="closeSecretBadgeLab()" aria-label="Close preview">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
+      </button>
     </div>
     <div id="secretBadgeLabGrid" class="reward-grid" style="margin-top:14px"></div>
   </div>
@@ -810,20 +882,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <div class="muted" style="grid-column:1/-1;font-size:11px">Loading titles...</div>
       </div>
     </div>
-
-
-    <div class="card">
-      <div class="section-head">
-        <div>
-          <div class="section-title" style="font-size:15px">Food Badges</div>
-          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Choose up to 4 badges to show on your profile.</div>
-          <div id="badgeCount" class="badge-count">0 / 4 equipped</div>
-        </div>
-      </div>
-      <div id="badgePicker" class="badge-picker"></div>
-    </div>
-
-    <div id="chefsTableAdminCard" class="card hidden">
+<div id="chefsTableAdminCard" class="card hidden">
       <div class="section-title" style="font-size:15px">Chef's Table Applications</div>
       <div class="muted" style="font-size:11px;margin-top:4px">Private OG review queue.</div>
       <button class="primary" style="width:100%;margin-top:10px" onclick="openChefsTableAdmin()">Review Applications</button>
@@ -2318,6 +2377,118 @@ async function saveBirthDate(){
   alert("Birthday saved.");
 }
 
+
+let badgeFolderMode="own";
+let badgeFolderPublicRewards=[];
+let badgeFolderTargetSlug=null;
+
+function secretBadgeSlugSet(){
+  return new Set(["secret-sauce","hidden-gem","og-encounter","after-hours","early-bite","same-table","off-the-menu","crowd-favorite","local-legend","conversation-starter","food-explorer","under-the-radar","road-tripper","global-taste","trend-spotter","birthday-bite","second-helping","taste-twins"]);
+}
+function badgeFolderIcon(slug, fallback=""){
+  return secretBadgeSlugSet().has(slug)?rewardVisualMarkup(slug):(fallback||rewardIconMarkup(slug));
+}
+function closeBadgeFolder(){
+  document.getElementById("badgeFolderModal")?.classList.add("hidden");
+  badgeFolderTargetSlug=null;
+}
+function badgeFolderItemMarkup(item,{selectable=false,equipped=false,target=false,meta=""}={}){
+  const slug=item.slug||item.reward_slug||"";
+  const name=item.name||item.reward_name||"Badge";
+  const fallback=item.emoji||item.reward_emoji||"";
+  const click=selectable?` onclick="toggleFoodBadge('${slug}');setTimeout(()=>renderOwnBadgeFolder('${badgeFolderTargetSlug||""}'),120)"`:"";
+  return `<button id="badge-folder-${slug}" class="badge-folder-item ${selectable?"selectable":""} ${equipped?"equipped":""} ${target?"target":""}"${click}${selectable?"":" disabled"} style="${selectable?"":"opacity:1"}">
+    <span class="badge-emoji">${badgeFolderIcon(slug,fallback)}</span>
+    <span class="badge-folder-item-name">${esc(name)}</span>
+    ${meta?`<span class="badge-folder-item-meta">${esc(meta)}</span>`:""}
+  </button>`;
+}
+function ownEarnedBadgeItems(){
+  const out=[];
+  const seen=new Set();
+  for(const r of earnedProgressRewards||[]){
+    if((r.reward_type||"badge")!=="badge")continue;
+    if(seen.has(r.reward_slug))continue;
+    out.push({slug:r.reward_slug,name:r.reward_name||"Reward",emoji:r.reward_emoji||"",earned_at:r.earned_at||r.unlocked_at,is_secret:!!r.is_secret});
+    seen.add(r.reward_slug);
+  }
+  for(const r of earnedSecretRewards||[]){
+    if(r.reward_type!=="badge"||seen.has(r.reward_slug))continue;
+    out.push({slug:r.reward_slug,name:r.reward_name||"Secret Reward",emoji:r.reward_emoji||"",earned_at:r.unlocked_at,is_secret:true});
+    seen.add(r.reward_slug);
+  }
+  return out;
+}
+function renderOwnBadgeFolder(targetSlug=""){
+  const equippedGrid=document.getElementById("badgeFolderEquippedGrid");
+  const earnedGrid=document.getElementById("badgeFolderEarnedGrid");
+  const count=document.getElementById("badgeFolderCount");
+  const earnedCount=document.getElementById("badgeFolderEarnedCount");
+  if(!equippedGrid||!earnedGrid)return;
+
+  document.getElementById("badgeFolderTitle").textContent="My Badges";
+  document.getElementById("badgeFolderSubtitle").textContent="Your badge collection lives here. Tap any available badge to add or remove it from the 4 shown on your profile.";
+  document.getElementById("badgeFolderEquipHint").textContent="Tap to equip or remove.";
+  count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
+
+  equippedGrid.innerHTML=availableBadges.map(b=>badgeFolderItemMarkup(
+    b,{selectable:true,equipped:equippedBadgeSlugs.includes(b.slug),target:b.slug===targetSlug,meta:equippedBadgeSlugs.includes(b.slug)?"Displayed":""}
+  )).join("");
+
+  const earned=ownEarnedBadgeItems();
+  earnedCount.textContent=earned.length?`${earned.length} earned`:"";
+  earnedGrid.innerHTML=earned.length
+    ?earned.map(b=>badgeFolderItemMarkup(b,{target:b.slug===targetSlug,meta:b.is_secret?"Secret Found":"Earned"})).join("")
+    :'<div class="muted" style="grid-column:1/-1;font-size:11px;line-height:1.45">Earned rewards will appear here as you unlock them.</div>';
+
+  if(targetSlug){
+    setTimeout(()=>{
+      const el=document.getElementById(`badge-folder-${CSS.escape(targetSlug)}`);
+      if(el){el.scrollIntoView({behavior:"smooth",block:"center"});el.classList.add("target");}
+    },180);
+  }
+}
+async function openOwnBadgeFolder(targetSlug=""){
+  if(!currentUser)return openAccount();
+  badgeFolderMode="own";
+  badgeFolderTargetSlug=targetSlug||null;
+  await Promise.all([loadFoodBadges(),loadSecretRewards(),loadProgressRewards()]);
+  renderOwnBadgeFolder(targetSlug);
+  document.getElementById("badgeFolderModal")?.classList.remove("hidden");
+}
+async function openPublicBadgeFolder(targetSlug=""){
+  const userId=viewedProfile?.id;
+  if(!userId)return;
+  badgeFolderMode="public";
+  badgeFolderTargetSlug=targetSlug||null;
+
+  const {data,error}=await db.rpc("get_public_badge_collection",{p_user_id:userId});
+  if(error){console.error("public badge collection:",error);badgeFolderPublicRewards=[];}
+  else badgeFolderPublicRewards=data||[];
+
+  const equippedGrid=document.getElementById("badgeFolderEquippedGrid");
+  const earnedGrid=document.getElementById("badgeFolderEarnedGrid");
+  document.getElementById("badgeFolderTitle").textContent=(viewedProfile?.username?`@${viewedProfile.username}`:"This member")+" - Badges";
+  document.getElementById("badgeFolderSubtitle").textContent="Badges and rewards this member has chosen to display or has earned.";
+  document.getElementById("badgeFolderEquipHint").textContent="Currently shown on their profile.";
+
+  const displayed=badgeFolderPublicRewards.filter(x=>x.collection_type==="displayed");
+  const earned=badgeFolderPublicRewards.filter(x=>x.collection_type==="earned");
+  document.getElementById("badgeFolderCount").textContent=`${displayed.length} displayed`;
+  document.getElementById("badgeFolderEarnedCount").textContent=earned.length?`${earned.length} earned`:"";
+
+  equippedGrid.innerHTML=displayed.length
+    ?displayed.map(b=>badgeFolderItemMarkup({slug:b.badge_slug,name:b.badge_name,emoji:b.badge_emoji},{target:b.badge_slug===targetSlug,meta:"Displayed"})).join("")
+    :'<div class="muted" style="grid-column:1/-1;font-size:11px">No badges displayed.</div>';
+
+  earnedGrid.innerHTML=earned.length
+    ?earned.map(b=>badgeFolderItemMarkup({slug:b.badge_slug,name:b.badge_name,emoji:b.badge_emoji},{target:b.badge_slug===targetSlug,meta:"Earned"})).join("")
+    :'<div class="muted" style="grid-column:1/-1;font-size:11px">No earned badges are visible yet.</div>';
+
+  document.getElementById("badgeFolderModal")?.classList.remove("hidden");
+  if(targetSlug)setTimeout(()=>document.getElementById(`badge-folder-${CSS.escape(targetSlug)}`)?.scrollIntoView({behavior:"smooth",block:"center"}),180);
+}
+
 let publicProfileReturnScreen="home";
 
 async function openPublicProfile(userId){
@@ -2692,6 +2863,13 @@ async function loadProgressRewards(){
 }
 
 function renderProfile(){
+  const badgeFolderCard=document.getElementById("profileBadgeFolderCard");
+  if(badgeFolderCard)badgeFolderCard.classList.toggle("hidden",!currentUser);
+  const badgeFolderSub=document.getElementById("profileBadgeFolderSub");
+  if(badgeFolderSub&&currentUser){
+    const earnedCount=ownEarnedBadgeItems().length;
+    badgeFolderSub.textContent=`${earnedCount} earned - ${equippedBadgeSlugs.length}/4 displayed`;
+  }
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
   const username=profile?.username||"";
@@ -2883,7 +3061,7 @@ async function equipSecretReward(){
   if(r.reward_type==="badge"){
     if(!equippedBadgeSlugs.includes(r.reward_slug)){
       if(equippedBadgeSlugs.length>=4){
-        alert("You already have 4 badges equipped. Remove one in Settings, then equip this reward.");
+        alert("You already have 4 badges displayed. Open your Badges folder on Profile to swap one out.");
         closeSecretReward();return;
       }
       const next=[...equippedBadgeSlugs,r.reward_slug];
@@ -4409,6 +4587,13 @@ async function openNotification(id){
       updateNotificationBadge();
       renderNotifications();
     }
+  }
+
+  const rewardSlug=n?.metadata?.reward_slug||null;
+  if(n.type==="secret_reward"&&rewardSlug){
+    closeNotifications();
+    showScreen("profile");
+    setTimeout(()=>openOwnBadgeFolder(rewardSlug),120);
   }
 }
 
