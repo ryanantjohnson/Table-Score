@@ -1225,6 +1225,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="or">or choose another area</div>
       <div class="field" style="margin:0"><input id="browseAreaInput" placeholder="City, state or ZIP"></div>
       <button class="secondary" onclick="saveBrowseArea()">Use This Area</button>
+      <button class="secondary" style="margin-top:10px" onclick="showLocationDiagnostic()">Location Diagnostic</button>
       <div id="browseLocationCurrent" class="location-current"></div>
     </div>
   </div>
@@ -1824,6 +1825,8 @@ async function getFreshTableScoreCoords(){
     );
   });
 }
+let tableScoreLocationDebug=null;
+
 async function reverseGeocodeBrowseArea(latitude,longitude){
   try{
     const url="https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+
@@ -1832,19 +1835,14 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
     if(!res.ok)return null;
 
     const data=await res.json();
-
-    // BigDataCloud's `city` field is the most significant populated place,
-    // which can be a nearby city rather than the municipality the GPS point
-    // is actually inside. Prefer the administrative city boundary first.
     const administrative=Array.isArray(data?.localityInfo?.administrative)
       ? data.localityInfo.administrative
       : [];
 
-    const municipal=
-      administrative.find(x=>Number(x?.adminLevel)===8)?.name ||
-      administrative.find(x=>Number(x?.adminLevel)===7)?.name ||
-      null;
+    const admin8=administrative.find(x=>Number(x?.adminLevel)===8)?.name || null;
+    const admin7=administrative.find(x=>Number(x?.adminLevel)===7)?.name || null;
 
+    const municipal=admin8 || admin7 || null;
     const placeName=
       municipal ||
       data.locality ||
@@ -1852,11 +1850,22 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
       data.principalSubdivision ||
       null;
 
-    if(!placeName)return null;
-
     const region=data.principalSubdivisionCode
       ? data.principalSubdivisionCode.split("-").pop()
       : "";
+
+    tableScoreLocationDebug={
+      latitude,
+      longitude,
+      locality:data.locality||null,
+      city:data.city||null,
+      principalSubdivision:data.principalSubdivision||null,
+      admin7,
+      admin8,
+      selected:placeName||null
+    };
+
+    if(!placeName)return null;
 
     return region && !String(placeName).toUpperCase().endsWith(", "+region.toUpperCase())
       ? placeName+", "+region
@@ -1906,6 +1915,32 @@ async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
     return false;
   }
 }
+function locationDiagnosticText(){
+  const lat=Number(localStorage.getItem("ts_lat"));
+  const lon=Number(localStorage.getItem("ts_lon"));
+  const acc=Number(localStorage.getItem("ts_location_accuracy"));
+  const d=tableScoreLocationDebug||{};
+  const fmt=n=>Number.isFinite(n)?n.toFixed(6):"unknown";
+  return [
+    "GPS latitude: "+fmt(lat),
+    "GPS longitude: "+fmt(lon),
+    "GPS accuracy: "+(Number.isFinite(acc)&&acc>0?Math.round(acc)+" m":"unknown"),
+    "Reverse locality: "+(d.locality||"none"),
+    "Reverse city: "+(d.city||"none"),
+    "Admin level 8: "+(d.admin8||"none"),
+    "Admin level 7: "+(d.admin7||"none"),
+    "Selected label: "+(d.selected||area||"none")
+  ].join("\n");
+}
+
+function showLocationDiagnostic(){
+  const msg=locationDiagnosticText();
+  if(navigator.clipboard?.writeText){
+    navigator.clipboard.writeText(msg).catch(()=>{});
+  }
+  alert("TableScore Location Diagnostic\n\n"+msg+"\n\nTake a screenshot of this and send it to me.");
+}
+
 let restaurantFinderMode="search";
 let restaurantMap=null;
 let restaurantMapMarkers=[];
