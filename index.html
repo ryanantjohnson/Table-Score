@@ -130,6 +130,19 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .map-selection{margin-top:9px;border:1px solid var(--line);background:var(--card2);border-radius:15px;padding:12px}
 .map-selection-name{font-size:14px;font-weight:950}
 .map-selection-meta{font-size:10px;color:var(--muted);line-height:1.4;margin-top:4px}
+.ts-map-label{
+  background:rgba(15,18,20,.92);
+  color:#fff;
+  border:1px solid rgba(255,255,255,.16);
+  border-radius:7px;
+  padding:3px 6px;
+  font-size:10px;
+  font-weight:900;
+  line-height:1.15;
+  white-space:nowrap;
+  box-shadow:0 2px 7px rgba(0,0,0,.22);
+}
+
 
 
 .place-selected-note{display:flex;align-items:center;gap:6px;color:var(--green);font-size:11px;font-weight:850;margin-top:7px}
@@ -1187,7 +1200,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <button class="primary" onclick="searchRestaurantMapArea()">Search This Area</button>
         <button class="secondary" style="width:auto;padding:0 13px" onclick="centerRestaurantMapOnMe()">My Location</button>
       </div>
-      <div class="map-note">Move the map anywhere, then tap Search This Area. Restaurant results are only requested when you tap the button.</div>
+      <div class="map-note">Move the map anywhere, then tap Search This Area. Loaded restaurants show their names directly on the map so you can browse before tapping.</div>
       <div id="mapRestaurantSelection"></div>
     </div>
     <div id="nearbyRestaurantStatus" class="place-picker-status">Search for a restaurant or switch to Nearby.</div>
@@ -1247,7 +1260,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 // Paste the website-restricted Google Maps JavaScript API key here.
-const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs"
+const TABLESCORE_MAPS_BROWSER_KEY="PASTE_YOUR_TABLESCORE_MAP_KEY_HERE";
 
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
@@ -2064,7 +2077,27 @@ async function searchRestaurantMapArea(){
     if(selection)selection.innerHTML="";
     nearbyGoogleRestaurants.forEach((r,i)=>{
       if(!Number.isFinite(+r.latitude)||!Number.isFinite(+r.longitude))return;
-      const marker=new google.maps.Marker({map:restaurantMap,position:{lat:+r.latitude,lng:+r.longitude},title:r.name||"Restaurant"});
+      const restaurantIconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+        <circle cx="15" cy="15" r="13" fill="#15191c" stroke="#B9FF2C" stroke-width="2"/>
+        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>`;
+      const marker=new google.maps.Marker({
+        map:restaurantMap,
+        position:{lat:+r.latitude,lng:+r.longitude},
+        title:r.name||"Restaurant",
+        icon:{
+          url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(restaurantIconSvg),
+          scaledSize:new google.maps.Size(30,30),
+          anchor:new google.maps.Point(15,15),
+          labelOrigin:new google.maps.Point(15,38)
+        },
+        label:{
+          text:r.name||"Restaurant",
+          className:"ts-map-label"
+        },
+        zIndex:100+i
+      });
       marker.addListener("click",()=>showMapRestaurant(i,marker));
       restaurantMapMarkers.push(marker);
     });
