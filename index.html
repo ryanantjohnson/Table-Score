@@ -1830,17 +1830,42 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
       encodeURIComponent(latitude)+"&longitude="+encodeURIComponent(longitude)+"&localityLanguage=en";
     const res=await fetch(url,{cache:"no-store"});
     if(!res.ok)return null;
+
     const data=await res.json();
-    const city=data.city||data.locality||data.principalSubdivision||null;
-    if(!city)return null;
-    const region=data.principalSubdivisionCode?data.principalSubdivisionCode.split("-").pop():"";
-    return region&&city.indexOf(region)===-1?city+", "+region:city;
+
+    // BigDataCloud's `city` field is the most significant populated place,
+    // which can be a nearby city rather than the municipality the GPS point
+    // is actually inside. Prefer the administrative city boundary first.
+    const administrative=Array.isArray(data?.localityInfo?.administrative)
+      ? data.localityInfo.administrative
+      : [];
+
+    const municipal=
+      administrative.find(x=>Number(x?.adminLevel)===8)?.name ||
+      administrative.find(x=>Number(x?.adminLevel)===7)?.name ||
+      null;
+
+    const placeName=
+      municipal ||
+      data.locality ||
+      data.city ||
+      data.principalSubdivision ||
+      null;
+
+    if(!placeName)return null;
+
+    const region=data.principalSubdivisionCode
+      ? data.principalSubdivisionCode.split("-").pop()
+      : "";
+
+    return region && !String(placeName).toUpperCase().endsWith(", "+region.toUpperCase())
+      ? placeName+", "+region
+      : placeName;
   }catch(e){
     console.warn("reverse geocode:",e);
     return null;
   }
 }
-
 async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
   if(!("geolocation" in navigator))return false;
 
