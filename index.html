@@ -3119,7 +3119,8 @@ function secretSauceIconSvg(){
 function badgeBySlug(slug){return availableBadges.find(b=>b.slug===slug)||STARTER_BADGES.find(b=>b.slug===slug);}
 function badgeMarkup(slug){
   const b=badgeBySlug(slug);if(!b)return "";
-  const icon=rewardVisualMarkup(slug)||b.emoji;
+  const secretArtSlugs=new Set(["secret-sauce","hidden-gem","og-encounter","after-hours","early-bite","same-table","off-the-menu","crowd-favorite","local-legend","conversation-starter","food-explorer","under-the-radar","road-tripper","global-taste","trend-spotter","birthday-bite","second-helping","taste-twins"]);
+      const icon=secretArtSlugs.has(slug)?rewardVisualMarkup(slug):b.emoji;
   return `<div class="profile-badge" title="${esc(b.name)}" aria-label="${esc(b.name)}">${icon}</div>`;
 }
 function renderOwnBadges(){
@@ -3131,7 +3132,7 @@ function renderBadgePicker(){
   out.innerHTML=availableBadges.map(b=>{
     const active=equippedBadgeSlugs.includes(b.slug);
     return `<button class="badge-choice ${active?"active":""}" onclick="toggleFoodBadge('${b.slug}')">
-      <span class="badge-emoji">${rewardVisualMarkup(b.slug)||b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
+      <span class="badge-emoji">${["secret-sauce","hidden-gem","og-encounter","after-hours","early-bite","same-table","off-the-menu","crowd-favorite","local-legend","conversation-starter","food-explorer","under-the-radar","road-tripper","global-taste","trend-spotter","birthday-bite","second-helping","taste-twins"].includes(b.slug)?rewardVisualMarkup(b.slug):b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
     </button>`;
   }).join("");
   const count=document.getElementById("badgeCount");if(count)count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
@@ -3224,7 +3225,13 @@ function renderSecretBadgeLab(){
 function openSecretBadgeLab(){
   if(currentUser?.id!==TABLESCORE_OG_USER_ID)return;
   renderSecretBadgeLab();
-  document.getElementById("secretBadgeLabModal")?.classList.remove("hidden");
+  document.getElementById("badgeModal")?.classList.add("hidden");
+  document.getElementById("settingsModal")?.classList.add("hidden");
+  const lab=document.getElementById("secretBadgeLabModal");
+  if(lab){
+    lab.classList.remove("hidden");
+    lab.style.zIndex="10050";
+  }
 }
 
 function closeSecretBadgeLab(){
