@@ -1608,14 +1608,17 @@ async function startRating(name){
     // If this TableScore restaurant is already linked to Google, preserve that link.
     if(selectedRestaurantId){
       const {data}=await db.from("restaurants")
-        .select("id,name,google_place_id,formatted_address,latitude,longitude,google_primary_type,google_primary_type_name,google_maps_url")
+        .select("id,name,google_place_id,address,formatted_address,city,state_region,postal_code,latitude,longitude,google_primary_type,google_primary_type_name,google_maps_url")
         .eq("id",selectedRestaurantId)
         .maybeSingle();
       if(data?.google_place_id){
         selectedGoogleRestaurant={
           google_place_id:data.google_place_id,
           name:data.name,
-          address:data.formatted_address||null,
+          address:data.address||data.formatted_address||null,
+          city:data.city||null,
+          state_region:data.state_region||null,
+          postal_code:data.postal_code||null,
           latitude:data.latitude,
           longitude:data.longitude,
           primary_type:data.google_primary_type||null,
@@ -1813,7 +1816,12 @@ function chooseNearbyRestaurant(index){
   if(!r)return;
 
   selectedRestaurantId=null;
-  selectedGoogleRestaurant={...r};
+  selectedGoogleRestaurant={
+    ...r,
+    city:r.city||null,
+    state_region:r.state_region||null,
+    postal_code:r.postal_code||null
+  };
   selectedRestaurantName=r.name||"Restaurant";
   syncRateRestaurantPicker();
   closeNearbyRestaurantPicker();
@@ -4484,44 +4492,57 @@ async function findOrCreateRestaurant(name){
   const place=selectedGoogleRestaurant;
 
   if(place?.google_place_id){
-    const {data:byPlace,error:placeError}=await db.from("restaurants")
-      .select("id,name")
-      .eq("google_place_id",place.google_place_id)
-      .maybeSingle();
-    if(placeError)throw placeError;
-    if(byPlace)return byPlace;
-
-    // If an older manually-created TableScore row has the same exact name in
-    // the same city, attach the Google identity instead of creating a duplicate.
-    const cityFromAddress=(place.address||"").split(",")[1]?.trim()||null;
-    let legacyQuery=db.from("restaurants")
-      .select("id,name,city,google_place_id")
-      .ilike("name",clean)
-      .is("google_place_id",null)
-      .limit(10);
-    const {data:legacyRows,error:legacyError}=await legacyQuery;
-    if(legacyError)throw legacyError;
-
-    const legacy=(legacyRows||[]).find(r=>{
-      if(!cityFromAddress)return true;
-      return !r.city || String(r.city).trim().toLowerCase()===cityFromAddress.toLowerCase();
-    });
-
     const realFields={
-      google_place_id:place.google_place_id,
+      address:place.address||null,
       formatted_address:place.address||null,
+      city:place.city||null,
+      state_region:place.state_region||null,
+      postal_code:place.postal_code||null,
       latitude:Number.isFinite(Number(place.latitude))?Number(place.latitude):null,
       longitude:Number.isFinite(Number(place.longitude))?Number(place.longitude):null,
       google_primary_type:place.primary_type||null,
       google_primary_type_name:place.primary_type_name||null,
       google_maps_url:place.google_maps_url||null,
-      place_linked_at:new Date().toISOString(),
-      city:cityFromAddress||null
+      place_linked_at:new Date().toISOString()
     };
+
+    // If this real Google place already exists, refresh its metadata and reuse it.
+    const {data:byPlace,error:placeError}=await db.from("restaurants")
+      .select("id,name")
+      .eq("google_place_id",place.google_place_id)
+      .maybeSingle();
+    if(placeError)throw placeError;
+
+    if(byPlace){
+      const {data:updated,error:updateError}=await db.from("restaurants")
+        .update(realFields)
+        .eq("id",byPlace.id)
+        .select("id,name")
+        .single();
+      if(updateError)throw updateError;
+      return updated;
+    }
+
+    // If an older manually-created TableScore row has the same exact name,
+    // attach the Google identity instead of creating a duplicate.
+    const {data:legacyRows,error:legacyError}=await db.from("restaurants")
+      .select("id,name,city,google_place_id")
+      .ilike("name",clean)
+      .is("google_place_id",null)
+      .limit(10);
+    if(legacyError)throw legacyError;
+
+    const legacy=(legacyRows||[]).find(r=>{
+      if(!place.city)return true;
+      return !r.city || String(r.city).trim().toLowerCase()===String(place.city).trim().toLowerCase();
+    });
 
     if(legacy){
       const {data:linked,error:linkError}=await db.from("restaurants")
-        .update(realFields)
+        .update({
+          google_place_id:place.google_place_id,
+          ...realFields
+        })
         .eq("id",legacy.id)
         .select("id,name")
         .single();
@@ -4530,15 +4551,17 @@ async function findOrCreateRestaurant(name){
     }
 
     const {data:created,error:createError}=await db.from("restaurants")
-      .insert({name:clean,...realFields})
+      .insert({
+        name:clean,
+        google_place_id:place.google_place_id,
+        ...realFields
+      })
       .select("id,name")
       .single();
     if(createError)throw createError;
     return created;
   }
 
-  // Existing TableScore restaurant pages may still be unlinked while we
-  // migrate older manual entries. Do not create brand-new free-text rows.
   if(selectedRestaurantId){
     const {data,error}=await db.from("restaurants")
       .select("id,name")
