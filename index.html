@@ -4514,13 +4514,23 @@ async function findOrCreateRestaurant(name){
     if(placeError)throw placeError;
 
     if(byPlace){
-      const {data:updated,error:updateError}=await db.from("restaurants")
-        .update(realFields)
-        .eq("id",byPlace.id)
-        .select("id,name")
-        .single();
+      const {data:updated,error:updateError}=await db.rpc("link_restaurant_google_place",{
+        p_restaurant_id:byPlace.id,
+        p_google_place_id:place.google_place_id,
+        p_address:realFields.address,
+        p_formatted_address:realFields.formatted_address,
+        p_city:realFields.city,
+        p_state_region:realFields.state_region,
+        p_postal_code:realFields.postal_code,
+        p_latitude:realFields.latitude,
+        p_longitude:realFields.longitude,
+        p_google_primary_type:realFields.google_primary_type,
+        p_google_primary_type_name:realFields.google_primary_type_name,
+        p_google_maps_url:realFields.google_maps_url
+      });
       if(updateError)throw updateError;
-      return updated;
+      const row=Array.isArray(updated)?updated[0]:updated;
+      return row||byPlace;
     }
 
     // If an older manually-created TableScore row has the same exact name,
@@ -4538,16 +4548,23 @@ async function findOrCreateRestaurant(name){
     });
 
     if(legacy){
-      const {data:linked,error:linkError}=await db.from("restaurants")
-        .update({
-          google_place_id:place.google_place_id,
-          ...realFields
-        })
-        .eq("id",legacy.id)
-        .select("id,name")
-        .single();
+      const {data:linked,error:linkError}=await db.rpc("link_restaurant_google_place",{
+        p_restaurant_id:legacy.id,
+        p_google_place_id:place.google_place_id,
+        p_address:realFields.address,
+        p_formatted_address:realFields.formatted_address,
+        p_city:realFields.city,
+        p_state_region:realFields.state_region,
+        p_postal_code:realFields.postal_code,
+        p_latitude:realFields.latitude,
+        p_longitude:realFields.longitude,
+        p_google_primary_type:realFields.google_primary_type,
+        p_google_primary_type_name:realFields.google_primary_type_name,
+        p_google_maps_url:realFields.google_maps_url
+      });
       if(linkError)throw linkError;
-      return linked;
+      const row=Array.isArray(linked)?linked[0]:linked;
+      return row||legacy;
     }
 
     const {data:created,error:createError}=await db.from("restaurants")
