@@ -439,6 +439,13 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .background-crop-stage img{position:absolute;left:50%;top:50%;max-width:none;user-select:none;-webkit-user-drag:none;transform-origin:center center;pointer-events:none}
 .background-crop-guide{position:absolute;inset:0;pointer-events:none;border:2px solid rgba(255,255,255,.88);box-shadow:inset 0 0 0 1px rgba(0,0,0,.28)}
 #backgroundCropModal button{touch-action:manipulation;position:relative;z-index:5}
+#publicProfileHero.has-background .profile-hero-bg{opacity:1}
+#publicProfileHero.has-background .profile-hero-shade{opacity:1}
+#publicProfileHero.has-background #publicProfileName,
+#publicProfileHero.has-background #publicProfileUsername,
+#publicProfileHero.has-background #publicProfileTitle,
+#publicProfileHero.has-background #publicProfileArea{color:#fff!important;text-shadow:0 1px 8px rgba(0,0,0,.72)}
+
 
 </style>
 </head>
@@ -684,6 +691,53 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div style="height:8px"></div>
     <button id="signOutBtn" class="secondary hidden" onclick="signOut()">Sign Out</button>
   </section>
+
+  <section id="publicProfile" class="screen">
+    <div class="backline">
+      <button class="backbtn" onclick="closePublicProfile()">&lsaquo;</button>
+      <div class="page-title" style="margin:0">Profile</div>
+    </div>
+
+    <div id="publicProfileHero" class="profilebox profile-hero" style="position:relative">
+      <div id="publicProfileHeroBg" class="profile-hero-bg"></div>
+      <div class="profile-hero-shade"></div>
+      <div class="profile-hero-content">
+        <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
+        <div id="publicProfileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">TableScore User</div>
+        <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
+        <div id="publicProfileTitle" class="profile-title">Table Regular</div>
+        <div id="publicProfileBadges" class="profile-badges"></div>
+        <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
+        <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
+
+        <div id="markAdminCard" class="mark-admin-card">
+          <div style="font-weight:950">Account Marks</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
+          <div class="mark-admin-actions">
+            <button id="grantChefsTableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chef's Table</button>
+            <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
+        <div class="stat"><div class="stat-label">RATINGS</div><div id="publicRatingsCount" class="stat-value">0</div></div>
+        <div class="stat"><div class="stat-label">PLACES</div><div id="publicPlacesCount" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('followers')" style="cursor:pointer"><div class="stat-label">FOLLOWERS</div><div id="publicFollowersCount" class="stat-value">0</div></div>
+        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('following')" style="cursor:pointer"><div class="stat-label">FOLLOWING</div><div id="publicFollowingCount" class="stat-value">0</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div class="section-title">Recent Ratings</div>
+        <span class="muted" style="font-size:11px">Their posts</span>
+      </div>
+      <div id="publicProfileRatings" style="margin-top:8px"></div>
+    </div>
+  </section>
 </div>
 
 <div class="nav">
@@ -695,49 +749,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
   </div>
 </div>
-
-<div id="publicProfileModal" class="modal hidden" onclick="if(event.target===this)closePublicProfile()">
-  <div class="sheet" style="max-height:88vh;overflow:auto">
-    <div class="section-head">
-      <div class="section-title">TableScore Profile</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePublicProfile()">Close</button>
-    </div>
-
-    <div class="profilebox" style="padding-top:10px">
-      <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
-      <div id="publicProfileName" style="font-family:Georgia,serif;font-size:25px;margin-top:12px">TableScore User</div>
-      <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
-      <div id="publicProfileTitle" class="profile-title">Table Regular</div>
-      <div id="publicProfileBadges" class="profile-badges"></div>
-      <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
-      <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
-
-      <div id="markAdminCard" class="mark-admin-card">
-        <div style="font-weight:950">Account Marks</div>
-        <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
-        <div class="mark-admin-actions">
-          <button id="grantChefsTableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Chef's Table</button>
-          <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
-        </div>
-      </div>
-    </div>
-
-    <div class="card" style="margin-top:0">
-      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
-        <div class="stat"><div class="stat-label">RATINGS</div><div id="publicRatingsCount" class="stat-value">0</div></div>
-        <div class="stat"><div class="stat-label">PLACES</div><div id="publicPlacesCount" class="stat-value">0</div></div>
-        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('followers')" style="cursor:pointer"><div class="stat-label">FOLLOWERS</div><div id="publicFollowersCount" class="stat-value">0</div></div>
-        <div class="stat" role="button" tabindex="0" onclick="openViewedConnections('following')" style="cursor:pointer"><div class="stat-label">FOLLOWING</div><div id="publicFollowingCount" class="stat-value">0</div></div>
-      </div>
-    </div>
-
-    <div class="card">
-      <div class="section-title">Recent Ratings</div>
-      <div id="publicProfileRatings" style="margin-top:8px"></div>
-    </div>
-  </div>
-</div>
-
 
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
   <div class="sheet" style="max-height:88vh;overflow:auto">
@@ -2166,12 +2177,16 @@ async function checkOGEncounterProfileVisit(userId){
   }
 
   const result=Array.isArray(data)?data[0]:data;
-  if(!result?.newly_unlocked)return;
+  if(!result?.newly_unlocked && !result?.should_reveal)return;
 
   await loadSecretRewards();
   await loadProgressRewards();
 
+  const earned=earnedSecretRewards.find(r=>r.reward_slug==="og-encounter");
+  if(!earned)return;
+
   showSecretReward({
+    ...earned,
     reward_slug:"og-encounter",
     reward_type:"badge",
     reward_name:"OG Encounter",
@@ -2184,16 +2199,19 @@ async function checkOGEncounterProfileVisit(userId){
   });
 }
 
+let publicProfileReturnScreen="home";
+
 async function openPublicProfile(userId){
   if(!userId)return;
   if(currentUser&&userId===currentUser.id){
-    closePublicProfile();
     showScreen("profile");
     return;
   }
 
-  const modal=document.getElementById("publicProfileModal");
-  modal.classList.remove("hidden");
+  const activeId=document.querySelector(".screen.active")?.id;
+  if(activeId&&activeId!=="publicProfile")publicProfileReturnScreen=activeId;
+
+  showScreen("publicProfile");
   document.getElementById("publicProfileName").textContent="Loading...";
   document.getElementById("publicProfileUsername").textContent="";
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
@@ -2219,6 +2237,19 @@ async function openPublicProfile(userId){
   if(gErr)console.error(gErr);
 
   viewedProfile=p;
+
+  // Fire the Easter-egg check immediately after the profile identity is verified.
+  // This keeps the reward independent from later photo/badge/engagement loading.
+  void checkOGEncounterProfileVisit(userId);
+
+  const publicHero=document.getElementById("publicProfileHero");
+  const publicHeroBg=document.getElementById("publicProfileHeroBg");
+  if(publicHero&&publicHeroBg){
+    const bg=p.background_url||"";
+    publicHero.classList.toggle("has-background",!!bg);
+    publicHeroBg.style.backgroundImage=bg?`url("${bg}")`:"none";
+  }
+
   const isAcceptedFollower=!!currentUser&&followingIds.has(userId);
   const canSeePrivateContent=!p.is_private||isAcceptedFollower;
   viewedProfileRatings=canSeePrivateContent?(ratings||[]):[];
@@ -2277,22 +2308,23 @@ async function openPublicProfile(userId){
     out.innerHTML=shown.map(r=>feedRatingCard(r,p)).join("");
     await hydrateRatingEngagement(shown.map(r=>r.id));
   }
-
-  // Hidden Easter egg: visiting the immutable OG profile can unlock OG Encounter.
-  setTimeout(()=>checkOGEncounterProfileVisit(userId),260);
 }
 
 function closePublicProfile(){
-  document.getElementById("publicProfileModal").classList.add("hidden");
+  const returnTo=publicProfileReturnScreen&&publicProfileReturnScreen!=="publicProfile"
+    ?publicProfileReturnScreen
+    :"home";
   viewedProfile=null;
   viewedProfileRatings=[];
+  showScreen(returnTo);
 }
 
 async function togglePublicProfileFollow(){
   if(!viewedProfile)return;
   if(!currentUser){
+    const targetId=viewedProfile.id;
     closePublicProfile();
-    openAccount(()=>openPublicProfile(viewedProfile.id));
+    openAccount(()=>openPublicProfile(targetId));
     return;
   }
   const btn=document.getElementById("publicFollowBtn");
