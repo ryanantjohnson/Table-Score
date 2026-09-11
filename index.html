@@ -131,16 +131,17 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .map-selection-name{font-size:14px;font-weight:950}
 .map-selection-meta{font-size:10px;color:var(--muted);line-height:1.4;margin-top:4px}
 .ts-map-label{
-  background:rgba(15,18,20,.92);
-  color:#fff;
-  border:1px solid rgba(255,255,255,.16);
+  background:#111518 !important;
+  color:#ffffff !important;
+  border:1px solid rgba(255,255,255,.28) !important;
   border-radius:7px;
-  padding:3px 6px;
-  font-size:10px;
-  font-weight:900;
+  padding:4px 7px;
+  font-size:11px !important;
+  font-weight:900 !important;
   line-height:1.15;
   white-space:nowrap;
-  box-shadow:0 2px 7px rgba(0,0,0,.22);
+  box-shadow:0 2px 7px rgba(0,0,0,.28);
+  text-shadow:none !important;
 }
 
 
@@ -1260,7 +1261,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 // Paste the website-restricted Google Maps JavaScript API key here.
-const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs"
+const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs";
 
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
