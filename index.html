@@ -101,6 +101,21 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .empty{text-align:center;padding:20px 10px}
 @media(max-width:420px){.hero h1{font-size:35px}.grid3{gap:6px}.mini{padding:8px}.numgrid{grid-template-columns:repeat(4,1fr)}}
 
+
+.place-picker-trigger{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;min-height:58px;padding:12px 13px;border:1px solid var(--line);border-radius:14px;background:var(--card);color:var(--ink);text-align:left}
+.place-picker-trigger .place-main{min-width:0;flex:1}
+.place-picker-trigger .place-name{font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place-picker-trigger .place-address{font-size:11px;color:var(--muted);margin-top:3px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.place-picker-trigger .place-action{color:var(--gold);font-size:12px;font-weight:900;flex:0 0 auto}
+.place-picker-list{display:grid;gap:8px;max-height:58vh;overflow:auto;padding:2px 0 8px}
+.place-result{width:100%;display:flex;gap:10px;align-items:flex-start;text-align:left;border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:15px;padding:12px}
+.place-result:active{transform:scale(.995)}
+.place-result-icon{width:34px;height:34px;border-radius:11px;background:rgba(227,181,95,.14);border:1px solid rgba(227,181,95,.28);display:grid;place-items:center;flex:0 0 34px;color:var(--gold)}
+.place-result-name{font-weight:900;font-size:14px;line-height:1.25}
+.place-result-meta{font-size:11px;color:var(--muted);line-height:1.35;margin-top:4px}
+.place-picker-status{font-size:12px;color:var(--muted);line-height:1.45;padding:10px 2px}
+.place-selected-note{display:flex;align-items:center;gap:6px;color:var(--green);font-size:11px;font-weight:850;margin-top:7px}
+
 .rating-photo-picker{margin-top:10px}
 .photo-add-btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;min-height:54px;border:1px dashed #6b572f;border-radius:14px;background:#15130e;color:var(--gold2);font-weight:900}
 .photo-preview-grid,.rating-photo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin-top:9px}
@@ -600,7 +615,18 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Rate Your Experience</div></div>
     <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
     <div class="card">
-      <div class="field"><label>Where are you eating?</label><input id="rateRestaurant" placeholder="Restaurant name"></div>
+      <div class="field">
+        <label>Where are you eating?</label>
+        <input id="rateRestaurant" class="hidden" readonly>
+        <button id="rateRestaurantPickerBtn" type="button" class="place-picker-trigger" onclick="openNearbyRestaurantPicker()">
+          <div class="place-main">
+            <div id="rateRestaurantPickerName" class="place-name">Choose a real restaurant</div>
+            <div id="rateRestaurantPickerAddress" class="place-address">Uses Google Places near your current location</div>
+          </div>
+          <div class="place-action">Choose</div>
+        </button>
+        <div id="rateRestaurantLinkedNote" class="place-selected-note hidden">Verified real-world place selected</div>
+      </div>
       <div id="verifiedMsg" class="notice">&#128205; Location can be used to mark a submission as a Verified Visit.</div>
     </div>
     <div class="card"><div id="ratings"></div></div>
@@ -1111,6 +1137,23 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+
+<div id="nearbyRestaurantModal" class="modal hidden">
+  <div class="sheet">
+    <div class="section-head" style="margin-bottom:8px">
+      <div>
+        <div class="kicker">Real restaurants</div>
+        <h2 style="margin-top:3px">Nearby Restaurants</h2>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNearbyRestaurantPicker()">Close</button>
+    </div>
+    <div class="muted" style="font-size:11px;line-height:1.45;margin-bottom:10px">Closest results from Google Places. Choosing one links your TableScore rating to the actual restaurant.</div>
+    <div id="nearbyRestaurantStatus" class="place-picker-status">Getting your location...</div>
+    <div id="nearbyRestaurantList" class="place-picker-list"></div>
+    <button id="nearbyRestaurantRetryBtn" class="secondary hidden" onclick="loadNearbyRestaurants(true)">Try Again</button>
+  </div>
+</div>
+
 <div id="accountModal" class="modal hidden">
   <div class="sheet">
     <h2>TableScore Account</h2>
@@ -1154,6 +1197,8 @@ let savedRestaurants=[];
 let savedView="ratings";
 let selectedRestaurantId=null;
 let selectedRestaurantName="";
+let selectedGoogleRestaurant=null;
+let nearbyGoogleRestaurants=[];
 let returnValue="";
 let afterAuth=null;
 let exploreFilter="all";
@@ -1550,10 +1595,228 @@ async function openRestaurantById(id){
 
 async function startRating(name){
   if(!currentUser){openAccount(()=>startRating(name));return;}
-  selectedRestaurantName=name||selectedRestaurantName||"";
-  document.getElementById("rateRestaurant").value=name||selectedRestaurantName||"";
+
+  // Starting from the Home button means a brand-new restaurant choice.
+  if(!name){
+    selectedRestaurantId=null;
+    selectedRestaurantName="";
+    selectedGoogleRestaurant=null;
+  }else{
+    selectedRestaurantName=name||selectedRestaurantName||"";
+    selectedGoogleRestaurant=null;
+
+    // If this TableScore restaurant is already linked to Google, preserve that link.
+    if(selectedRestaurantId){
+      const {data}=await db.from("restaurants")
+        .select("id,name,google_place_id,formatted_address,latitude,longitude,google_primary_type,google_primary_type_name,google_maps_url")
+        .eq("id",selectedRestaurantId)
+        .maybeSingle();
+      if(data?.google_place_id){
+        selectedGoogleRestaurant={
+          google_place_id:data.google_place_id,
+          name:data.name,
+          address:data.formatted_address||null,
+          latitude:data.latitude,
+          longitude:data.longitude,
+          primary_type:data.google_primary_type||null,
+          primary_type_name:data.google_primary_type_name||null,
+          google_maps_url:data.google_maps_url||null
+        };
+      }
+    }
+  }
+
+  syncRateRestaurantPicker();
   resetScores();
   showScreen("rate");
+}
+
+
+function syncRateRestaurantPicker(){
+  const input=document.getElementById("rateRestaurant");
+  const nameEl=document.getElementById("rateRestaurantPickerName");
+  const addressEl=document.getElementById("rateRestaurantPickerAddress");
+  const note=document.getElementById("rateRestaurantLinkedNote");
+  const action=document.querySelector("#rateRestaurantPickerBtn .place-action");
+  if(!input||!nameEl||!addressEl)return;
+
+  input.value=selectedRestaurantName||"";
+
+  if(selectedRestaurantName){
+    nameEl.textContent=selectedRestaurantName;
+    addressEl.textContent=selectedGoogleRestaurant?.address||"TableScore restaurant";
+    if(action)action.textContent="Change";
+    if(note)note.classList.toggle("hidden",!selectedGoogleRestaurant?.google_place_id);
+  }else{
+    nameEl.textContent="Choose a real restaurant";
+    addressEl.textContent="Uses Google Places near your current location";
+    if(action)action.textContent="Choose";
+    if(note)note.classList.add("hidden");
+  }
+}
+
+function currentTableScoreCoords(){
+  if(tableScoreLocation &&
+     Number.isFinite(Number(tableScoreLocation.latitude)) &&
+     Number.isFinite(Number(tableScoreLocation.longitude))){
+    return {
+      latitude:Number(tableScoreLocation.latitude),
+      longitude:Number(tableScoreLocation.longitude)
+    };
+  }
+
+  const lat=Number(localStorage.getItem("ts_lat"));
+  const lon=Number(localStorage.getItem("ts_lon"));
+  if(Number.isFinite(lat)&&Number.isFinite(lon)){
+    return {latitude:lat,longitude:lon};
+  }
+  return null;
+}
+
+async function getFreshTableScoreCoords(){
+  const existing=currentTableScoreCoords();
+  if(existing)return existing;
+
+  if(!("geolocation" in navigator)){
+    throw new Error("Location is not available in this browser.");
+  }
+
+  return await new Promise((resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        tableScoreLocation={
+          latitude:pos.coords.latitude,
+          longitude:pos.coords.longitude,
+          accuracy:pos.coords.accuracy,
+          capturedAt:Date.now()
+        };
+        locationEnabled=true;
+        localStorage.setItem("ts_location_enabled","1");
+        localStorage.setItem("ts_lat",String(pos.coords.latitude));
+        localStorage.setItem("ts_lon",String(pos.coords.longitude));
+        resolve({
+          latitude:pos.coords.latitude,
+          longitude:pos.coords.longitude
+        });
+      },
+      err=>{
+        if(err.code===1)reject(new Error("Location permission is blocked. Allow location for TableScore in Safari and try again."));
+        else reject(new Error("TableScore could not get your current location."));
+      },
+      {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+    );
+  });
+}
+
+async function openNearbyRestaurantPicker(){
+  if(!currentUser)return openAccount(openNearbyRestaurantPicker);
+  document.getElementById("nearbyRestaurantModal").classList.remove("hidden");
+  await loadNearbyRestaurants(false);
+}
+
+function closeNearbyRestaurantPicker(){
+  document.getElementById("nearbyRestaurantModal").classList.add("hidden");
+}
+
+function restaurantTypeLabel(r){
+  return r?.primary_type_name || (r?.primary_type ? String(r.primary_type).replaceAll("_"," ") : "Restaurant");
+}
+
+function renderNearbyRestaurantResults(){
+  const list=document.getElementById("nearbyRestaurantList");
+  const status=document.getElementById("nearbyRestaurantStatus");
+  const retry=document.getElementById("nearbyRestaurantRetryBtn");
+  if(!list||!status||!retry)return;
+
+  retry.classList.add("hidden");
+
+  if(!nearbyGoogleRestaurants.length){
+    status.textContent="No nearby restaurants came back for this location.";
+    list.innerHTML="";
+    retry.classList.remove("hidden");
+    return;
+  }
+
+  status.textContent=`${nearbyGoogleRestaurants.length} nearby restaurants - closest first`;
+  list.innerHTML=nearbyGoogleRestaurants.map((r,i)=>`<button class="place-result" onclick="chooseNearbyRestaurant(${i})">
+    <div class="place-result-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-5.4 7-12A7 7 0 1 0 5 9c0 6.6 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="9" r="2.3" fill="currentColor"/></svg>
+    </div>
+    <div style="min-width:0;flex:1">
+      <div class="place-result-name">${esc(r.name||"Restaurant")}</div>
+      <div class="place-result-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div>
+    </div>
+  </button>`).join("");
+}
+
+async function loadNearbyRestaurants(forceFresh=false){
+  const list=document.getElementById("nearbyRestaurantList");
+  const status=document.getElementById("nearbyRestaurantStatus");
+  const retry=document.getElementById("nearbyRestaurantRetryBtn");
+  if(!list||!status||!retry)return;
+
+  list.innerHTML="";
+  retry.classList.add("hidden");
+  status.textContent=forceFresh?"Refreshing your location and nearby restaurants...":"Getting nearby restaurants...";
+
+  try{
+    let coords=currentTableScoreCoords();
+    if(forceFresh || !coords){
+      if(forceFresh && "geolocation" in navigator){
+        coords=await new Promise((resolve,reject)=>{
+          navigator.geolocation.getCurrentPosition(
+            pos=>{
+              tableScoreLocation={
+                latitude:pos.coords.latitude,
+                longitude:pos.coords.longitude,
+                accuracy:pos.coords.accuracy,
+                capturedAt:Date.now()
+              };
+              locationEnabled=true;
+              localStorage.setItem("ts_location_enabled","1");
+              localStorage.setItem("ts_lat",String(pos.coords.latitude));
+              localStorage.setItem("ts_lon",String(pos.coords.longitude));
+              resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude});
+            },
+            reject,
+            {enableHighAccuracy:true,timeout:20000,maximumAge:0}
+          );
+        });
+      }else{
+        coords=await getFreshTableScoreCoords();
+      }
+    }
+
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{
+      body:{
+        latitude:coords.latitude,
+        longitude:coords.longitude,
+        radiusMeters:5000
+      }
+    });
+
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+
+    nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
+    renderNearbyRestaurantResults();
+  }catch(err){
+    console.error("nearby restaurants:",err);
+    nearbyGoogleRestaurants=[];
+    status.textContent=err?.message||"TableScore could not load nearby restaurants.";
+    retry.classList.remove("hidden");
+  }
+}
+
+function chooseNearbyRestaurant(index){
+  const r=nearbyGoogleRestaurants[index];
+  if(!r)return;
+
+  selectedRestaurantId=null;
+  selectedGoogleRestaurant={...r};
+  selectedRestaurantName=r.name||"Restaurant";
+  syncRateRestaurantPicker();
+  closeNearbyRestaurantPicker();
 }
 
 function openAccount(cb){
@@ -3520,6 +3783,10 @@ function acceptTableScorePosition(pos){
     accuracy:pos.coords.accuracy,
     capturedAt:Date.now()
   };
+  locationEnabled=true;
+  localStorage.setItem("ts_location_enabled","1");
+  localStorage.setItem("ts_lat",String(pos.coords.latitude));
+  localStorage.setItem("ts_lon",String(pos.coords.longitude));
   try{
     sessionStorage.setItem("tablescore_location_ok","1");
   }catch(e){}
@@ -4202,23 +4469,86 @@ document.querySelectorAll("#returnToggle button").forEach(b=>b.addEventListener(
 
 async function findOrCreateRestaurant(name){
   const clean=name.trim();
-  const {data:existing,error:findError}=await db.from("restaurants").select("id,name").ilike("name",clean).limit(1);
-  if(findError)throw findError;
-  if(existing&&existing.length)return existing[0];
+  if(!clean)throw new Error("Choose a restaurant.");
 
-  const lat=locationEnabled?parseFloat(localStorage.getItem("ts_lat")):null;
-  const lon=locationEnabled?parseFloat(localStorage.getItem("ts_lon")):null;
-  const city=area&&area!=="Near you"?area.split(",")[0].trim():null;
+  // A restaurant already opened from a TableScore page can be reused directly.
+  if(selectedRestaurantId && !selectedGoogleRestaurant?.google_place_id){
+    const {data,error}=await db.from("restaurants")
+      .select("id,name")
+      .eq("id",selectedRestaurantId)
+      .maybeSingle();
+    if(error)throw error;
+    if(data)return data;
+  }
 
-  const {data:created,error:createError}=await db.from("restaurants").insert({
-    name:clean,
-    city:city||null,
-    latitude:Number.isFinite(lat)?lat:null,
-    longitude:Number.isFinite(lon)?lon:null
-  }).select("id,name").single();
+  const place=selectedGoogleRestaurant;
 
-  if(createError)throw createError;
-  return created;
+  if(place?.google_place_id){
+    const {data:byPlace,error:placeError}=await db.from("restaurants")
+      .select("id,name")
+      .eq("google_place_id",place.google_place_id)
+      .maybeSingle();
+    if(placeError)throw placeError;
+    if(byPlace)return byPlace;
+
+    // If an older manually-created TableScore row has the same exact name in
+    // the same city, attach the Google identity instead of creating a duplicate.
+    const cityFromAddress=(place.address||"").split(",")[1]?.trim()||null;
+    let legacyQuery=db.from("restaurants")
+      .select("id,name,city,google_place_id")
+      .ilike("name",clean)
+      .is("google_place_id",null)
+      .limit(10);
+    const {data:legacyRows,error:legacyError}=await legacyQuery;
+    if(legacyError)throw legacyError;
+
+    const legacy=(legacyRows||[]).find(r=>{
+      if(!cityFromAddress)return true;
+      return !r.city || String(r.city).trim().toLowerCase()===cityFromAddress.toLowerCase();
+    });
+
+    const realFields={
+      google_place_id:place.google_place_id,
+      formatted_address:place.address||null,
+      latitude:Number.isFinite(Number(place.latitude))?Number(place.latitude):null,
+      longitude:Number.isFinite(Number(place.longitude))?Number(place.longitude):null,
+      google_primary_type:place.primary_type||null,
+      google_primary_type_name:place.primary_type_name||null,
+      google_maps_url:place.google_maps_url||null,
+      place_linked_at:new Date().toISOString(),
+      city:cityFromAddress||null
+    };
+
+    if(legacy){
+      const {data:linked,error:linkError}=await db.from("restaurants")
+        .update(realFields)
+        .eq("id",legacy.id)
+        .select("id,name")
+        .single();
+      if(linkError)throw linkError;
+      return linked;
+    }
+
+    const {data:created,error:createError}=await db.from("restaurants")
+      .insert({name:clean,...realFields})
+      .select("id,name")
+      .single();
+    if(createError)throw createError;
+    return created;
+  }
+
+  // Existing TableScore restaurant pages may still be unlinked while we
+  // migrate older manual entries. Do not create brand-new free-text rows.
+  if(selectedRestaurantId){
+    const {data,error}=await db.from("restaurants")
+      .select("id,name")
+      .eq("id",selectedRestaurantId)
+      .maybeSingle();
+    if(error)throw error;
+    if(data)return data;
+  }
+
+  throw new Error("Choose a real restaurant from Nearby Restaurants first.");
 }
 
 
@@ -4553,7 +4883,8 @@ async function submitRating(){
   if(!currentUser){openAccount(submitRating);return;}
   const name=document.getElementById("rateRestaurant").value.trim();
   const scores=getScores();
-  if(!name)return alert("Choose or enter the restaurant.");
+  if(!name)return alert("Choose a restaurant first.");
+  if(!selectedRestaurantId && !selectedGoogleRestaurant?.google_place_id)return alert("Choose a real restaurant from Nearby Restaurants first.");
   if(scores.some(v=>v===null))return alert("Rate all seven categories first.");
 
   const btn=document.getElementById("submitBtn");
@@ -4562,8 +4893,9 @@ async function submitRating(){
 
   try{
     const restaurant=await findOrCreateRestaurant(name);
-    const lat=locationEnabled?parseFloat(localStorage.getItem("ts_lat")):null;
-    const lon=locationEnabled?parseFloat(localStorage.getItem("ts_lon")):null;
+    const coords=currentTableScoreCoords();
+    const lat=coords?.latitude??null;
+    const lon=coords?.longitude??null;
 
     const payload={
       user_id:currentUser.id,
