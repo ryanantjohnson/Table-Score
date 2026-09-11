@@ -851,6 +851,15 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div class="card">
+      <div class="section-title" style="font-size:15px">Birthday</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Used for your TableScore profile experience. Your birthday is not shown publicly.</div>
+      <div class="inline-actions" style="margin-top:10px">
+        <input id="settingsBirthDate" type="date" style="flex:1;min-width:0;background:var(--inputBg);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:11px 12px">
+        <button class="primary" onclick="saveBirthDate()">Save</button>
+      </div>
+    </div>
+
+    <div class="card">
       <div class="section-title" style="font-size:15px">Account</div>
 
       <div class="settings-row" style="display:block">
@@ -1663,8 +1672,10 @@ async function refreshUserData(){
   await loadSocialCounts();
   await loadFollowingFeed();
   await renderSaved();
+  await syncProfileTimezone();
   await checkProgressRewards({announce:true});
   await checkHiddenGemHunter({announce:true});
+  await checkSecretBadgeBatch({announce:true});
   renderProfile();
   updateSaveRestaurantButton();
 }
@@ -2199,6 +2210,91 @@ async function checkOGEncounterProfileVisit(userId){
   });
 }
 
+
+async function checkSecretBadgeBatch({announce=true}={}){
+  if(!currentUser)return;
+  const {data,error}=await db.rpc("check_secret_badge_batch");
+  if(error){
+    console.error("secret badge batch:",error);
+    return;
+  }
+  const newly=(Array.isArray(data)?data:[]).filter(x=>x?.newly_unlocked);
+  if(!newly.length)return;
+
+  await loadSecretRewards();
+  await loadProgressRewards();
+
+  if(!announce)return;
+
+  const requirements={
+    "after-hours":["Submitted a rating between 10 PM and 3:59 AM in your local timezone"],
+    "early-bite":["Submitted a rating between 5 AM and 8:59 AM in your local timezone"],
+    "same-table":["Mutually followed another user and both rated at least one of the same restaurants"],
+    "off-the-menu":["Rated 5 different restaurants while each still had fewer than 10 TableScore ratings"],
+    "crowd-favorite":["Received 100 Dig Its across your ratings"],
+    "local-legend":["Rated 10 different restaurants in your home city"],
+    "conversation-starter":["Received 50 comments across your ratings"],
+    "food-explorer":["Rated 25 different restaurants"],
+    "under-the-radar":["Rated 5 different low-activity restaurants 8.0 or higher"],
+    "road-tripper":["Rated restaurants in 3 different cities"],
+    "global-taste":["Rated restaurants across 5 different cuisines"],
+    "trend-spotter":["Found 3 restaurants early that later earned strong community scores"],
+    "birthday-bite":["Submitted a TableScore rating on your birthday"],
+    "second-helping":["Rated the same restaurant on 3 separate visits"],
+    "taste-twins":["Matched closely with another user across at least 5 shared restaurants"]
+  };
+  const taglines={
+    "after-hours":"Good food never sleeps.",
+    "early-bite":"Good things come early.",
+    "same-table":"Different tastes. Same good taste.",
+    "off-the-menu":"The best finds aren't always listed.",
+    "crowd-favorite":"Great food brings people together.",
+    "local-legend":"You know the good spots.",
+    "conversation-starter":"Good food sparks great conversations.",
+    "food-explorer":"Always looking for what's next.",
+    "under-the-radar":"Great food deserves attention.",
+    "road-tripper":"Good food is a destination.",
+    "global-taste":"Good food has no borders.",
+    "trend-spotter":"You find what's hot before everyone else.",
+    "birthday-bite":"Good food makes it sweeter.",
+    "second-helping":"Some places are worth coming back to.",
+    "taste-twins":"You found someone who eats like you."
+  };
+
+  const first=newly[0];
+  const earned=earnedSecretRewards.find(r=>r.reward_slug===first.reward_slug);
+  if(!earned)return;
+  showSecretReward({
+    ...earned,
+    is_secret:true,
+    tagline:taglines[first.reward_slug]||"A hidden TableScore reward is yours.",
+    requirements:requirements[first.reward_slug]||[]
+  });
+}
+
+async function syncProfileTimezone(){
+  if(!currentUser)return;
+  let tz="";
+  try{tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";}catch(e){}
+  if(!tz||tz===profile?.timezone)return;
+  const {data,error}=await db.rpc("set_my_timezone",{p_timezone:tz});
+  if(error){console.error("timezone sync:",error);return;}
+  if(data)profile={...(profile||{}),timezone:tz};
+}
+
+async function saveBirthDate(){
+  if(!currentUser)return openAccount();
+  const input=document.getElementById("settingsBirthDate");
+  const value=input?.value||"";
+  if(!value)return alert("Choose your birthday first.");
+  const {data,error}=await db.rpc("set_my_birth_date",{p_birth_date:value});
+  if(error)return alert("Could not save birthday: "+error.message);
+  if(!data)return alert("TableScore could not save your birthday.");
+  profile={...(profile||{}),birth_date:value};
+  await checkSecretBadgeBatch({announce:true});
+  alert("Birthday saved.");
+}
+
 let publicProfileReturnScreen="home";
 
 async function openPublicProfile(userId){
@@ -2397,9 +2493,49 @@ function rewardIconMarkup(slug){
     "plot-twist":"-",
     "before-it-was-cool":"OG",
     "secret-sauce":"SAUCE",
-    "og-encounter":"OG"
+    "og-encounter":"OG",
+    "after-hours":"MOON",
+    "early-bite":"SUN",
+    "same-table":"TABLE",
+    "off-the-menu":"MENU",
+    "crowd-favorite":"HEART",
+    "local-legend":"PIN",
+    "conversation-starter":"CHAT",
+    "food-explorer":"LOOK",
+    "under-the-radar":"MASK",
+    "road-tripper":"ROAD",
+    "global-taste":"WORLD",
+    "trend-spotter":"HOT",
+    "birthday-bite":"CAKE",
+    "second-helping":"2",
+    "taste-twins":"TWIN"
   };
   return icons[slug]||"*";
+}
+
+
+function rewardVisualMarkup(slug){
+  const visuals={
+    "secret-sauce":secretSauceIconSvg,
+    "hidden-gem":hiddenGemIconSvg,
+    "og-encounter":ogEncounterIconSvg,
+    "after-hours":afterHoursIconSvg,
+    "early-bite":earlyBiteIconSvg,
+    "same-table":sameTableIconSvg,
+    "off-the-menu":offMenuIconSvg,
+    "crowd-favorite":crowdFavoriteIconSvg,
+    "local-legend":localLegendIconSvg,
+    "conversation-starter":conversationStarterIconSvg,
+    "food-explorer":foodExplorerIconSvg,
+    "under-the-radar":underRadarIconSvg,
+    "road-tripper":roadTripperIconSvg,
+    "global-taste":globalTasteIconSvg,
+    "trend-spotter":trendSpotterIconSvg,
+    "birthday-bite":birthdayBiteIconSvg,
+    "second-helping":secondHelpingIconSvg,
+    "taste-twins":tasteTwinsIconSvg
+  };
+  return visuals[slug]?visuals[slug]():esc(rewardIconMarkup(slug));
 }
 
 function renderEarnedProgressRewards(){
@@ -2415,7 +2551,7 @@ function renderEarnedProgressRewards(){
     return;
   }
   grid.innerHTML=earnedProgressRewards.map(r=>`<div class="reward-chip">
-    <div class="reward-chip-icon">${r.reward_slug==="secret-sauce"?secretSauceIconSvg():r.reward_slug==="hidden-gem"?hiddenGemIconSvg():r.reward_slug==="og-encounter"?ogEncounterIconSvg():esc(rewardIconMarkup(r.reward_slug))}</div>
+    <div class="reward-chip-icon">${rewardVisualMarkup(r.reward_slug)}</div>
     <div class="reward-chip-name">${esc(r.reward_name)}</div>
     <div class="reward-chip-type">${r.is_secret?"Secret Found":esc(r.reward_type||"Badge")}</div>
   </div>`).join("");
@@ -2498,7 +2634,22 @@ async function loadProgressRewards(){
     const secretDescriptions={
       "secret-sauce":"You found something that wasn't on the menu.",
       "hidden-gem":"You found great tables before the crowd did.",
-      "og-encounter":"You found the table where TableScore started."
+      "og-encounter":"You found the table where TableScore started.",
+      "after-hours":"Good food never sleeps.",
+      "early-bite":"Good things come early.",
+      "same-table":"Different tastes. Same good taste.",
+      "off-the-menu":"The best finds aren't always listed.",
+      "crowd-favorite":"Great food brings people together.",
+      "local-legend":"You know the good spots.",
+      "conversation-starter":"Good food sparks great conversations.",
+      "food-explorer":"Always looking for what's next.",
+      "under-the-radar":"Great food deserves attention.",
+      "road-tripper":"Good food is a destination.",
+      "global-taste":"Good food has no borders.",
+      "trend-spotter":"You find what's hot before everyone else.",
+      "birthday-bite":"Good food makes it sweeter.",
+      "second-helping":"Some places are worth coming back to.",
+      "taste-twins":"You found someone who eats like you."
     };
     merged.push({
       reward_slug:r.reward_slug,
@@ -2671,10 +2822,7 @@ function showSecretReward(reward){
   currentSecretReward=reward;
   const overlay=document.getElementById("secretRewardOverlay");
   const secretIconEl=document.getElementById("secretRewardIcon");
-  if(reward.reward_slug==="secret-sauce")secretIconEl.innerHTML=secretSauceIconSvg();
-  else if(reward.reward_slug==="hidden-gem")secretIconEl.innerHTML=hiddenGemIconSvg();
-  else if(reward.reward_slug==="og-encounter")secretIconEl.innerHTML=ogEncounterIconSvg();
-  else secretIconEl.textContent=reward.reward_emoji||"*";
+  secretIconEl.innerHTML=rewardVisualMarkup(reward.reward_slug);
   document.getElementById("secretRewardName").textContent=reward.reward_name||"Secret Reward";
   document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
   const req=document.getElementById("secretRewardRequirements");
@@ -2801,6 +2949,116 @@ function ogEncounterIconSvg(){
   </svg>`;
 }
 
+
+function afterHoursIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="ahMoon" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#8A6CFF"/><stop offset="1" stop-color="#4935BE"/></linearGradient></defs>
+    <path d="M27 12c-9 5-13 16-9 26 4 10 14 16 25 14-7-3-11-10-11-18 0-9 5-17 13-21-6-3-12-3-18-1z" fill="url(#ahMoon)"/>
+    <ellipse cx="38" cy="50" rx="18" ry="7" fill="#F5EBDD"/><ellipse cx="38" cy="49" rx="11" ry="3.5" fill="#D8CCBE"/>
+    <path d="M54 18l1.6 3.8 3.9 1.6-3.9 1.6-1.6 3.8-1.6-3.8-3.9-1.6 3.9-1.6z" fill="#4EA7FF"/>
+  </svg>`;
+}
+function earlyBiteIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="ebSun" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFD76A"/><stop offset="1" stop-color="#FF9D2F"/></linearGradient></defs>
+    <path d="M24 43a12 12 0 0 1 24 0z" fill="url(#ebSun)"/>
+    <g stroke="#FFB347" stroke-width="4" stroke-linecap="round"><path d="M36 14v7"/><path d="M18 23l5 5"/><path d="M54 23l-5 5"/><path d="M12 40h8"/><path d="M52 40h8"/></g>
+    <ellipse cx="36" cy="51" rx="19" ry="7.5" fill="#F6EEE4"/><ellipse cx="36" cy="50" rx="11" ry="3.5" fill="#D8CCBE"/>
+  </svg>`;
+}
+function sameTableIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <ellipse cx="24" cy="46" rx="15" ry="7" fill="#F5EBDD"/><ellipse cx="48" cy="46" rx="15" ry="7" fill="#F5EBDD"/>
+    <ellipse cx="24" cy="45" rx="9" ry="3.3" fill="#D8CCBE"/><ellipse cx="48" cy="45" rx="9" ry="3.3" fill="#D8CCBE"/>
+    <path d="M36 13v14M26 20l5 5M46 20l-5 5" stroke="#FFB347" stroke-width="4" stroke-linecap="round"/>
+  </svg>`;
+}
+function offMenuIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <path d="M18 18l12-5h26v42H18z" fill="#171717" stroke="#3A3A3A" stroke-width="2"/>
+    <path d="M18 18l12-5v42l-12 4z" fill="#2A2A2A"/>
+    <text x="43" y="34" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="10" font-weight="900" fill="#F1B84B">MENU</text>
+    <path d="M43 39l2 4.5 5 .5-3.8 3.1 1.2 4.8-4.4-2.5-4.4 2.5 1.2-4.8-3.8-3.1 5-.5z" fill="#F1B84B"/>
+  </svg>`;
+}
+function crowdFavoriteIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <path d="M36 18c5-8 17-4 17 5 0 9-17 19-17 19S19 32 19 23c0-9 12-13 17-5z" fill="#FF5A57"/>
+    <ellipse cx="36" cy="52" rx="19" ry="7.5" fill="#F5EBDD"/><ellipse cx="36" cy="51" rx="11" ry="3.5" fill="#D8CCBE"/>
+  </svg>`;
+}
+function localLegendIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="llPin" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#67DA7B"/><stop offset="1" stop-color="#2C9E51"/></linearGradient></defs>
+    <path d="M36 10c-10 0-18 8-18 18 0 14 18 31 18 31s18-17 18-31c0-10-8-18-18-18z" fill="url(#llPin)"/>
+    <path d="M36 20l3 6 7 .8-5 4.5 1.6 6.7-6.6-3.7-6.6 3.7 1.6-6.7-5-4.5 7-.8z" fill="#DFF78B"/>
+  </svg>`;
+}
+function conversationStarterIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="csBlue" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#59B6FF"/><stop offset="1" stop-color="#1E79E9"/></linearGradient></defs>
+    <path d="M14 16h44c5 0 9 4 9 9v20c0 5-4 9-9 9H33L20 63v-9h-6c-5 0-9-4-9-9V25c0-5 4-9 9-9z" fill="url(#csBlue)"/>
+    <path d="M34 25v19M29 25v8c0 4 2 6 5 6s5-2 5-6v-8M34 39v8" fill="none" stroke="#EAF7FF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  </svg>`;
+}
+function foodExplorerIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <g fill="#203044" stroke="#111A25" stroke-width="2"><rect x="10" y="23" width="23" height="29" rx="8"/><rect x="39" y="23" width="23" height="29" rx="8"/><rect x="30" y="31" width="12" height="10" rx="4"/></g>
+    <circle cx="22" cy="38" r="7" fill="#329CFF"/><circle cx="50" cy="38" r="7" fill="#329CFF"/>
+    <circle cx="20" cy="35" r="2.5" fill="#A6DCFF"/><circle cx="48" cy="35" r="2.5" fill="#A6DCFF"/>
+  </svg>`;
+}
+function underRadarIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="urPurple" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#BE84FF"/><stop offset="1" stop-color="#6D3CC5"/></linearGradient></defs>
+    <path d="M10 26c8-8 44-8 52 0-2 15-13 25-26 25S12 41 10 26z" fill="url(#urPurple)"/>
+    <path d="M19 30c6-4 11-4 16 0-4 7-11 8-16 0zM37 30c6-4 11-4 16 0-4 7-11 8-16 0z" fill="#171717"/>
+  </svg>`;
+}
+function roadTripperIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <path d="M34 62c5-13 8-24 5-34-2-7-1-12 5-18" fill="none" stroke="#3B3B3B" stroke-width="12" stroke-linecap="round"/>
+    <path d="M34 62c5-13 8-24 5-34-2-7-1-12 5-18" fill="none" stroke="#F2C14B" stroke-width="2.3" stroke-dasharray="6 6"/>
+    <g fill="#39A968"><path d="M12 48l7-13 7 13z"/><rect x="17" y="48" width="4" height="9"/><path d="M49 23l7-13 7 13z"/><rect x="54" y="23" width="4" height="9"/></g>
+  </svg>`;
+}
+function globalTasteIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <circle cx="36" cy="36" r="25" fill="#2B93E8"/>
+    <path d="M21 21c5-3 10-4 15-2l2 8-6 4-7-2-4-8zM45 17l8 5 4 8-7 2-4-5-1-10zM22 43l7-4 6 3 1 8-8 7-6-6v-8zM44 44l7-2 6 5-4 8-8 3-3-7 2-7z" fill="#5ED06E"/>
+  </svg>`;
+}
+function trendSpotterIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <defs><linearGradient id="tsFire" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FF4D36"/><stop offset=".55" stop-color="#FF8A2A"/><stop offset="1" stop-color="#FFD05A"/></linearGradient></defs>
+    <path d="M39 9c5 9 2 14-1 19 6-3 10-7 12-12 7 8 10 17 8 26-2 11-11 20-22 20S16 54 14 43c-2-11 4-20 13-29 0 8 3 12 7 15 2-7 1-13 5-20z" fill="url(#tsFire)"/>
+  </svg>`;
+}
+function birthdayBiteIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <path d="M17 34h38v23H17z" fill="#F7C96E"/><path d="M17 34h38v7H17z" fill="#FF5E91"/>
+    <path d="M24 44h24" stroke="#E89F4E" stroke-width="3"/>
+    <rect x="34" y="20" width="4" height="14" rx="2" fill="#FF5E91"/>
+    <path d="M36 13c3 3 4 6 0 9-4-3-3-6 0-9z" fill="#FFB347"/>
+  </svg>`;
+}
+function secondHelpingIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <ellipse cx="36" cy="48" rx="18" ry="7.5" fill="#F5EBDD"/><ellipse cx="36" cy="47" rx="10.5" ry="3.5" fill="#D8CCBE"/>
+    <path d="M18 34c5-9 15-14 25-11 6 2 11 6 13 12" fill="none" stroke="#FFB347" stroke-width="4.5" stroke-linecap="round"/>
+    <path d="M52 27l5 8-9 2" fill="none" stroke="#FFB347" stroke-width="4.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <text x="35" y="36" text-anchor="middle" font-family="-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif" font-size="15" font-weight="900" fill="#FF6B6B">2</text>
+  </svg>`;
+}
+function tasteTwinsIconSvg(){
+  return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
+    <ellipse cx="36" cy="49" rx="18" ry="7.5" fill="#F5EBDD"/><ellipse cx="36" cy="48" rx="10.5" ry="3.5" fill="#D8CCBE"/>
+    <path d="M23 16v24M18 16v8c0 4 2 6 5 6s5-2 5-6v-8" fill="none" stroke="#2C9CFF" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M49 16v24M44 16v8c0 4 2 6 5 6s5-2 5-6v-8" fill="none" stroke="#FF8A3D" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M31 29l10 10M41 29L31 39" stroke="#8F63FF" stroke-width="3.2" stroke-linecap="round"/>
+  </svg>`;
+}
+
 function hiddenGemIconSvg(){
   return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
     <path d="M16 28l11-13h18l11 13-20 29L16 28z"
@@ -2838,7 +3096,7 @@ function secretSauceIconSvg(){
 function badgeBySlug(slug){return availableBadges.find(b=>b.slug===slug)||STARTER_BADGES.find(b=>b.slug===slug);}
 function badgeMarkup(slug){
   const b=badgeBySlug(slug);if(!b)return "";
-  const icon=slug==="secret-sauce"?secretSauceIconSvg():slug==="hidden-gem"?hiddenGemIconSvg():slug==="og-encounter"?ogEncounterIconSvg():b.emoji;
+  const icon=rewardVisualMarkup(slug)||b.emoji;
   return `<div class="profile-badge" title="${esc(b.name)}" aria-label="${esc(b.name)}">${icon}</div>`;
 }
 function renderOwnBadges(){
@@ -2850,7 +3108,7 @@ function renderBadgePicker(){
   out.innerHTML=availableBadges.map(b=>{
     const active=equippedBadgeSlugs.includes(b.slug);
     return `<button class="badge-choice ${active?"active":""}" onclick="toggleFoodBadge('${b.slug}')">
-      <span class="badge-emoji">${b.slug==="secret-sauce"?secretSauceIconSvg():b.slug==="hidden-gem"?hiddenGemIconSvg():b.slug==="og-encounter"?ogEncounterIconSvg():b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
+      <span class="badge-emoji">${rewardVisualMarkup(b.slug)||b.emoji}</span><span class="badge-name">${esc(b.name)}</span>
     </button>`;
   }).join("");
   const count=document.getElementById("badgeCount");if(count)count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
@@ -2913,6 +3171,8 @@ function openSettings(){
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
   document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
   document.getElementById("settingsUsername").textContent=profile?.username?"Current: @"+profile.username:"No username set";
+  const birthInput=document.getElementById("settingsBirthDate");
+  if(birthInput)birthInput.value=profile?.birth_date||"";
   const settingsUsernameInput=document.getElementById("settingsUsernameInput");
   if(settingsUsernameInput)settingsUsernameInput.value="";
   updateSettingsBadges();
