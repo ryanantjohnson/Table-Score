@@ -936,6 +936,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div class="card">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Location</div>
+          <div id="locationStatusText" class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Location has not been enabled on this device.</div>
+        </div>
+        <button id="locationEnableBtn" class="secondary" style="width:auto;padding:8px 11px" onclick="enableTableScoreLocation()">Enable</button>
+      </div>
+      <div class="muted" style="font-size:10px;line-height:1.4;margin-top:9px">TableScore will use your location for nearby restaurant discovery and local rankings. Your exact coordinates are not shown on your profile.</div>
+    </div>
+
+    <div class="card">
       <div class="section-title" style="font-size:15px">Birthday</div>
       <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Used for your TableScore profile experience. Your birthday is not shown publicly.</div>
       <div class="inline-actions" style="margin-top:10px">
@@ -3479,8 +3490,66 @@ function closeSecretBadgeLab(){
   document.getElementById("secretBadgeLabModal")?.classList.add("hidden");
 }
 
+
+let tableScoreLocation=null;
+
+function renderLocationStatus(){
+  const status=document.getElementById("locationStatusText");
+  const btn=document.getElementById("locationEnableBtn");
+  if(!status||!btn)return;
+
+  if(tableScoreLocation){
+    status.textContent="Location is working on this device.";
+    btn.textContent="Refresh";
+    return;
+  }
+
+  status.textContent="Location has not been enabled on this device.";
+  btn.textContent="Enable";
+}
+
+async function enableTableScoreLocation(){
+  const status=document.getElementById("locationStatusText");
+  const btn=document.getElementById("locationEnableBtn");
+
+  if(!("geolocation" in navigator)){
+    if(status)status.textContent="Location is not available in this browser.";
+    return;
+  }
+
+  if(btn){btn.disabled=true;btn.textContent="Checking...";}
+  if(status)status.textContent="Waiting for location permission...";
+
+  navigator.geolocation.getCurrentPosition(
+    pos=>{
+      tableScoreLocation={
+        latitude:pos.coords.latitude,
+        longitude:pos.coords.longitude,
+        accuracy:pos.coords.accuracy,
+        capturedAt:Date.now()
+      };
+      try{
+        sessionStorage.setItem("tablescore_location_ok","1");
+      }catch(e){}
+      if(status)status.textContent=`Location is working${Number.isFinite(pos.coords.accuracy)?` (accuracy about ${Math.round(pos.coords.accuracy)} m)`:``}.`;
+      if(btn){btn.disabled=false;btn.textContent="Refresh";}
+    },
+    err=>{
+      tableScoreLocation=null;
+      let message="TableScore could not get your location.";
+      if(err.code===1)message="Location permission was denied. Allow location access for TableScore in Safari settings, then try again.";
+      else if(err.code===2)message="Your device could not determine a location. Check Location Services and try again.";
+      else if(err.code===3)message="Location timed out. Try again where your phone has a clearer GPS or network signal.";
+      if(status)status.textContent=message;
+      if(btn){btn.disabled=false;btn.textContent="Try Again";}
+    },
+    {enableHighAccuracy:true,timeout:12000,maximumAge:60000}
+  );
+}
+
 function openSettings(){
   if(!currentUser)return openAccount();
+  setTimeout(renderLocationStatus,0);
   const badgeLabCard=document.getElementById("secretBadgeLabCard");
   if(badgeLabCard)badgeLabCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
   renderThemeChoices();
