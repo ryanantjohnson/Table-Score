@@ -114,6 +114,16 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .place-result-name{font-weight:900;font-size:14px;line-height:1.25}
 .place-result-meta{font-size:11px;color:var(--muted);line-height:1.35;margin-top:4px}
 .place-picker-status{font-size:12px;color:var(--muted);line-height:1.45;padding:10px 2px}
+.place-finder-tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0 12px}
+.place-finder-tabs button{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:12px;padding:10px 8px;font-weight:900;font-size:12px}
+.place-finder-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}
+.place-search-row{display:grid;grid-template-columns:1fr auto;gap:8px;margin-bottom:6px}
+.place-search-row input{width:100%;background:var(--inputBg);border:1px solid var(--line);border-radius:13px;color:var(--ink);padding:12px 13px;outline:none}
+.place-search-row button{width:auto;padding:0 15px}
+.location-sheet-actions{display:grid;gap:9px;margin-top:12px}
+.location-sheet-actions .or{font-size:10px;color:var(--muted);text-align:center;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
+.location-current{font-size:11px;color:var(--muted);line-height:1.4;margin-top:5px}
+
 .place-selected-note{display:flex;align-items:center;gap:6px;color:var(--green);font-size:11px;font-weight:850;margin-top:7px}
 
 .rating-photo-picker{margin-top:10px}
@@ -498,7 +508,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 <body class="booting">
 <div class="app">
   <div class="topbar">
-    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><div id="topLocation" class="loc">&#128205; Set location</div></div>
+    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
     <div class="top-actions">
       <button id="topNotificationsBtn" class="top-notifications hidden" onclick="openNotifications()" aria-label="Notifications">
         <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="notificationCount" class="notification-count hidden">0</span>
@@ -511,7 +521,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="hero">
       <div class="kicker">Good food &middot; Better decisions</div>
       <h1>Good food.<br>Better decisions.</h1>
-      <div class="search"><input id="homeSearch" placeholder="Search TableScore restaurants"></div>
+      <div class="search"><input id="homeSearch" placeholder="Search any restaurant by name, city, or address" readonly onclick="openRestaurantFinder('search')"></div>
     </div>
 
     <div id="locationCard" class="card">
@@ -618,10 +628,10 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="field">
         <label>Where are you eating?</label>
         <input id="rateRestaurant" class="hidden" readonly>
-        <button id="rateRestaurantPickerBtn" type="button" class="place-picker-trigger" onclick="openNearbyRestaurantPicker()">
+        <button id="rateRestaurantPickerBtn" type="button" class="place-picker-trigger" onclick="openRestaurantFinder('search')">
           <div class="place-main">
             <div id="rateRestaurantPickerName" class="place-name">Choose a real restaurant</div>
-            <div id="rateRestaurantPickerAddress" class="place-address">Uses Google Places near your current location</div>
+            <div id="rateRestaurantPickerAddress" class="place-address">Search anywhere or choose something near you</div>
           </div>
           <div class="place-action">Choose</div>
         </button>
@@ -1143,14 +1153,48 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="section-head" style="margin-bottom:8px">
       <div>
         <div class="kicker">Real restaurants</div>
-        <h2 style="margin-top:3px">Nearby Restaurants</h2>
+        <h2 style="margin-top:3px">Find a Restaurant</h2>
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNearbyRestaurantPicker()">Close</button>
     </div>
-    <div class="muted" style="font-size:11px;line-height:1.45;margin-bottom:10px">Closest results from Google Places. Choosing one links your TableScore rating to the actual restaurant.</div>
-    <div id="nearbyRestaurantStatus" class="place-picker-status">Getting your location...</div>
+    <div class="muted" style="font-size:11px;line-height:1.45;margin-bottom:10px">Search by restaurant name, city, or address anywhere - or browse what's near you right now.</div>
+
+    <div class="place-finder-tabs">
+      <button id="placeSearchTab" class="active" onclick="setRestaurantFinderMode('search')">Search Anywhere</button>
+      <button id="placeNearbyTab" onclick="setRestaurantFinderMode('nearby')">Nearby</button>
+    </div>
+
+    <div id="placeSearchPanel">
+      <div class="place-search-row">
+        <input id="globalRestaurantSearch" placeholder="Example: Uchi Austin or restaurant + city" autocomplete="off">
+        <button class="primary" onclick="searchRestaurantsAnywhere()">Search</button>
+      </div>
+      <div class="muted" style="font-size:10px;line-height:1.4;margin-bottom:7px">Search for a restaurant you visited earlier even if it is nowhere near your current location.</div>
+    </div>
+
+    <div id="nearbyRestaurantStatus" class="place-picker-status">Search for a restaurant or switch to Nearby.</div>
     <div id="nearbyRestaurantList" class="place-picker-list"></div>
-    <button id="nearbyRestaurantRetryBtn" class="secondary hidden" onclick="loadNearbyRestaurants(true)">Try Again</button>
+    <button id="nearbyRestaurantRetryBtn" class="secondary hidden" onclick="loadNearbyRestaurants(true)">Refresh Nearby</button>
+  </div>
+</div>
+
+<div id="locationChooserModal" class="modal hidden">
+  <div class="sheet">
+    <div class="section-head" style="margin-bottom:8px">
+      <div>
+        <div class="kicker">Browsing area</div>
+        <h2 style="margin-top:3px">Change Location</h2>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
+    </div>
+    <div class="muted" style="font-size:11px;line-height:1.45">This changes what area TableScore shows you. It does not change the GPS used for Verified Visit.</div>
+    <div class="location-sheet-actions">
+      <button class="primary" onclick="useCurrentBrowseLocation()">&#128205; Use My Current Location</button>
+      <div class="or">or choose another area</div>
+      <div class="field" style="margin:0"><input id="browseAreaInput" placeholder="City, state or ZIP"></div>
+      <button class="secondary" onclick="saveBrowseArea()">Use This Area</button>
+      <div id="browseLocationCurrent" class="location-current"></div>
+    </div>
   </div>
 </div>
 
@@ -1652,7 +1696,7 @@ function syncRateRestaurantPicker(){
     if(note)note.classList.toggle("hidden",!selectedGoogleRestaurant?.google_place_id);
   }else{
     nameEl.textContent="Choose a real restaurant";
-    addressEl.textContent="Uses Google Places near your current location";
+    addressEl.textContent="Search anywhere or choose something near you";
     if(action)action.textContent="Choose";
     if(note)note.classList.add("hidden");
   }
@@ -1711,36 +1755,72 @@ async function getFreshTableScoreCoords(){
   });
 }
 
-async function openNearbyRestaurantPicker(){
-  if(!currentUser)return openAccount(openNearbyRestaurantPicker);
+let restaurantFinderMode="search";
+
+function openRestaurantFinder(mode="search"){
+  if(!currentUser)return openAccount(()=>openRestaurantFinder(mode));
   document.getElementById("nearbyRestaurantModal").classList.remove("hidden");
-  await loadNearbyRestaurants(false);
+  setRestaurantFinderMode(mode);
+  if(mode==="search"){
+    setTimeout(()=>document.getElementById("globalRestaurantSearch")?.focus(),80);
+  }
+}
+
+async function openNearbyRestaurantPicker(){
+  return openRestaurantFinder("nearby");
 }
 
 function closeNearbyRestaurantPicker(){
   document.getElementById("nearbyRestaurantModal").classList.add("hidden");
 }
 
+function setRestaurantFinderMode(mode){
+  restaurantFinderMode=mode==="nearby"?"nearby":"search";
+  const searchTab=document.getElementById("placeSearchTab");
+  const nearbyTab=document.getElementById("placeNearbyTab");
+  const searchPanel=document.getElementById("placeSearchPanel");
+  const status=document.getElementById("nearbyRestaurantStatus");
+  const list=document.getElementById("nearbyRestaurantList");
+  const retry=document.getElementById("nearbyRestaurantRetryBtn");
+
+  searchTab?.classList.toggle("active",restaurantFinderMode==="search");
+  nearbyTab?.classList.toggle("active",restaurantFinderMode==="nearby");
+  searchPanel?.classList.toggle("hidden",restaurantFinderMode!=="search");
+  retry?.classList.add("hidden");
+  nearbyGoogleRestaurants=[];
+  if(list)list.innerHTML="";
+
+  if(restaurantFinderMode==="nearby"){
+    loadNearbyRestaurants(false);
+  }else if(status){
+    status.textContent="Search by restaurant name, city, or address.";
+  }
+}
+
 function restaurantTypeLabel(r){
   return r?.primary_type_name || (r?.primary_type ? String(r.primary_type).replaceAll("_"," ") : "Restaurant");
 }
 
-function renderNearbyRestaurantResults(){
+function renderNearbyRestaurantResults(label="restaurants"){
   const list=document.getElementById("nearbyRestaurantList");
   const status=document.getElementById("nearbyRestaurantStatus");
   const retry=document.getElementById("nearbyRestaurantRetryBtn");
   if(!list||!status||!retry)return;
 
-  retry.classList.add("hidden");
+  retry.classList.toggle("hidden",restaurantFinderMode!=="nearby");
 
   if(!nearbyGoogleRestaurants.length){
-    status.textContent="No nearby restaurants came back for this location.";
+    status.textContent=restaurantFinderMode==="nearby"
+      ?"No nearby restaurants came back for this location."
+      :"No restaurants matched that search. Try adding the city or street.";
     list.innerHTML="";
-    retry.classList.remove("hidden");
     return;
   }
 
-  status.textContent=`${nearbyGoogleRestaurants.length} nearby restaurants - closest first`;
+  status.textContent=restaurantFinderMode==="nearby"
+    ?`${nearbyGoogleRestaurants.length} nearby restaurants - closest first`
+    :`${nearbyGoogleRestaurants.length} ${label} found`;
+
   list.innerHTML=nearbyGoogleRestaurants.map((r,i)=>`<button class="place-result" onclick="chooseNearbyRestaurant(${i})">
     <div class="place-result-icon" aria-hidden="true">
       <svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 21s7-5.4 7-12A7 7 0 1 0 5 9c0 6.6 7 12 7 12Z" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="9" r="2.3" fill="currentColor"/></svg>
@@ -1752,12 +1832,48 @@ function renderNearbyRestaurantResults(){
   </button>`).join("");
 }
 
+async function searchRestaurantsAnywhere(){
+  const input=document.getElementById("globalRestaurantSearch");
+  const status=document.getElementById("nearbyRestaurantStatus");
+  const list=document.getElementById("nearbyRestaurantList");
+  const retry=document.getElementById("nearbyRestaurantRetryBtn");
+  const query=(input?.value||"").trim();
+
+  if(!query)return alert("Enter a restaurant name, city, or address.");
+
+  restaurantFinderMode="search";
+  if(list)list.innerHTML="";
+  retry?.classList.add("hidden");
+  if(status)status.textContent="Searching Google Places...";
+
+  try{
+    const coords=currentTableScoreCoords();
+    const body={mode:"search",query};
+    if(coords){
+      body.latitude=coords.latitude;
+      body.longitude=coords.longitude;
+    }
+
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+
+    nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
+    renderNearbyRestaurantResults("restaurants");
+  }catch(err){
+    console.error("restaurant search:",err);
+    nearbyGoogleRestaurants=[];
+    if(status)status.textContent=err?.message||"TableScore could not search restaurants.";
+  }
+}
+
 async function loadNearbyRestaurants(forceFresh=false){
   const list=document.getElementById("nearbyRestaurantList");
   const status=document.getElementById("nearbyRestaurantStatus");
   const retry=document.getElementById("nearbyRestaurantRetryBtn");
   if(!list||!status||!retry)return;
 
+  restaurantFinderMode="nearby";
   list.innerHTML="";
   retry.classList.add("hidden");
   status.textContent=forceFresh?"Refreshing your location and nearby restaurants...":"Getting nearby restaurants...";
@@ -1792,6 +1908,7 @@ async function loadNearbyRestaurants(forceFresh=false){
 
     const {data,error}=await db.functions.invoke("nearby-restaurants",{
       body:{
+        mode:"nearby",
         latitude:coords.latitude,
         longitude:coords.longitude,
         radiusMeters:5000
@@ -1827,6 +1944,35 @@ function chooseNearbyRestaurant(index){
   closeNearbyRestaurantPicker();
 }
 
+function openLocationChooser(){
+  const modal=document.getElementById("locationChooserModal");
+  const input=document.getElementById("browseAreaInput");
+  const current=document.getElementById("browseLocationCurrent");
+  if(input)input.value=(area&&area!=="Near you")?area:"";
+  if(current)current.textContent=area?`Currently browsing: ${area}`:"No browsing area selected yet.";
+  modal?.classList.remove("hidden");
+}
+
+function closeLocationChooser(){
+  document.getElementById("locationChooserModal")?.classList.add("hidden");
+}
+
+async function useCurrentBrowseLocation(){
+  closeLocationChooser();
+  await useLocation();
+}
+
+function saveBrowseArea(){
+  const input=document.getElementById("browseAreaInput");
+  const v=(input?.value||"").trim();
+  if(!v)return alert("Enter a city, state, or ZIP first.");
+
+  area=v;
+  localStorage.setItem("ts_area",area);
+  updateArea();
+  loadRestaurantStats();
+  closeLocationChooser();
+}
 function openAccount(cb){
   afterAuth=typeof cb==="function"?cb:null;
   document.getElementById("accountModal").classList.remove("hidden");
@@ -2040,7 +2186,7 @@ async function refreshUserData(){
   savedRestaurants=saved||[];
   savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
 
-  if(profile?.home_city){
+  if(profile?.home_city && !localStorage.getItem("ts_area")){
     area=profile.home_city;
     localStorage.setItem("ts_area",area);
     updateArea();
@@ -4588,7 +4734,7 @@ async function findOrCreateRestaurant(name){
     if(data)return data;
   }
 
-  throw new Error("Choose a real restaurant from Nearby Restaurants first.");
+  throw new Error("Choose a real restaurant from Search Anywhere or Nearby first.");
 }
 
 
@@ -4924,7 +5070,7 @@ async function submitRating(){
   const name=document.getElementById("rateRestaurant").value.trim();
   const scores=getScores();
   if(!name)return alert("Choose a restaurant first.");
-  if(!selectedRestaurantId && !selectedGoogleRestaurant?.google_place_id)return alert("Choose a real restaurant from Nearby Restaurants first.");
+  if(!selectedRestaurantId && !selectedGoogleRestaurant?.google_place_id)return alert("Choose a real restaurant from Search Anywhere or Nearby first.");
   if(scores.some(v=>v===null))return alert("Rate all seven categories first.");
 
   const btn=document.getElementById("submitBtn");
@@ -4975,7 +5121,7 @@ async function submitRating(){
   }
 }
 
-document.getElementById("homeSearch").addEventListener("focus",()=>showScreen("explore"));
+document.getElementById("homeSearch")?.addEventListener("focus",()=>openRestaurantFinder("search"));
 
 const cropStageEl=document.getElementById("cropStage");
 if(cropStageEl){
@@ -5206,6 +5352,17 @@ async function init(){
     showScreen(savedScreen,{restore:true});
   }else{
     showScreen("home",{restore:true});
+  }
+
+  const globalSearchInput=document.getElementById("globalRestaurantSearch");
+  if(globalSearchInput && !globalSearchInput.dataset.bound){
+    globalSearchInput.dataset.bound="1";
+    globalSearchInput.addEventListener("keydown",e=>{
+      if(e.key==="Enter"){
+        e.preventDefault();
+        searchRestaurantsAnywhere();
+      }
+    });
   }
 
   document.body.classList.remove("booting");
