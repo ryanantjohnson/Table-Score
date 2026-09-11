@@ -1219,7 +1219,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
     </div>
-    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are. A manually chosen area is temporary; refreshing TableScore returns to your real current location.</div>
+    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are on refresh. For best accuracy, allow Precise Location for TableScore in Safari.</div>
     <div class="location-sheet-actions">
       <button class="primary" onclick="useCurrentBrowseLocation()">&#128205; Use My Current Location</button>
       <div class="or">or choose another area</div>
@@ -1261,7 +1261,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 // Paste the website-restricted Google Maps JavaScript API key here.
-const TABLESCORE_MAPS_BROWSER_KEY="TABLESCORE_MAPS_BROWSER_KEY";
+const TABLESCORE_MAPS_BROWSER_KEY="PASTE_YOUR_TABLESCORE_MAP_KEY_HERE";
 
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
@@ -1762,28 +1762,65 @@ async function getFreshTableScoreCoords(){
   }
 
   return await new Promise((resolve,reject)=>{
-    navigator.geolocation.getCurrentPosition(
+    let best=null;
+    let settled=false;
+    let watchId=null;
+
+    const finish=(pos)=>{
+      if(settled||!pos)return;
+      settled=true;
+      if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+
+      tableScoreLocation={
+        latitude:pos.coords.latitude,
+        longitude:pos.coords.longitude,
+        accuracy:pos.coords.accuracy,
+        capturedAt:Date.now()
+      };
+      locationEnabled=true;
+      localStorage.setItem("ts_location_enabled","1");
+      localStorage.setItem("ts_lat",String(pos.coords.latitude));
+      localStorage.setItem("ts_lon",String(pos.coords.longitude));
+      localStorage.setItem("ts_location_accuracy",String(pos.coords.accuracy||""));
+
+      resolve({
+        latitude:pos.coords.latitude,
+        longitude:pos.coords.longitude,
+        accuracy:pos.coords.accuracy
+      });
+    };
+
+    const timer=setTimeout(()=>{
+      if(best){
+        finish(best);
+      }else if(!settled){
+        settled=true;
+        if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+        reject(new Error("TableScore could not get a fresh GPS fix."));
+      }
+    },10000);
+
+    watchId=navigator.geolocation.watchPosition(
       pos=>{
-        tableScoreLocation={
-          latitude:pos.coords.latitude,
-          longitude:pos.coords.longitude,
-          accuracy:pos.coords.accuracy,
-          capturedAt:Date.now()
-        };
-        locationEnabled=true;
-        localStorage.setItem("ts_location_enabled","1");
-        localStorage.setItem("ts_lat",String(pos.coords.latitude));
-        localStorage.setItem("ts_lon",String(pos.coords.longitude));
-        resolve({
-          latitude:pos.coords.latitude,
-          longitude:pos.coords.longitude
-        });
+        if(!best || Number(pos.coords.accuracy||Infinity)<Number(best.coords.accuracy||Infinity)){
+          best=pos;
+        }
+
+        // Good enough for city-level accuracy. Stop early once we have it.
+        if(Number(pos.coords.accuracy||Infinity)<=300){
+          clearTimeout(timer);
+          finish(pos);
+        }
       },
       err=>{
-        if(err.code===1)reject(new Error("Location permission is blocked. Allow location for TableScore in Safari and try again."));
+        clearTimeout(timer);
+        if(settled)return;
+        settled=true;
+        if(watchId!==null)navigator.geolocation.clearWatch(watchId);
+        if(err.code===1)reject(new Error("Location permission is blocked. Allow precise location for TableScore in Safari."));
         else reject(new Error("TableScore could not get your current location."));
       },
-      {enableHighAccuracy:true,timeout:12000,maximumAge:0}
+      {enableHighAccuracy:true,maximumAge:0,timeout:10000}
     );
   });
 }
@@ -1808,30 +1845,39 @@ async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
   if(!("geolocation" in navigator))return false;
 
   const top=document.getElementById("topLocation");
+
+  // Never keep showing a stale city while a fresh fix is in progress.
+  area="";
+  localStorage.removeItem("ts_area");
   if(top)top.innerHTML="&#128205; Updating location...";
 
   try{
     const coords=await getFreshTableScoreCoords();
     const freshArea=await reverseGeocodeBrowseArea(coords.latitude,coords.longitude);
 
-    // A full page refresh always returns TableScore to the user's real current area.
     localStorage.setItem("ts_location_mode","current");
 
     if(freshArea){
-      const changed=freshArea!==area;
       area=freshArea;
       localStorage.setItem("ts_area",area);
       updateArea();
-      if(changed && reloadRestaurants)await loadRestaurantStats();
+      if(reloadRestaurants)await loadRestaurantStats();
     }else{
       area="Near you";
       localStorage.setItem("ts_area",area);
       updateArea();
     }
+
+    // Keep accuracy available for troubleshooting without showing coordinates.
+    if(top && coords?.accuracy){
+      top.title="Location accuracy about "+Math.round(coords.accuracy)+" meters";
+    }
     return true;
   }catch(err){
-    console.warn("Live browse location refresh skipped:",err);
-    updateArea();
+    console.warn("Live browse location refresh failed:",err);
+    area="";
+    localStorage.removeItem("ts_area");
+    if(top)top.innerHTML="&#128205; Location unavailable - tap to retry";
     return false;
   }
 }
@@ -2051,7 +2097,7 @@ function closeLocationChooser(){
 async function useCurrentBrowseLocation(){
   localStorage.setItem("ts_location_mode","current");
   closeLocationChooser();
-  await useLocation();
+  await refreshLiveBrowseLocation({reloadRestaurants:true});
 }
 
 function saveBrowseArea(){
