@@ -1219,7 +1219,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
     </div>
-    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are whenever TableScore refreshes. Choosing another area stays fixed until you switch back.</div>
+    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are. A manually chosen area is temporary; refreshing TableScore returns to your real current location.</div>
     <div class="location-sheet-actions">
       <button class="primary" onclick="useCurrentBrowseLocation()">&#128205; Use My Current Location</button>
       <div class="or">or choose another area</div>
@@ -1805,28 +1805,36 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
 }
 
 async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
-  const mode=localStorage.getItem("ts_location_mode");
-  const shouldUseCurrent=mode==="current" || (!mode && localStorage.getItem("ts_location_enabled")==="1");
-  if(!shouldUseCurrent || !("geolocation" in navigator))return false;
+  if(!("geolocation" in navigator))return false;
+
+  const top=document.getElementById("topLocation");
+  if(top)top.innerHTML="&#128205; Updating location...";
 
   try{
     const coords=await getFreshTableScoreCoords();
     const freshArea=await reverseGeocodeBrowseArea(coords.latitude,coords.longitude);
+
+    // A full page refresh always returns TableScore to the user's real current area.
     localStorage.setItem("ts_location_mode","current");
+
     if(freshArea){
       const changed=freshArea!==area;
       area=freshArea;
       localStorage.setItem("ts_area",area);
       updateArea();
-      if(changed && reloadRestaurants)loadRestaurantStats();
+      if(changed && reloadRestaurants)await loadRestaurantStats();
+    }else{
+      area="Near you";
+      localStorage.setItem("ts_area",area);
+      updateArea();
     }
     return true;
   }catch(err){
     console.warn("Live browse location refresh skipped:",err);
+    updateArea();
     return false;
   }
 }
-
 let restaurantFinderMode="search";
 let restaurantMap=null;
 let restaurantMapMarkers=[];
@@ -2052,7 +2060,8 @@ function saveBrowseArea(){
   if(!v)return alert("Enter a city, state, or ZIP first.");
 
   area=v;
-  localStorage.setItem("ts_area",area);
+  // Manual browsing is temporary. On the next full refresh, TableScore returns
+  // to the user's actual current GPS area automatically.
   localStorage.setItem("ts_location_mode","manual");
   updateArea();
   loadRestaurantStats();
