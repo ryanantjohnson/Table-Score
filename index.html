@@ -2895,7 +2895,7 @@ function renderProfile(){
   const badgeFolderSub=document.getElementById("profileBadgeFolderSub");
   if(badgeFolderSub&&currentUser){
     const earnedCount=ownEarnedBadgeItems().length;
-    badgeFolderSub.textContent=`${earnedCount} earned Â· ${equippedBadgeSlugs.length}/4 displayed`;
+    badgeFolderSub.textContent=`${earnedCount} earned - ${equippedBadgeSlugs.length}/4 displayed`;
   }
   renderOwnRewardPreview();
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
@@ -3345,17 +3345,52 @@ function renderBadgePicker(){
 }
 async function toggleFoodBadge(slug){
   if(!currentUser)return openAccount();
+
   const exists=equippedBadgeSlugs.includes(slug);
-  let next=exists?equippedBadgeSlugs.filter(s=>s!==slug):[...equippedBadgeSlugs,slug];
-  if(next.length>4)return alert("You can equip up to 4 food badges.");
-  const {error:deleteError}=await db.from("user_profile_badges").delete().eq("user_id",currentUser.id);
+  const next=exists
+    ?equippedBadgeSlugs.filter(s=>s!==slug)
+    :[...equippedBadgeSlugs,slug];
+
+  if(next.length>4)return alert("You can display up to 4 badges.");
+
+  const {error:deleteError}=await db
+    .from("user_profile_badges")
+    .delete()
+    .eq("user_id",currentUser.id);
+
   if(deleteError)return alert("Could not update badges: "+deleteError.message);
+
   if(next.length){
-    const rows=next.map((badge_slug,i)=>({user_id:currentUser.id,badge_slug,slot:i+1}));
-    const {error:insertError}=await db.from("user_profile_badges").insert(rows);
-    if(insertError){await loadFoodBadges();return alert("Could not update badges: "+insertError.message);}
+    const rows=next.map((badge_slug,i)=>({
+      user_id:currentUser.id,
+      badge_slug,
+      slot:i+1
+    }));
+
+    const {error:insertError}=await db
+      .from("user_profile_badges")
+      .insert(rows);
+
+    if(insertError){
+      await loadFoodBadges();
+      renderOwnBadges();
+      renderProfile();
+      return alert("Could not update badges: "+insertError.message);
+    }
   }
-  equippedBadgeSlugs=next;renderBadgePicker();renderOwnBadges();
+
+  // Re-read the saved state from Supabase so the profile row under the
+  // username can never get stuck showing an old badge.
+  await loadFoodBadges();
+  renderOwnBadges();
+  renderBadgePicker();
+  renderProfile();
+
+  // Keep the Reward Collection UI in sync too, when it is open.
+  const folder=document.getElementById("badgeFolderModal");
+  if(folder && !folder.classList.contains("hidden")){
+    renderOwnBadgeFolder();
+  }
 }
 async function loadPublicBadges(userId){
   const {data,error}=await db.from("user_profile_badges").select("badge_slug,slot").eq("user_id",userId).order("slot",{ascending:true});
