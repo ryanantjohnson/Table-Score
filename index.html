@@ -123,6 +123,14 @@ linear-gradient(135deg,#1c2328,#111518);position:relative;overflow:hidden}
 .location-sheet-actions{display:grid;gap:9px;margin-top:12px}
 .location-sheet-actions .or{font-size:10px;color:var(--muted);text-align:center;font-weight:850;letter-spacing:.08em;text-transform:uppercase}
 .location-current{font-size:11px;color:var(--muted);line-height:1.4;margin-top:5px}
+.place-finder-tabs.three{grid-template-columns:1fr 1fr 1fr}
+#restaurantMap{width:100%;height:48vh;min-height:330px;max-height:520px;border:1px solid var(--line);border-radius:18px;overflow:hidden;background:var(--card2)}
+.map-actions{display:grid;grid-template-columns:1fr auto;gap:8px;margin:9px 0}
+.map-note{font-size:10px;color:var(--muted);line-height:1.4;margin:5px 2px 9px}
+.map-selection{margin-top:9px;border:1px solid var(--line);background:var(--card2);border-radius:15px;padding:12px}
+.map-selection-name{font-size:14px;font-weight:950}
+.map-selection-meta{font-size:10px;color:var(--muted);line-height:1.4;margin-top:4px}
+
 
 .place-selected-note{display:flex;align-items:center;gap:6px;color:var(--green);font-size:11px;font-weight:850;margin-top:7px}
 
@@ -1159,9 +1167,10 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
     <div class="muted" style="font-size:11px;line-height:1.45;margin-bottom:10px">Search by restaurant name, city, or address anywhere - or browse what's near you right now.</div>
 
-    <div class="place-finder-tabs">
+    <div class="place-finder-tabs three">
       <button id="placeSearchTab" class="active" onclick="setRestaurantFinderMode('search')">Search Anywhere</button>
       <button id="placeNearbyTab" onclick="setRestaurantFinderMode('nearby')">Nearby</button>
+      <button id="placeMapTab" onclick="setRestaurantFinderMode('map')">Map</button>
     </div>
 
     <div id="placeSearchPanel">
@@ -1172,6 +1181,15 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="muted" style="font-size:10px;line-height:1.4;margin-bottom:7px">Search for a restaurant you visited earlier even if it is nowhere near your current location.</div>
     </div>
 
+    <div id="restaurantMapPanel" class="hidden">
+      <div id="restaurantMap"></div>
+      <div class="map-actions">
+        <button class="primary" onclick="searchRestaurantMapArea()">Search This Area</button>
+        <button class="secondary" style="width:auto;padding:0 13px" onclick="centerRestaurantMapOnMe()">My Location</button>
+      </div>
+      <div class="map-note">Move the map anywhere, then tap Search This Area. Restaurant results are only requested when you tap the button.</div>
+      <div id="mapRestaurantSelection"></div>
+    </div>
     <div id="nearbyRestaurantStatus" class="place-picker-status">Search for a restaurant or switch to Nearby.</div>
     <div id="nearbyRestaurantList" class="place-picker-list"></div>
     <button id="nearbyRestaurantRetryBtn" class="secondary hidden" onclick="loadNearbyRestaurants(true)">Refresh Nearby</button>
@@ -1228,6 +1246,9 @@ const SUPABASE_PUBLISHABLE_KEY="sb_publishable_bFyMfzpmPsBnQ2JpCeXVUQ_J-aKri3f";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
+// Paste the website-restricted Google Maps JavaScript API key here.
+const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs"
+
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
 const dbCols=["atmosphere","cleanliness","taste","quality","portions","price","service"];
@@ -1756,6 +1777,11 @@ async function getFreshTableScoreCoords(){
 }
 
 let restaurantFinderMode="search";
+let restaurantMap=null;
+let restaurantMapMarkers=[];
+let restaurantMapInfoWindow=null;
+let googleMapsLoaderPromise=null;
+let mapSelectedRestaurant=null;
 
 function openRestaurantFinder(mode="search"){
   if(!currentUser)return openAccount(()=>openRestaurantFinder(mode));
@@ -1775,28 +1801,34 @@ function closeNearbyRestaurantPicker(){
 }
 
 function setRestaurantFinderMode(mode){
-  restaurantFinderMode=mode==="nearby"?"nearby":"search";
+  restaurantFinderMode=["search","nearby","map"].includes(mode)?mode:"search";
   const searchTab=document.getElementById("placeSearchTab");
   const nearbyTab=document.getElementById("placeNearbyTab");
+  const mapTab=document.getElementById("placeMapTab");
   const searchPanel=document.getElementById("placeSearchPanel");
+  const mapPanel=document.getElementById("restaurantMapPanel");
   const status=document.getElementById("nearbyRestaurantStatus");
   const list=document.getElementById("nearbyRestaurantList");
   const retry=document.getElementById("nearbyRestaurantRetryBtn");
-
   searchTab?.classList.toggle("active",restaurantFinderMode==="search");
   nearbyTab?.classList.toggle("active",restaurantFinderMode==="nearby");
+  mapTab?.classList.toggle("active",restaurantFinderMode==="map");
   searchPanel?.classList.toggle("hidden",restaurantFinderMode!=="search");
+  mapPanel?.classList.toggle("hidden",restaurantFinderMode!=="map");
   retry?.classList.add("hidden");
   nearbyGoogleRestaurants=[];
   if(list)list.innerHTML="";
-
   if(restaurantFinderMode==="nearby"){
+    status?.classList.remove("hidden");
     loadNearbyRestaurants(false);
+  }else if(restaurantFinderMode==="map"){
+    status?.classList.add("hidden");
+    initRestaurantMap();
   }else if(status){
+    status.classList.remove("hidden");
     status.textContent="Search by restaurant name, city, or address.";
   }
 }
-
 function restaurantTypeLabel(r){
   return r?.primary_type_name || (r?.primary_type ? String(r.primary_type).replaceAll("_"," ") : "Restaurant");
 }
@@ -1973,6 +2005,97 @@ function saveBrowseArea(){
   loadRestaurantStats();
   closeLocationChooser();
 }
+function loadGoogleMaps(){
+  if(window.google?.maps)return Promise.resolve(window.google.maps);
+  if(googleMapsLoaderPromise)return googleMapsLoaderPromise;
+  if(!TABLESCORE_MAPS_BROWSER_KEY || TABLESCORE_MAPS_BROWSER_KEY.includes("PASTE_YOUR")){
+    return Promise.reject(new Error("Paste your TableScore Web Map API key into index.html first."));
+  }
+  googleMapsLoaderPromise=new Promise((resolve,reject)=>{
+    const cb="tableScoreMapsReady_"+Date.now();
+    window[cb]=()=>{try{delete window[cb]}catch(e){} resolve(window.google.maps)};
+    const s=document.createElement("script");
+    s.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(TABLESCORE_MAPS_BROWSER_KEY)+"&callback="+cb+"&v=weekly";
+    s.async=true;s.defer=true;
+    s.onerror=()=>reject(new Error("Google Maps could not load. Check the web key restrictions."));
+    document.head.appendChild(s);
+  });
+  return googleMapsLoaderPromise;
+}
+
+async function initRestaurantMap(){
+  const host=document.getElementById("restaurantMap");
+  if(!host)return;
+  try{
+    await loadGoogleMaps();
+    let coords=currentTableScoreCoords();
+    if(!coords){try{coords=await getFreshTableScoreCoords()}catch(e){}}
+    const c=coords||{latitude:30.2672,longitude:-97.7431};
+    if(!restaurantMap){
+      restaurantMap=new google.maps.Map(host,{center:{lat:+c.latitude,lng:+c.longitude},zoom:13,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,clickableIcons:false,gestureHandling:"greedy"});
+      restaurantMapInfoWindow=new google.maps.InfoWindow();
+    }else{
+      google.maps.event.trigger(restaurantMap,"resize");
+    }
+    setTimeout(()=>google.maps.event.trigger(restaurantMap,"resize"),120);
+    if(!restaurantMapMarkers.length)await searchRestaurantMapArea();
+  }catch(err){
+    console.error(err);
+    host.innerHTML=`<div class="empty"><div class="section-title">Map unavailable</div><p class="muted" style="font-size:12px">${esc(err?.message||"Google Maps could not load.")}</p></div>`;
+  }
+}
+
+function clearRestaurantMapMarkers(){
+  restaurantMapMarkers.forEach(m=>m.setMap(null));
+  restaurantMapMarkers=[];
+}
+
+async function searchRestaurantMapArea(){
+  if(!restaurantMap)return initRestaurantMap();
+  const center=restaurantMap.getCenter();
+  const btn=document.querySelector("#restaurantMapPanel .primary");
+  if(btn){btn.disabled=true;btn.textContent="Searching..."}
+  try{
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:5000}});
+    if(error)throw error;if(data?.error)throw new Error(data.error);
+    nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
+    clearRestaurantMapMarkers();mapSelectedRestaurant=null;
+    const selection=document.getElementById("mapRestaurantSelection");
+    if(selection)selection.innerHTML="";
+    nearbyGoogleRestaurants.forEach((r,i)=>{
+      if(!Number.isFinite(+r.latitude)||!Number.isFinite(+r.longitude))return;
+      const marker=new google.maps.Marker({map:restaurantMap,position:{lat:+r.latitude,lng:+r.longitude},title:r.name||"Restaurant"});
+      marker.addListener("click",()=>showMapRestaurant(i,marker));
+      restaurantMapMarkers.push(marker);
+    });
+    if(!nearbyGoogleRestaurants.length&&selection)selection.innerHTML='<div class="map-selection"><div class="map-selection-name">No restaurants found here</div><div class="map-selection-meta">Move the map and tap Search This Area again.</div></div>';
+  }catch(err){console.error(err);alert(err?.message||"TableScore could not search this map area.")}
+  finally{if(btn){btn.disabled=false;btn.textContent="Search This Area"}}
+}
+
+function showMapRestaurant(i,marker){
+  const r=nearbyGoogleRestaurants[i];if(!r)return;
+  mapSelectedRestaurant=r;
+  restaurantMapInfoWindow?.setContent(`<div style="color:#111;max-width:220px"><strong>${esc(r.name||"Restaurant")}</strong><br><span style="font-size:11px">${esc(r.address||restaurantTypeLabel(r))}</span></div>`);
+  restaurantMapInfoWindow?.open({map:restaurantMap,anchor:marker});
+  const el=document.getElementById("mapRestaurantSelection");
+  if(el)el.innerHTML=`<div class="map-selection"><div class="map-selection-name">${esc(r.name||"Restaurant")}</div><div class="map-selection-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div><button class="primary" style="margin-top:9px" onclick="chooseMapRestaurant()">Rate This Restaurant</button></div>`;
+}
+function chooseMapRestaurant(){
+  if(!mapSelectedRestaurant)return;
+  const i=nearbyGoogleRestaurants.indexOf(mapSelectedRestaurant);
+  if(i>=0)chooseNearbyRestaurant(i);
+}
+async function centerRestaurantMapOnMe(){
+  try{
+    const c=await getFreshTableScoreCoords();
+    if(!restaurantMap)await initRestaurantMap();
+    restaurantMap.setCenter({lat:+c.latitude,lng:+c.longitude});
+    restaurantMap.setZoom(14);
+    await searchRestaurantMapArea();
+  }catch(e){alert("TableScore could not get your current location.")}
+}
+
 function openAccount(cb){
   afterAuth=typeof cb==="function"?cb:null;
   document.getElementById("accountModal").classList.remove("hidden");
