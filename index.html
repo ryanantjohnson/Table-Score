@@ -545,7 +545,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   color:inherit;font:inherit;font-weight:800;cursor:pointer
 }
 .rating-location-link:hover{text-decoration:underline}
-.rating-location-pin{font-size:.95em}
 
 </style>
 </head>
@@ -1109,8 +1108,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.1</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Rating Location Map</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.2</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Rating Map Access Fix</div>
         </div>
       </div>
     </div>
@@ -1144,6 +1143,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div>
         <div id="ratingDetailRestaurant" class="section-title">Rating</div>
         <div id="ratingDetailMeta" class="muted" style="font-size:11px;margin-top:3px"></div>
+        <button id="ratingDetailMapAction" class="secondary hidden"
+                style="width:auto;padding:7px 11px;margin-top:7px;font-size:11px"
+                onclick="openActiveRatingRestaurantLocation()">View Restaurant Map</button>
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRatingDetail()">Close</button>
     </div>
@@ -3105,6 +3107,7 @@ function updateSaveRestaurantButton(){
 
 
 let activeRatingDetailId=null;
+let activeRatingRestaurantId=null;
 
 function engagementMarkup(ratingId){
   return `<div class="engagement-row" onclick="event.stopPropagation()">
@@ -3180,6 +3183,7 @@ async function renderRatingDetailEngagement(ratingId){
 async function openRatingDetail(ratingId){
   if(!ratingId)return;
   activeRatingDetailId=ratingId;
+  activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
   modal.classList.remove("hidden");
   const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
@@ -3187,6 +3191,7 @@ async function openRatingDetail(ratingId){
   loadingRestaurantTitle.onclick=null;
   loadingRestaurantTitle.style.cursor="default";
   document.getElementById("ratingDetailAuthor").innerHTML="";
+  document.getElementById("ratingDetailMapAction")?.classList.add("hidden");
   document.getElementById("ratingDetailBreakdown").innerHTML="";
   document.getElementById("ratingDetailPhotos").innerHTML="";
   document.getElementById("ratingDetailComments").innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">Loading comments...</div>';
@@ -3219,6 +3224,9 @@ async function openRatingDetail(ratingId){
   const photoMap=await getPhotosForRatings([ratingId]);
   const photos=photoMap.get(ratingId)||[];
   const restaurant=r.restaurants||{};
+  activeRatingRestaurantId=r.restaurant_id||null;
+  const mapAction=document.getElementById("ratingDetailMapAction");
+  if(mapAction)mapAction.classList.toggle("hidden",!activeRatingRestaurantId);
   const score=Number(r.overall_score);
   const name=p?.display_name||p?.username||"TableScore User";
 
@@ -3272,6 +3280,7 @@ async function openRatingDetail(ratingId){
 function closeRatingDetail(){
   document.getElementById("ratingDetailModal").classList.add("hidden");
   activeRatingDetailId=null;
+  activeRatingRestaurantId=null;
 }
 
 async function loadRatingComments(ratingId){
@@ -4783,6 +4792,11 @@ let ratingLocationRestaurant=null;
 let ratingRestaurantMapInstance=null;
 let ratingRestaurantMapMarker=null;
 
+function openActiveRatingRestaurantLocation(){
+  if(!activeRatingRestaurantId)return alert("Restaurant location is not available for this rating.");
+  openRatingRestaurantLocation(activeRatingRestaurantId);
+}
+
 async function openRatingRestaurantLocation(restaurantId){
   if(!restaurantId)return;
   try{
@@ -4812,6 +4826,9 @@ async function openRatingRestaurantLocation(restaurantId){
         : "This older TableScore restaurant has not been linked to a verified Google Place yet.";
     }
 
+    const directionsBtn=document.querySelector("#ratingRestaurantLocationModal .primary");
+    if(directionsBtn)directionsBtn.textContent=data.google_place_id?"Get Directions":"Find on Google Maps";
+
     document.getElementById("ratingRestaurantLocationModal")?.classList.remove("hidden");
 
     if(Number.isFinite(Number(data.latitude)) && Number.isFinite(Number(data.longitude))){
@@ -4819,7 +4836,7 @@ async function openRatingRestaurantLocation(restaurantId){
     }else{
       const mapEl=document.getElementById("ratingRestaurantMap");
       if(mapEl){
-        mapEl.innerHTML='<div class="empty" style="padding:28px"><div class="section-title">Map not available yet</div><p class="muted" style="font-size:12px">This restaurant still needs a verified location.</p></div>';
+        mapEl.innerHTML='<div class="empty" style="padding:28px"><div class="section-title">Location not linked yet</div><p class="muted" style="font-size:12px">You can still find this restaurant in Google Maps while TableScore verifies its exact location.</p></div>';
       }
     }
   }catch(err){
@@ -4909,7 +4926,7 @@ function ratingLocationButtonHtml(restaurantId, city, stateRegion){
   const loc=[city,stateRegion].filter(Boolean).join(", ");
   if(!restaurantId)return esc(loc||"Location unavailable");
   return `<button class="rating-location-link" onclick="event.stopPropagation();openRatingRestaurantLocation('${restaurantId}')">
-    <span class="rating-location-pin">ð</span><span>${esc(loc||"View location")}</span>
+    <span>${esc(loc||"View location")}</span>
   </button>`;
 }
 
@@ -6756,8 +6773,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.37.1";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Rating Location Map";
+const TABLESCORE_VERSION="5.37.2";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Rating Map Access Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
