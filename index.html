@@ -584,6 +584,28 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableScore ratings shown in this version come only from the TableScore database.</p>
     </div>
 
+    <div id="socialCard" class="card hidden">
+      <div class="section-head">
+        <div>
+          <div class="section-title">Find People</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Search TableScore members by username</div>
+        </div>
+        <span class="muted" style="font-size:11px">TableScore Social</span>
+      </div>
+      <div class="search">
+        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search @username" onkeydown="if(event.key==='Enter')searchPeople()">
+        <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
+      </div>
+      <div id="peopleResults" class="list" style="margin-top:10px"></div>
+      <div id="peopleSuggestionsWrap" style="margin-top:16px">
+        <div class="section-head" style="margin-bottom:7px">
+          <div class="section-title" style="font-size:15px">Suggested for You</div>
+          <span class="muted" style="font-size:10px">Based on connections</span>
+        </div>
+        <div id="peopleSuggestions" class="list"></div>
+      </div>
+    </div>
+
     <div class="card" onclick="showScreen('feed')" style="cursor:pointer">
       <div class="section-head" style="margin-bottom:5px">
         <div>
@@ -631,7 +653,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
           <div class="section-title">Following</div>
           <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableScore circle</div>
         </div>
-        <button class="linkbtn" onclick="showScreen('profile')">Find people &rsaquo;</button>
+        <button class="linkbtn" onclick="showScreen('home');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find people &rsaquo;</button>
       </div>
       <div id="followingFeed" style="margin-top:8px"></div>
     </div>
@@ -815,25 +837,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <button class="primary" onclick="claimUsername()">Save Username</button>
     </div>
 
-    <div id="socialCard" class="card hidden">
-      <div class="section-head">
-        <div class="section-title">Find People</div>
-        <span class="muted" style="font-size:11px">TableScore Social</span>
-      </div>
-      <div class="search">
-        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search @username" onkeydown="if(event.key==='Enter')searchPeople()">
-        <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
-      </div>
-      <div id="peopleResults" class="list" style="margin-top:10px"></div>
-
-      <div id="peopleSuggestionsWrap" style="margin-top:16px">
-        <div class="section-head" style="margin-bottom:7px">
-          <div class="section-title" style="font-size:15px">Suggested for You</div>
-          <span class="muted" style="font-size:10px">Based on connections</span>
-        </div>
-        <div id="peopleSuggestions" class="list"></div>
-      </div>
-    </div>
 <div id="myProfileRatingsCard" class="card hidden">
       <div class="section-head">
         <div class="section-title">Recent Ratings</div>
@@ -1134,8 +1137,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.40.0</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Taste Match v1</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.41.1</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Security + Home People Search</div>
         </div>
       </div>
     </div>
@@ -2983,17 +2986,20 @@ async function refreshUserData(){
     return;
   }
 
-  const [{data:p,error:pErr},{data:r,error:rErr},{data:saved,error:sErr}]=await Promise.all([
-    db.from("profiles").select("*").eq("id",currentUser.id).maybeSingle(),
+  const [{data:p,error:pErr},{data:privateRows,error:privateErr},{data:r,error:rErr},{data:saved,error:sErr}]=await Promise.all([
+    db.from("profiles").select("id,display_name,home_city,created_at,username,is_private,avatar_url,selected_title,active_account_mark,active_title,background_url").eq("id",currentUser.id).maybeSingle(),
+    db.rpc("get_my_private_profile_fields"),
     db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false}),
     db.from("saved_restaurants").select("restaurant_id,created_at,restaurants(id,name,cuisine,city,state_region)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
   ]);
 
   if(pErr)console.error("profile:",pErr);
+  if(privateErr)console.error("private profile fields:",privateErr);
   if(rErr)console.error("ratings:",rErr);
   if(sErr)console.error("saved restaurants:",sErr);
 
-  profile=p||null;
+  const privateProfile=Array.isArray(privateRows)?privateRows[0]:privateRows;
+  profile=p?{...p,...(privateProfile||{})}:null;
   myRatings=r||[];
   savedRestaurants=saved||[];
   savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
@@ -3460,7 +3466,7 @@ async function loadFollowingFeed(){
     return;
   }
   if(!followingIds.size){
-    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('profile')">Find People</button></div>`;
+    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('home');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div>`;
     return;
   }
 
@@ -4322,21 +4328,14 @@ async function tryUnlockSecretReward(slug){
   const existing=earnedSecretRewards.find(r=>r.reward_slug===slug);
   if(existing)return;
 
-  const payload={
-    user_id:currentUser.id,
-    reward_slug:"secret-sauce",
-    reward_type:"badge",
-    reward_name:"Secret Sauce",
-    reward_emoji:"ð§ª",
-    is_new:true
-  };
-  const {data,error}=await db.from("user_secret_rewards").insert(payload).select("*").single();
+  const {data:rows,error}=await db.rpc("unlock_secret_sauce");
   if(error){
-    if(error.code==="23505")return;
     console.error("secret unlock:",error);
     return;
   }
-  earnedSecretRewards.unshift(data);
+  const data=Array.isArray(rows)?rows[0]:rows;
+  if(!data)return;
+  if(!earnedSecretRewards.some(r=>r.reward_slug===data.reward_slug))earnedSecretRewards.unshift(data);
   if(!availableBadges.some(b=>b.slug==="secret-sauce")){
     availableBadges.push({slug:"secret-sauce",name:"Secret Sauce",emoji:"ð§ª"});
   }
@@ -4394,20 +4393,17 @@ async function equipSecretReward(){
         closeSecretReward();return;
       }
       const next=[...equippedBadgeSlugs,r.reward_slug];
-      const {error:delErr}=await db.from("user_profile_badges").delete().eq("user_id",currentUser.id);
-      if(delErr)return alert("Could not equip reward: "+delErr.message);
-      const rows=next.map((badge_slug,i)=>({user_id:currentUser.id,badge_slug,slot:i+1}));
-      const {error:insErr}=await db.from("user_profile_badges").insert(rows);
-      if(insErr){await loadFoodBadges();return alert("Could not equip reward: "+insErr.message);}
+      const {data:ok,error:badgeErr}=await db.rpc("set_my_profile_badges",{p_badge_slugs:next});
+      if(badgeErr||!ok){await loadFoodBadges();return alert("Could not equip reward.");}
       equippedBadgeSlugs=next;
       renderOwnBadges();renderBadgePicker();
     }
   }else if(r.reward_type==="title"){
-    const {error}=await db.from("profiles").update({active_title:r.reward_name}).eq("id",currentUser.id);
-    if(error)return alert("Could not equip reward: "+error.message);
+    const {data:ok,error}=await db.rpc("set_my_active_title",{p_title:r.reward_name});
+    if(error||!ok)return alert("Could not equip reward.");
     profile={...(profile||{}),active_title:r.reward_name};renderProfile();renderTitlePicker();
   }
-  await db.from("user_secret_rewards").update({is_new:false}).eq("user_id",currentUser.id).eq("reward_slug",r.reward_slug);
+  await db.rpc("mark_my_secret_reward_seen",{p_reward_slug:r.reward_slug});
   closeSecretReward();
 }
 
@@ -4654,30 +4650,15 @@ async function toggleFoodBadge(slug){
 
   if(next.length>4)return alert("You can display up to 4 badges.");
 
-  const {error:deleteError}=await db
-    .from("user_profile_badges")
-    .delete()
-    .eq("user_id",currentUser.id);
+  const {data:badgeSaved,error:badgeSaveError}=await db.rpc("set_my_profile_badges",{
+    p_badge_slugs:next
+  });
 
-  if(deleteError)return alert("Could not update badges: "+deleteError.message);
-
-  if(next.length){
-    const rows=next.map((badge_slug,i)=>({
-      user_id:currentUser.id,
-      badge_slug,
-      slot:i+1
-    }));
-
-    const {error:insertError}=await db
-      .from("user_profile_badges")
-      .insert(rows);
-
-    if(insertError){
-      await loadFoodBadges();
-      renderOwnBadges();
-      renderProfile();
-      return alert("Could not update badges: "+insertError.message);
-    }
+  if(badgeSaveError||!badgeSaved){
+    await loadFoodBadges();
+    renderOwnBadges();
+    renderProfile();
+    return alert("Could not update badges.");
   }
 
   // Re-read the saved state from Supabase so the profile row under the
@@ -5942,15 +5923,23 @@ async function findOrCreateRestaurant(name){
       return row||legacy;
     }
 
-    const {data:created,error:createError}=await db.from("restaurants")
-      .insert({
-        name:clean,
-        google_place_id:place.google_place_id,
-        ...realFields
-      })
-      .select("id,name")
-      .single();
+    const {data:createdRows,error:createError}=await db.rpc("create_google_restaurant",{
+      p_name:clean,
+      p_google_place_id:place.google_place_id,
+      p_address:realFields.address,
+      p_formatted_address:realFields.formatted_address,
+      p_city:realFields.city,
+      p_state_region:realFields.state_region,
+      p_postal_code:realFields.postal_code,
+      p_latitude:realFields.latitude,
+      p_longitude:realFields.longitude,
+      p_google_primary_type:realFields.google_primary_type,
+      p_google_primary_type_name:realFields.google_primary_type_name,
+      p_google_maps_url:realFields.google_maps_url
+    });
     if(createError)throw createError;
+    const created=Array.isArray(createdRows)?createdRows[0]:createdRows;
+    if(!created)throw new Error("Could not create the Google-linked restaurant.");
     return created;
   }
 
@@ -6871,8 +6860,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.40.0";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Taste Match v1";
+const TABLESCORE_VERSION="5.41.1";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Security + Home People Search";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -7090,7 +7079,7 @@ document.addEventListener("DOMContentLoaded", () => {
   <div class="modal-card" style="max-height:88vh;overflow:auto">
     <div class="modal-head">
       <div class="section-title">Verification Requests</div>
-      <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')">â</button>
+      <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
     <div id="chefsTableAdminList"></div>
   </div>
