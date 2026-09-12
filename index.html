@@ -1143,8 +1143,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.42.0</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Secure Account Deletion</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.42.1</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Rating Submit Diagnostic</div>
         </div>
       </div>
     </div>
@@ -5880,7 +5880,7 @@ async function findOrCreateRestaurant(name){
       .select("id,name")
       .eq("id",selectedRestaurantId)
       .maybeSingle();
-    if(error)throw error;
+    if(error)throw new Error("[restaurant lookup: selected restaurant] "+(error.message||"Unknown error"));
     if(data)return data;
   }
 
@@ -5906,7 +5906,7 @@ async function findOrCreateRestaurant(name){
       .select("id,name")
       .eq("google_place_id",place.google_place_id)
       .maybeSingle();
-    if(placeError)throw placeError;
+    if(placeError)throw new Error("[restaurant lookup: Google Place ID] "+(placeError.message||"Unknown error"));
 
     if(byPlace){
       const {data:updated,error:updateError}=await db.rpc("link_restaurant_google_place",{
@@ -5923,7 +5923,7 @@ async function findOrCreateRestaurant(name){
         p_google_primary_type_name:realFields.google_primary_type_name,
         p_google_maps_url:realFields.google_maps_url
       });
-      if(updateError)throw updateError;
+      if(updateError)throw new Error("[restaurant link: existing Google restaurant] "+(updateError.message||"Unknown error"));
       const row=Array.isArray(updated)?updated[0]:updated;
       return row||byPlace;
     }
@@ -5935,7 +5935,7 @@ async function findOrCreateRestaurant(name){
       .ilike("name",clean)
       .is("google_place_id",null)
       .limit(10);
-    if(legacyError)throw legacyError;
+    if(legacyError)throw new Error("[restaurant lookup: legacy match] "+(legacyError.message||"Unknown error"));
 
     const legacy=(legacyRows||[]).find(r=>{
       if(!place.city)return true;
@@ -5957,7 +5957,7 @@ async function findOrCreateRestaurant(name){
         p_google_primary_type_name:realFields.google_primary_type_name,
         p_google_maps_url:realFields.google_maps_url
       });
-      if(linkError)throw linkError;
+      if(linkError)throw new Error("[restaurant link: legacy restaurant] "+(linkError.message||"Unknown error"));
       const row=Array.isArray(linked)?linked[0]:linked;
       return row||legacy;
     }
@@ -5976,7 +5976,7 @@ async function findOrCreateRestaurant(name){
       p_google_primary_type_name:realFields.google_primary_type_name,
       p_google_maps_url:realFields.google_maps_url
     });
-    if(createError)throw createError;
+    if(createError)throw new Error("[restaurant create RPC] "+(createError.message||"Unknown error"));
     const created=Array.isArray(createdRows)?createdRows[0]:createdRows;
     if(!created)throw new Error("Could not create the Google-linked restaurant.");
     return created;
@@ -5987,7 +5987,7 @@ async function findOrCreateRestaurant(name){
       .select("id,name")
       .eq("id",selectedRestaurantId)
       .maybeSingle();
-    if(error)throw error;
+    if(error)throw new Error("[restaurant lookup: selected restaurant fallback] "+(error.message||"Unknown error"));
     if(data)return data;
   }
 
@@ -6370,9 +6370,15 @@ async function submitRating(){
     };
 
     const {data,error}=await db.from("ratings").insert(payload).select("id,overall_score,verified_visit").single();
-    if(error)throw error;
+    if(error)throw new Error("[rating insert] "+(error.message||"Unknown error"));
 
-    if(pendingRatingPhotos.length)await uploadRatingPhotos(data.id);
+    if(pendingRatingPhotos.length){
+      try{
+        await uploadRatingPhotos(data.id);
+      }catch(photoErr){
+        throw new Error("[rating photo upload] "+(photoErr?.message||"Unknown error"));
+      }
+    }
     clearPendingRatingPhotos();
 
     alert(
@@ -6899,8 +6905,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.42.0";
-const TABLESCORE_BUILD_LABEL="Secure Account Deletion";
+const TABLESCORE_VERSION="5.42.1";
+const TABLESCORE_BUILD_LABEL="Rating Submit Diagnostic";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
