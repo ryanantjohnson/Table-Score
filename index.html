@@ -1051,6 +1051,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
+    <div id="restaurantCleanupCard" class="card hidden">
+      <div class="section-head">
+        <div>
+          <div class="section-title" style="font-size:15px">Restaurant Identity Cleanup</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">OG-only launch tool. Link older TableScore restaurant records to verified Google Places without changing their existing ratings.</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:8px 11px" onclick="openRestaurantCleanup()">Open</button>
+      </div>
+      <div id="restaurantCleanupSummary" class="muted" style="font-size:10px;margin-top:8px">Checking unlinked restaurants...</div>
+    </div>
+
     <div id="secretBadgeLabCard" class="card hidden">
       <div class="section-head">
         <div>
@@ -1089,8 +1100,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.3</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Explore Map Loader Fix</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.0</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Restaurant Identity Cleanup</div>
         </div>
       </div>
     </div>
@@ -1217,6 +1228,47 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+
+<div id="restaurantCleanupModal" class="modal hidden" onclick="if(event.target===this)closeRestaurantCleanup()">
+  <div class="sheet" style="max-height:90vh;overflow:auto">
+    <div class="section-head" style="position:sticky;top:0;background:var(--bg);z-index:5;padding-bottom:9px">
+      <div>
+        <div class="kicker">Launch cleanup</div>
+        <div class="section-title">Verify Restaurant Locations</div>
+        <div id="restaurantCleanupCount" class="muted" style="font-size:10px;margin-top:3px"></div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanup()">Close</button>
+    </div>
+
+    <div class="notice" style="margin-top:8px">
+      Existing ratings stay attached to the same TableScore restaurant. Only link a result when you are confident it is the same physical restaurant.
+    </div>
+
+    <div id="restaurantCleanupList" class="list" style="margin-top:10px"></div>
+  </div>
+</div>
+
+<div id="restaurantCleanupMatchModal" class="modal hidden" onclick="if(event.target===this)closeRestaurantCleanupMatch()">
+  <div class="sheet" style="max-height:90vh;overflow:auto">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Google Place match</div>
+        <div id="cleanupMatchTitle" class="section-title">Find the real location</div>
+        <div id="cleanupMatchMeta" class="muted" style="font-size:10px;margin-top:3px"></div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanupMatch()">Close</button>
+    </div>
+
+    <div class="place-search-row" style="margin-top:10px">
+      <input id="cleanupRestaurantSearch" placeholder="Restaurant name + city" autocomplete="off"
+             onkeydown="if(event.key==='Enter')searchRestaurantCleanupMatches()">
+      <button class="primary" onclick="searchRestaurantCleanupMatches()">Search</button>
+    </div>
+
+    <div id="cleanupMatchStatus" class="muted" style="font-size:11px;margin:10px 0"></div>
+    <div id="cleanupMatchResults" class="place-picker-list"></div>
+  </div>
+</div>
 
 <div id="nearbyRestaurantModal" class="modal hidden">
   <div class="sheet">
@@ -4677,6 +4729,212 @@ function enableTableScoreLocation(){
   );
 }
 
+
+let restaurantCleanupRows=[];
+let restaurantCleanupTarget=null;
+let restaurantCleanupMatches=[];
+
+async function refreshRestaurantCleanupSummary(){
+  if(!isOGAccount())return;
+  const el=document.getElementById("restaurantCleanupSummary");
+  try{
+    const {count,error}=await db.from("restaurants")
+      .select("id",{count:"exact",head:true})
+      .is("google_place_id",null);
+    if(error)throw error;
+    if(el)el.textContent=`${count||0} restaurant${count===1?"":"s"} still need${count===1?"s":""} a verified Google location.`;
+  }catch(err){
+    console.error("cleanup summary:",err);
+    if(el)el.textContent="Could not check the cleanup queue.";
+  }
+}
+
+async function openRestaurantCleanup(){
+  if(!isOGAccount())return alert("This launch tool is OG-only.");
+  closeSettings();
+  document.getElementById("restaurantCleanupModal")?.classList.remove("hidden");
+  await loadRestaurantCleanupQueue();
+}
+
+function closeRestaurantCleanup(){
+  document.getElementById("restaurantCleanupModal")?.classList.add("hidden");
+}
+
+async function loadRestaurantCleanupQueue(){
+  const list=document.getElementById("restaurantCleanupList");
+  const countEl=document.getElementById("restaurantCleanupCount");
+  if(list)list.innerHTML='<div class="empty"><div class="section-title">Loading...</div></div>';
+
+  try{
+    const {data,error}=await db.from("restaurants")
+      .select("id,name,address,city,state_region,created_at,google_place_id")
+      .is("google_place_id",null)
+      .order("name",{ascending:true});
+    if(error)throw error;
+
+    restaurantCleanupRows=data||[];
+
+    // Count existing ratings so the most important legacy rows are obvious.
+    const ids=restaurantCleanupRows.map(r=>r.id);
+    const counts={};
+    if(ids.length){
+      const {data:ratingRows,error:ratingError}=await db.from("ratings")
+        .select("restaurant_id")
+        .in("restaurant_id",ids);
+      if(ratingError)throw ratingError;
+      (ratingRows||[]).forEach(r=>{counts[r.restaurant_id]=(counts[r.restaurant_id]||0)+1});
+    }
+
+    restaurantCleanupRows.forEach(r=>r._rating_count=counts[r.id]||0);
+    restaurantCleanupRows.sort((a,b)=>
+      (b._rating_count-a._rating_count) ||
+      String(a.name||"").localeCompare(String(b.name||""))
+    );
+
+    if(countEl)countEl.textContent=`${restaurantCleanupRows.length} unlinked restaurant${restaurantCleanupRows.length===1?"":"s"} remaining`;
+
+    if(!restaurantCleanupRows.length){
+      if(list)list.innerHTML='<div class="empty"><div class="section-title">Cleanup complete</div><p class="muted" style="font-size:12px">Every TableScore restaurant is linked to a Google Place.</p></div>';
+      await refreshRestaurantCleanupSummary();
+      return;
+    }
+
+    if(list)list.innerHTML=restaurantCleanupRows.map((r,i)=>{
+      const loc=[r.city,r.state_region].filter(Boolean).join(", ");
+      const meta=[
+        `${r._rating_count} existing rating${r._rating_count===1?"":"s"}`,
+        loc||r.address||"Location not verified"
+      ].join(" - ");
+      return `<div class="row" style="align-items:center">
+        <div style="min-width:0;flex:1">
+          <div class="row-name">${esc(r.name||"Unnamed restaurant")}</div>
+          <div class="row-meta">${esc(meta)}</div>
+        </div>
+        <button class="secondary" style="width:auto;padding:8px 11px" onclick="openRestaurantCleanupMatch(${i})">Match</button>
+      </div>`;
+    }).join("");
+  }catch(err){
+    console.error("cleanup queue:",err);
+    if(list)list.innerHTML=`<div class="empty"><div class="section-title">Could not load cleanup queue</div><p class="muted" style="font-size:12px">${esc(err?.message||"Unknown error")}</p></div>`;
+  }
+}
+
+function openRestaurantCleanupMatch(index){
+  const r=restaurantCleanupRows[index];
+  if(!r)return;
+  restaurantCleanupTarget=r;
+  restaurantCleanupMatches=[];
+
+  const title=document.getElementById("cleanupMatchTitle");
+  const meta=document.getElementById("cleanupMatchMeta");
+  const input=document.getElementById("cleanupRestaurantSearch");
+  const results=document.getElementById("cleanupMatchResults");
+  const status=document.getElementById("cleanupMatchStatus");
+
+  if(title)title.textContent=r.name||"Find the real location";
+  if(meta)meta.textContent=[r.city,r.state_region].filter(Boolean).join(", ")||"Legacy TableScore restaurant";
+  if(input)input.value=[r.name,r.city,r.state_region].filter(Boolean).join(" ");
+  if(results)results.innerHTML="";
+  if(status)status.textContent="Search Google Places, then link only the exact physical restaurant.";
+
+  document.getElementById("restaurantCleanupMatchModal")?.classList.remove("hidden");
+  setTimeout(()=>input?.focus(),80);
+}
+
+function closeRestaurantCleanupMatch(){
+  document.getElementById("restaurantCleanupMatchModal")?.classList.add("hidden");
+  restaurantCleanupTarget=null;
+  restaurantCleanupMatches=[];
+}
+
+async function searchRestaurantCleanupMatches(){
+  if(!restaurantCleanupTarget)return;
+  const input=document.getElementById("cleanupRestaurantSearch");
+  const status=document.getElementById("cleanupMatchStatus");
+  const results=document.getElementById("cleanupMatchResults");
+  const query=(input?.value||"").trim();
+  if(!query)return alert("Enter a restaurant name and location.");
+
+  if(status)status.textContent="Searching Google Places...";
+  if(results)results.innerHTML="";
+
+  try{
+    const coords=currentTableScoreCoords();
+    const body={mode:"search",query};
+    if(coords){
+      body.latitude=coords.latitude;
+      body.longitude=coords.longitude;
+    }
+
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+
+    restaurantCleanupMatches=Array.isArray(data?.restaurants)?data.restaurants:[];
+
+    if(status)status.textContent=restaurantCleanupMatches.length
+      ? `${restaurantCleanupMatches.length} possible match${restaurantCleanupMatches.length===1?"":"es"} - verify the address before linking.`
+      : "No Google restaurant matches found. Try adding the city, street, or ZIP.";
+
+    if(results)results.innerHTML=restaurantCleanupMatches.map((r,i)=>`
+      <div class="place-result" style="display:block">
+        <div style="display:flex;gap:10px;align-items:flex-start">
+          <div style="min-width:0;flex:1">
+            <div class="place-result-name">${esc(r.name||"Restaurant")}</div>
+            <div class="place-result-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div>
+          </div>
+          <button class="primary" style="width:auto;padding:8px 11px" onclick="linkCleanupRestaurant(${i})">Link</button>
+        </div>
+      </div>`).join("");
+  }catch(err){
+    console.error("cleanup search:",err);
+    restaurantCleanupMatches=[];
+    if(status)status.textContent=err?.message||"Could not search Google Places.";
+  }
+}
+
+async function linkCleanupRestaurant(index){
+  if(!restaurantCleanupTarget)return;
+  const place=restaurantCleanupMatches[index];
+  if(!place?.google_place_id)return;
+
+  const target=restaurantCleanupTarget;
+  const where=place.address||[place.city,place.state_region].filter(Boolean).join(", ")||"this location";
+  const ok=confirm(
+    `Link "${target.name}" to "${place.name}" at ${where}?\n\n`+
+    `This keeps all existing TableScore ratings on the same restaurant record and adds the verified Google identity.`
+  );
+  if(!ok)return;
+
+  try{
+    const {data,error}=await db.rpc("link_restaurant_google_place",{
+      p_restaurant_id:target.id,
+      p_google_place_id:place.google_place_id,
+      p_address:place.address||null,
+      p_formatted_address:place.address||null,
+      p_city:place.city||null,
+      p_state_region:place.state_region||null,
+      p_postal_code:place.postal_code||null,
+      p_latitude:Number.isFinite(Number(place.latitude))?Number(place.latitude):null,
+      p_longitude:Number.isFinite(Number(place.longitude))?Number(place.longitude):null,
+      p_google_primary_type:place.primary_type||null,
+      p_google_primary_type_name:place.primary_type_name||null,
+      p_google_maps_url:place.google_maps_url||null
+    });
+    if(error)throw error;
+
+    closeRestaurantCleanupMatch();
+    await loadRestaurantCleanupQueue();
+    await refreshRestaurantCleanupSummary();
+    await loadRestaurantStats();
+
+    alert(`Linked ${target.name} to its verified Google location.`);
+  }catch(err){
+    console.error("cleanup link:",err);
+    alert(err?.message||"TableScore could not link this restaurant.");
+  }
+}
+
 function openSettings(){
   const versionEl=document.getElementById("settingsAppVersion");
   const buildEl=document.getElementById("settingsBuildLabel");
@@ -4686,6 +4944,9 @@ function openSettings(){
   setTimeout(renderLocationStatus,0);
   const badgeLabCard=document.getElementById("secretBadgeLabCard");
   if(badgeLabCard)badgeLabCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
+  const cleanupCard=document.getElementById("restaurantCleanupCard");
+  if(cleanupCard)cleanupCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
+  if(currentUser.id===TABLESCORE_OG_USER_ID)refreshRestaurantCleanupSummary();
   renderThemeChoices();
   renderTitlePicker();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
@@ -6312,8 +6573,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.36.3";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Explore Map Loader Fix";
+const TABLESCORE_VERSION="5.37.0";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Restaurant Identity Cleanup";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
