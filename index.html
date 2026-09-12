@@ -1432,7 +1432,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 // Paste the website-restricted Google Maps JavaScript API key here.
-const TABLESCORE_MAPS_BROWSER_KEY=""; // legacy fallback only; map key now persists in this browser
+const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs"; // website-restricted Maps JavaScript API key
 
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
@@ -2307,11 +2307,9 @@ async function initExploreDiscoveryMap(){
     }
   }catch(err){
     console.error("Explore map:",err);
-    const missingKey=!getTableScoreMapsBrowserKey();
     host.innerHTML=`<div class="empty" style="padding:24px">
       <div class="section-title">Map unavailable</div>
       <p class="muted" style="font-size:12px">${esc(err?.message||"Google Maps could not load.")}</p>
-      ${missingKey?`<button class="secondary" style="margin-top:14px" onclick="saveTableScoreMapsBrowserKey()">Set Map Key Once</button>`:""}
     </div>`;
   }
 }
@@ -2639,36 +2637,9 @@ function saveBrowseArea(){
   closeLocationChooser();
 }
 function getTableScoreMapsBrowserKey(){
-  const saved=(localStorage.getItem("ts_maps_browser_key")||"").trim();
-  if(saved)return saved;
-
-  // Backward compatibility: if an older build still contains a real hard-coded
-  // browser key, migrate it into browser storage automatically.
-  const legacy=(TABLESCORE_MAPS_BROWSER_KEY||"").trim();
-  if(legacy && !legacy.includes("PASTE_YOUR")){
-    localStorage.setItem("ts_maps_browser_key",legacy);
-    return legacy;
-  }
-  return "";
-}
-
-function saveTableScoreMapsBrowserKey(){
-  const existing=getTableScoreMapsBrowserKey();
-  const entered=prompt(
-    "Paste your restricted Google Maps JavaScript browser key. TableScore will save it on this device so future index.html replacements do not require you to paste it again.",
-    existing
-  );
-  if(entered===null)return;
-
-  const key=entered.trim();
-  if(!key)return alert("No key was saved.");
-
-  localStorage.setItem("ts_maps_browser_key",key);
-  googleMapsLoaderPromise=null;
-
-  const host=document.getElementById("restaurantMap");
-  if(host)host.innerHTML="";
-  initRestaurantMap();
+  const key=(TABLESCORE_MAPS_BROWSER_KEY||"").trim();
+  if(!key || key==="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return "";
+  return key;
 }
 
 function loadGoogleMaps(){
@@ -2677,7 +2648,7 @@ function loadGoogleMaps(){
 
   const mapKey=getTableScoreMapsBrowserKey();
   if(!mapKey){
-    return Promise.reject(new Error("Map key not saved on this device yet."));
+    return Promise.reject(new Error("TableScore Web Map key has not been configured in this build."));
   }
 
   googleMapsLoaderPromise=new Promise((resolve,reject)=>{
@@ -2714,11 +2685,9 @@ async function initRestaurantMap(){
     if(!restaurantMapMarkers.length)await searchRestaurantMapArea();
   }catch(err){
     console.error(err);
-    const missingKey=!getTableScoreMapsBrowserKey();
     host.innerHTML=`<div class="empty">
       <div class="section-title">Map unavailable</div>
       <p class="muted" style="font-size:12px">${esc(err?.message||"Google Maps could not load.")}</p>
-      ${missingKey?`<button class="secondary" style="margin-top:14px" onclick="saveTableScoreMapsBrowserKey()">Set Map Key Once</button>`:""}
     </div>`;
   }
 }
@@ -6905,8 +6874,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.42.1";
-const TABLESCORE_BUILD_LABEL="Rating Submit Diagnostic";
+const TABLESCORE_VERSION="5.42.2";
+const TABLESCORE_BUILD_LABEL="Automatic Web Map";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
