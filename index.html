@@ -713,7 +713,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         </button>
         <div id="rateRestaurantLinkedNote" class="place-selected-note hidden">Verified real-world place selected</div>
       </div>
-      <div id="verifiedMsg" class="notice">&#128205; Location can be used to mark a submission as a Verified Visit.</div>
+      <div id="verifiedMsg" class="notice">&#128205; Verified Visit is awarded only when your live location is close enough to the restaurant.</div>
     </div>
     <div class="card"><div id="ratings"></div></div>
     <div class="total"><div><div class="muted" style="font-size:11px;font-weight:800">YOUR SCORE</div><div id="avg" class="n">0.00</div></div><div id="status" class="status">Rate all 7</div></div>
@@ -1116,8 +1116,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.4</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Context Back Navigation</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.38.0</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Verified Visit Proximity</div>
         </div>
       </div>
     </div>
@@ -6251,7 +6251,16 @@ async function submitRating(){
 
   try{
     const restaurant=await findOrCreateRestaurant(name);
-    const coords=currentTableScoreCoords();
+
+    // Ask for a fresh position at submission time. The database, not the browser,
+    // decides whether this qualifies as a Verified Visit.
+    let coords=null;
+    try{
+      coords=await getFreshTableScoreCoords();
+    }catch(locationErr){
+      console.warn("Fresh visit location unavailable:",locationErr);
+      coords=currentTableScoreCoords();
+    }
     const lat=coords?.latitude??null;
     const lon=coords?.longitude??null;
 
@@ -6268,18 +6277,25 @@ async function submitRating(){
       best_dish:document.getElementById("dish").value.trim()||null,
       would_return:returnValue||null,
       quick_take:document.getElementById("notes").value.trim()||null,
-      verified_visit:!!locationEnabled,
-      visit_latitude:Number.isFinite(lat)?lat:null,
-      visit_longitude:Number.isFinite(lon)?lon:null
+      // This is intentionally false. The Supabase trigger recalculates it
+      // server-side from visit coordinates + verified restaurant coordinates.
+      verified_visit:false,
+      visit_latitude:Number.isFinite(Number(lat))?Number(lat):null,
+      visit_longitude:Number.isFinite(Number(lon))?Number(lon):null
     };
 
-    const {data,error}=await db.from("ratings").insert(payload).select("id,overall_score").single();
+    const {data,error}=await db.from("ratings").insert(payload).select("id,overall_score,verified_visit").single();
     if(error)throw error;
 
     if(pendingRatingPhotos.length)await uploadRatingPhotos(data.id);
     clearPendingRatingPhotos();
 
-    alert(`TableScore submitted: ${Number(data.overall_score).toFixed(2)}/10`);
+    alert(
+      `TableScore submitted: ${Number(data.overall_score).toFixed(2)}/10\n\n`+
+      (data.verified_visit
+        ?"Verified Visit confirmed - your submitted location was within the restaurant verification zone."
+        :"Visit not verified - the rating still counts normally.")
+    );
     selectedRestaurantId=restaurant.id;
     selectedRestaurantName=restaurant.name;
     await Promise.all([refreshUserData(),loadRestaurantStats()]);
@@ -6800,8 +6816,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.37.4";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Context Back Navigation";
+const TABLESCORE_VERSION="5.38.0";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Verified Visit Proximity";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
