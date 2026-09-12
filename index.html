@@ -1089,8 +1089,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.2</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Embedded Explore Map</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.3</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Explore Map Loader Fix</div>
         </div>
       </div>
     </div>
@@ -2136,7 +2136,7 @@ async function initExploreDiscoveryMap(){
   if(!host || !exploreScreen?.classList.contains("active"))return;
 
   try{
-    await loadGoogleMapsScript();
+    await loadGoogleMaps();
 
     let coords=currentTableScoreCoords();
     if(!coords){
@@ -6312,8 +6312,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.36.2";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Embedded Explore Map";
+const TABLESCORE_VERSION="5.36.3";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Explore Map Loader Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
