@@ -1131,14 +1131,20 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
 
       <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
+
+      <div class="settings-row" style="display:block;margin-top:14px;border-top:1px solid var(--line);border-bottom:0;padding-top:16px">
+        <div style="font-weight:950;color:var(--red)">Delete Account</div>
+        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">Permanently deletes your TableScore account and account-linked data. This cannot be undone.</div>
+        <button id="deleteAccountBtn" class="secondary" style="margin-top:10px;border-color:var(--red);color:var(--red)" onclick="deleteTableScoreAccount()">Delete My Account</button>
+      </div>
     </div>
 
     <div class="card">
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.41.1</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Security + Home People Search</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.42.0</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Secure Account Deletion</div>
         </div>
       </div>
     </div>
@@ -2947,6 +2953,39 @@ async function signIn(){
   closeAccount();
   await refreshUserData();
   const cb=afterAuth;afterAuth=null;if(cb)cb();
+}
+
+async function deleteTableScoreAccount(){
+  if(!currentUser)return openAccount();
+
+  const first=confirm(
+    "Delete your TableScore account permanently?\n\nThis cannot be undone."
+  );
+  if(!first)return;
+
+  const typed=prompt('Type DELETE to confirm permanent account deletion.');
+  if(typed!=="DELETE"){
+    if(typed!==null)alert("Account deletion cancelled. Type DELETE exactly to confirm.");
+    return;
+  }
+
+  const btn=document.getElementById("deleteAccountBtn");
+  const originalText=btn?.textContent||"Delete My Account";
+  if(btn){btn.disabled=true;btn.textContent="Deleting Account...";}
+
+  try{
+    const {data,error}=await db.rpc("delete_my_tablescore_account");
+    if(error)throw error;
+    if(data && data.deleted===false)throw new Error("Account deletion was not completed.");
+
+    closeSettings();
+    await signOut();
+    alert("Your TableScore account has been permanently deleted.");
+  }catch(err){
+    console.error("delete account:",err);
+    alert(err?.message||"TableScore could not delete your account. Please try again.");
+    if(btn){btn.disabled=false;btn.textContent=originalText;}
+  }
 }
 
 async function signOut(){
@@ -6860,8 +6899,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.41.1";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Security + Home People Search";
+const TABLESCORE_VERSION="5.42.0";
+const TABLESCORE_BUILD_LABEL="Secure Account Deletion";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
