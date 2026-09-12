@@ -571,8 +571,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div class="card">
-      <div class="section-head"><div class="section-title">Top Rated Near You</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
+      <div class="section-head"><div class="section-title">Top Rated Near You</div><button class="linkbtn" onclick="setExploreFilter('top');showScreen('explore')">See all &rsaquo;</button></div>
       <div id="topThree" class="grid3"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-head">
+        <div>
+          <div class="section-title">New to TableScore</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Nearby restaurants still building enough community history to rank</div>
+        </div>
+        <button class="linkbtn" onclick="setExploreFilter('new');showScreen('explore')">See all &rsaquo;</button>
+      </div>
+      <div id="newNearby" class="list"></div>
     </div>
 
     <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
@@ -1046,6 +1057,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
       <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
     </div>
+
+    <div class="card">
+      <div class="section-title" style="font-size:15px">About TableScore</div>
+      <div class="settings-row">
+        <div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.0</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Ranking Engine</div>
+        </div>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -1445,13 +1466,24 @@ function updateArea(){
 }
 
 async function loadRestaurantStats(){
-  const {data,error}=await db.from("restaurant_stats")
+  let {data,error}=await db.from("restaurant_rankings")
     .select("*")
     .order("tablescore",{ascending:false,nullsFirst:false})
-    .limit(200);
+    .limit(300);
+
+  // Safe fallback so the app still works before the V5.36 SQL is installed.
+  if(error){
+    console.warn("restaurant_rankings unavailable, falling back:",error);
+    const fallback=await db.from("restaurant_stats")
+      .select("*")
+      .order("tablescore",{ascending:false,nullsFirst:false})
+      .limit(300);
+    data=fallback.data;
+    error=fallback.error;
+  }
 
   if(error){
-    console.error("restaurant_stats:",error);
+    console.error("restaurant stats:",error);
     restaurantStats=[];
   }else{
     restaurantStats=data||[];
@@ -1471,6 +1503,27 @@ function isLocalRestaurant(r){
   return String(r.city||"").trim().toLowerCase()===city;
 }
 
+function topRankingEligible(r){
+  if(typeof r.ranking_eligible_v2==="boolean")return r.ranking_eligible_v2;
+  return !!r.ranking_eligible;
+}
+
+function uniqueRaterCount(r){
+  const n=Number(r.unique_rater_count);
+  return Number.isFinite(n)?n:0;
+}
+
+function hotRankingEligible(r){
+  if(typeof r.hot_eligible==="boolean")return r.hot_eligible;
+  return Number(r.ratings_30d||0)>=2 && Number(r.unique_raters_30d||0)>=2;
+}
+
+function newRestaurantSortValue(r){
+  const d=r.last_rating_at||r.first_rating_at||r.place_linked_at||r.created_at||"";
+  const t=Date.parse(d);
+  return Number.isFinite(t)?t:0;
+}
+
 function setExploreFilter(filter){
   exploreFilter=filter;
   document.getElementById("chipAll").classList.toggle("active",filter==="all");
@@ -1481,62 +1534,121 @@ function setExploreFilter(filter){
 
 function renderHomeRankings(){
   const local=restaurantStats.filter(isLocalRestaurant);
-  const eligible=local.filter(r=>r.ranking_eligible&&r.tablescore!==null);
+
+  // TOP RATED: must have enough total history AND enough unique diners.
+  const eligible=local
+    .filter(r=>topRankingEligible(r)&&r.tablescore!==null)
+    .sort((a,b)=>
+      (Number(b.tablescore||0)-Number(a.tablescore||0)) ||
+      (uniqueRaterCount(b)-uniqueRaterCount(a)) ||
+      (Number(b.rating_count||0)-Number(a.rating_count||0))
+    );
+
   const top=eligible.slice(0,3);
   const topEl=document.getElementById("topThree");
 
   if(!top.length){
-    topEl.innerHTML='<div class="mini" style="grid-column:1/-1;min-height:auto"><div class="row-meta">No restaurants are ranking-eligible here yet. A restaurant needs at least 10 TableScore ratings before it appears in rankings.</div></div>';
+    topEl.innerHTML='<div class="mini" style="grid-column:1/-1;min-height:auto"><div class="row-meta">No restaurant has qualified here yet. Top Rated requires at least 10 ratings from 5 unique diners.</div></div>';
   }else{
-    topEl.innerHTML=top.map((r,i)=>`<div class="mini" onclick="openRestaurantById('${r.id}')"><div class="rank">${i+1}</div><div class="mini-name">${esc(r.name)}</div><div class="mini-score">${Number(r.tablescore).toFixed(2)}</div></div>`).join("");
+    topEl.innerHTML=top.map((r,i)=>`
+      <div class="mini" onclick="openRestaurantById('${r.id}')">
+        <div class="rank">${i+1}</div>
+        <div class="mini-name">${esc(r.name)}</div>
+        <div class="mini-score">${Number(r.tablescore).toFixed(2)}</div>
+        <div class="row-meta">${r.rating_count} ratings / ${uniqueRaterCount(r)} diners</div>
+      </div>`).join("");
   }
 
+  // HOT RIGHT NOW: recent momentum, recent unique diners and quality.
   const hotEl=document.getElementById("hotNow");
-  const rated=local.filter(r=>r.rating_count>0&&r.score_30_days!==null)
-    .sort((a,b)=>(b.rating_count-a.rating_count)||(Number(b.score_30_days)-Number(a.score_30_days)));
+  const hot=local
+    .filter(r=>hotRankingEligible(r))
+    .sort((a,b)=>
+      (Number(b.hot_score||0)-Number(a.hot_score||0)) ||
+      (Number(b.ratings_7d||0)-Number(a.ratings_7d||0)) ||
+      (Number(b.score_30_days||0)-Number(a.score_30_days||0))
+    );
 
-  if(!rated.length){
-    hotEl.innerHTML='<div class="empty"><div class="section-title">Nothing hot yet</div><p class="muted" style="font-size:13px">Hot Right Now will populate from real recent TableScore activity.</p></div>';
+  if(!hot.length){
+    hotEl.innerHTML='<div class="empty"><div class="section-title">Nothing hot yet</div><p class="muted" style="font-size:13px">Hot Right Now needs recent activity from multiple TableScore diners.</p></div>';
   }else{
-    const r=rated[0];
+    const r=hot[0];
+    const recent=Number(r.ratings_30d||0);
+    const recentPeople=Number(r.unique_raters_30d||0);
     hotEl.innerHTML=`<div class="hot" onclick="openRestaurantById('${r.id}')">
       <div class="hot-cover"><div style="width:100%">
         <div class="hot-title">${esc(r.name)}</div>
-        <div class="scoreline"><div><span class="big">${r.tablescore===null?"--":Number(r.tablescore).toFixed(2)}</span> <span class="muted" style="font-size:12px">${r.rating_count} rating${r.rating_count===1?"":"s"}</span></div>
-        <span class="pill">${r.consistency_score===null?"NEW":Math.round(Number(r.consistency_score))+"% CONSISTENCY"}</span></div>
-      </div></div></div>`;
+        <div class="scoreline">
+          <div>
+            <span class="big">${r.tablescore===null?"--":Number(r.tablescore).toFixed(2)}</span>
+            <span class="muted" style="font-size:12px">${recent} recent rating${recent===1?"":"s"} from ${recentPeople} diner${recentPeople===1?"":"s"}</span>
+          </div>
+          <span class="pill">HOT NOW</span>
+        </div>
+      </div></div>
+    </div>`;
+  }
+
+  // NEW TO TABLESCORE: nearby restaurants that have not qualified for Top Rated.
+  const newEl=document.getElementById("newNearby");
+  const newer=local
+    .filter(r=>!topRankingEligible(r))
+    .sort((a,b)=>newRestaurantSortValue(b)-newRestaurantSortValue(a))
+    .slice(0,4);
+
+  if(!newer.length){
+    newEl.innerHTML='<div class="empty"><div class="section-title">Nothing new here yet</div><p class="muted" style="font-size:13px">Newly rated nearby restaurants will appear here while they build community history.</p></div>';
+  }else{
+    newEl.innerHTML=newer.map(r=>{
+      const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
+      const diners=uniqueRaterCount(r);
+      return `<div class="row" onclick="openRestaurantById('${r.id}')">
+        <div>
+          <div class="row-name">${esc(r.name)}</div>
+          <div class="row-meta">${Number(r.rating_count||0)} rating${Number(r.rating_count||0)===1?"":"s"} / ${diners} unique diner${diners===1?"":"s"} - building history</div>
+        </div>
+        <div class="row-score">${score}</div>
+      </div>`;
+    }).join("");
   }
 }
-
 function renderExplore(){
   const el=document.getElementById("exploreList");
   let rows=[...restaurantStats];
 
   if(exploreFilter==="top"){
-    rows=rows.filter(r=>isLocalRestaurant(r)&&r.ranking_eligible&&r.tablescore!==null);
+    rows=rows
+      .filter(r=>isLocalRestaurant(r)&&topRankingEligible(r)&&r.tablescore!==null)
+      .sort((a,b)=>
+        (Number(b.tablescore||0)-Number(a.tablescore||0)) ||
+        (uniqueRaterCount(b)-uniqueRaterCount(a))
+      );
   }else if(exploreFilter==="new"){
-    rows=rows.filter(r=>isLocalRestaurant(r)&&!r.ranking_eligible);
+    rows=rows
+      .filter(r=>isLocalRestaurant(r)&&!topRankingEligible(r))
+      .sort((a,b)=>newRestaurantSortValue(b)-newRestaurantSortValue(a));
   }else{
-    // Main TableScore tab shows all real TableScore restaurants,
-    // but sorts restaurants in the user's current city first.
+    // Main TableScore tab keeps local restaurants first, then the strongest
+    // community-supported restaurants.
     rows.sort((a,b)=>{
       const al=isLocalRestaurant(a)?1:0;
       const bl=isLocalRestaurant(b)?1:0;
       if(bl!==al)return bl-al;
       if((b.rating_count||0)!==(a.rating_count||0))return (b.rating_count||0)-(a.rating_count||0);
+      if(uniqueRaterCount(b)!==uniqueRaterCount(a))return uniqueRaterCount(b)-uniqueRaterCount(a);
       return (Number(b.tablescore)||0)-(Number(a.tablescore)||0);
     });
   }
 
   if(!rows.length){
     let title="No TableScore restaurants here yet";
-    let body="Restaurants will appear after they are added through real TableScore ratings.";
+    let body="Restaurants will appear after they receive TableScore ratings.";
     if(exploreFilter==="top"){
       title="No Top Rated restaurants here yet";
-      body="A restaurant needs at least 10 TableScore ratings before it becomes ranking-eligible.";
+      body="Top Rated requires at least 10 TableScore ratings from 5 unique diners.";
     }else if(exploreFilter==="new"){
       title="No new TableScore restaurants here yet";
-      body="Restaurants with fewer than 10 ratings will appear here.";
+      body="Nearby restaurants still building toward 10 ratings and 5 unique diners will appear here.";
     }
     el.innerHTML=`<div class="card"><div class="section-title">${title}</div><p class="muted" style="font-size:13px">${body}</p></div>`;
     return;
@@ -1545,13 +1657,20 @@ function renderExplore(){
   el.innerHTML=rows.map(r=>{
     const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
     const cons=r.consistency_score===null?"Not enough data":Math.round(Number(r.consistency_score))+"% consistent";
-    const rank=r.ranking_eligible?"Ranking eligible":"Not ranked yet";
+    const qualified=topRankingEligible(r);
+    const rank=qualified?"Top Rated eligible":"Building history";
     const loc=[r.city,r.state_region].filter(Boolean).join(", ")||"Location not set";
     const locality=isLocalRestaurant(r)?"":` &middot; ${esc(loc)}`;
-    return `<div class="row" onclick="openRestaurantById('${r.id}')"><div><div class="row-name">${esc(r.name)}</div><div class="row-meta">${r.rating_count} rating${r.rating_count===1?"":"s"} &middot; ${cons} &middot; ${rank}${locality}</div></div><div class="row-score">${score}</div></div>`;
+    const diners=uniqueRaterCount(r);
+    return `<div class="row" onclick="openRestaurantById('${r.id}')">
+      <div>
+        <div class="row-name">${esc(r.name)}</div>
+        <div class="row-meta">${Number(r.rating_count||0)} rating${Number(r.rating_count||0)===1?"":"s"} / ${diners} diner${diners===1?"":"s"} &middot; ${cons} &middot; ${rank}${locality}</div>
+      </div>
+      <div class="row-score">${score}</div>
+    </div>`;
   }).join("");
 }
-
 function canSeeRestaurantRatingProfile(p,userId){
   if(!p)return false;
   if(currentUser&&userId===currentUser.id)return true;
@@ -4357,6 +4476,10 @@ function enableTableScoreLocation(){
 }
 
 function openSettings(){
+  const versionEl=document.getElementById("settingsAppVersion");
+  const buildEl=document.getElementById("settingsBuildLabel");
+  if(versionEl)versionEl.textContent=TABLESCORE_VERSION;
+  if(buildEl)buildEl.textContent=TABLESCORE_BUILD_LABEL;
   if(!currentUser)return openAccount();
   setTimeout(renderLocationStatus,0);
   const badgeLabCard=document.getElementById("secretBadgeLabCard");
@@ -5987,6 +6110,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
+const TABLESCORE_VERSION="5.36.0";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Ranking Engine";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
