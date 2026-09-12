@@ -546,6 +546,14 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 }
 .rating-location-link:hover{text-decoration:underline}
 
+
+
+    /* V5.40.0 Taste Match */
+    .taste-match-card{margin-top:10px;padding:12px 14px;border:1px solid var(--line);border-radius:16px;background:var(--card)}
+    .taste-match-row{display:flex;align-items:center;gap:12px}
+    .taste-match-score{font-family:Georgia,serif;font-size:29px;font-weight:900;line-height:1;color:var(--gold);min-width:72px}
+    .taste-match-label{font-size:13px;font-weight:950}
+    .taste-match-copy{font-size:11px;line-height:1.4;margin-top:3px;color:var(--muted)}
 </style>
 </head>
 <body class="booting">
@@ -868,6 +876,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
+    <div id="publicTasteMatchCard" class="taste-match-card hidden">
+      <div class="taste-match-row">
+        <div id="publicTasteMatchScore" class="taste-match-score">--</div>
+        <div>
+          <div class="taste-match-label">Taste Match</div>
+          <div id="publicTasteMatchCopy" class="taste-match-copy">Comparing how you score the same restaurants.</div>
+        </div>
+      </div>
+    </div>
+
     <div id="publicBadgeFolderCard" class="card">
       <button class="badge-folder-btn" onclick="openPublicBadgeFolder()">
         <span class="badge-folder-icon" aria-hidden="true">
@@ -1116,8 +1134,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.39.0</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Verified Accounts</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.40.0</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Taste Match v1</div>
         </div>
       </div>
     </div>
@@ -3752,6 +3770,39 @@ async function openPublicBadgeFolder(targetSlug=""){
   if(targetSlug)setTimeout(()=>document.getElementById(`badge-folder-${CSS.escape(targetSlug)}`)?.scrollIntoView({behavior:"smooth",block:"center"}),180);
 }
 
+
+async function loadPublicTasteMatch(otherUserId,canSeePrivateContent=true){
+  const card=document.getElementById("publicTasteMatchCard");
+  const scoreEl=document.getElementById("publicTasteMatchScore");
+  const copyEl=document.getElementById("publicTasteMatchCopy");
+  if(!card||!scoreEl||!copyEl)return;
+  card.classList.add("hidden");
+
+  if(!currentUser||!otherUserId||otherUserId===currentUser.id||!canSeePrivateContent)return;
+
+  try{
+    const {data,error}=await db.rpc("get_taste_match",{p_other_user_id:otherUserId});
+    if(error)throw error;
+    const row=Array.isArray(data)?data[0]:data;
+    if(!row)return;
+
+    const shared=Number(row.shared_restaurants||0);
+    const pct=Number(row.match_percent);
+    if(!Number.isFinite(pct)||shared<3)return;
+
+    scoreEl.textContent=Math.round(pct)+"%";
+    let label="Some overlap";
+    if(pct>=90)label="Taste Twins";
+    else if(pct>=80)label="Strong Match";
+    else if(pct>=70)label="Good Match";
+
+    copyEl.textContent=label+" - based on "+shared+" restaurant"+(shared===1?"":"s")+" you have both rated.";
+    card.classList.remove("hidden");
+  }catch(err){
+    console.warn("Taste Match unavailable:",err?.message||err);
+  }
+}
+
 let publicProfileReturnScreen="home";
 
 async function openPublicProfile(userId){
@@ -3767,6 +3818,8 @@ async function openPublicProfile(userId){
   showScreen("publicProfile");
   document.getElementById("publicProfileName").textContent="Loading...";
   document.getElementById("publicProfileUsername").textContent="";
+  const tasteCard=document.getElementById("publicTasteMatchCard");
+  if(tasteCard)tasteCard.classList.add("hidden");
   document.getElementById("publicProfileRatings").innerHTML='<div class="muted" style="font-size:12px;padding:10px 2px">Loading profile...</div>';
 
   const [{data:profileRows,error:profileErr},{data:ratings,error:rErr},{data:followers,error:fErr},{data:following,error:gErr}]=await Promise.all([
@@ -3806,6 +3859,10 @@ async function openPublicProfile(userId){
   const isAcceptedFollower=!!currentUser&&followingIds.has(userId);
   const canSeePrivateContent=!p.is_private||isAcceptedFollower;
   viewedProfileRatings=canSeePrivateContent?(ratings||[]):[];
+
+  // Taste Match compares each user's average score at restaurants both have rated.
+  // It is hidden until there is enough shared restaurant history to be meaningful.
+  void loadPublicTasteMatch(userId,canSeePrivateContent);
 
   const av=document.getElementById("publicProfileAvatar");
   if(p.avatar_url){
@@ -6814,8 +6871,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.39.0";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Verified Accounts";
+const TABLESCORE_VERSION="5.40.0";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Taste Match v1";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
