@@ -614,8 +614,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableScore</button>
       <button id="chipTop" class="chip" onclick="setExploreFilter('top')">Top Rated</button>
       <button id="chipNew" class="chip" onclick="setExploreFilter('new')">New</button>
+      <button id="chipMap" class="chip" onclick="openExploreMap()">Map</button>
     </div>
-    <div class="mapfake card" style="margin-top:12px"></div>
+    <div class="card" style="margin-top:12px">
+      <div class="section-head" style="margin-bottom:8px">
+        <div>
+          <div class="section-title">Explore the map</div>
+          <div class="muted" style="font-size:11px;margin-top:3px">Browse restaurants across a wider 15-mile local zone.</div>
+        </div>
+      </div>
+      <button class="primary" onclick="openExploreMap()">Open Restaurant Map</button>
+    </div>
     <div id="exploreList" class="list"></div>
   </section>
 
@@ -1062,8 +1071,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.0</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Ranking Engine</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.1</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Explore Discovery</div>
         </div>
       </div>
     </div>
@@ -1498,9 +1507,25 @@ function currentCity(){
 }
 
 function isLocalRestaurant(r){
+  const coords=currentTableScoreCoords();
+  const rLat=Number(r?.latitude);
+  const rLon=Number(r?.longitude);
+
+  if(coords && Number.isFinite(rLat) && Number.isFinite(rLon)){
+    const toRad=n=>n*Math.PI/180;
+    const lat1=Number(coords.latitude), lon1=Number(coords.longitude);
+    const dLat=toRad(rLat-lat1);
+    const dLon=toRad(rLon-lon1);
+    const a=Math.sin(dLat/2)**2+
+      Math.cos(toRad(lat1))*Math.cos(toRad(rLat))*Math.sin(dLon/2)**2;
+    const miles=3958.7613*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+    return miles<=15;
+  }
+
+  // Legacy/manual restaurant fallback until its Google coordinates are linked.
   const city=currentCity();
-  if(!city) return true;
-  return String(r.city||"").trim().toLowerCase()===city;
+  if(!city)return true;
+  return String(r?.city||"").trim().toLowerCase()===city;
 }
 
 function topRankingEligible(r){
@@ -1522,6 +1547,10 @@ function newRestaurantSortValue(r){
   const d=r.last_rating_at||r.first_rating_at||r.place_linked_at||r.created_at||"";
   const t=Date.parse(d);
   return Number.isFinite(t)?t:0;
+}
+
+function openExploreMap(){
+  openRestaurantFinder("map");
 }
 
 function setExploreFilter(filter){
@@ -1597,7 +1626,7 @@ function renderHomeRankings(){
     .slice(0,4);
 
   if(!newer.length){
-    newEl.innerHTML='<div class="empty"><div class="section-title">Nothing new here yet</div><p class="muted" style="font-size:13px">Newly rated nearby restaurants will appear here while they build community history.</p></div>';
+    newEl.innerHTML='<div class="empty"><div class="section-title">Find something new</div><p class="muted" style="font-size:13px">No nearby TableScore restaurants are building history yet. Browse the 15-mile discovery map to find your next spot.</p><button class="secondary" onclick="openExploreMap()">Open Restaurant Map</button></div>';
   }else{
     newEl.innerHTML=newer.map(r=>{
       const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
@@ -1647,8 +1676,8 @@ function renderExplore(){
       title="No Top Rated restaurants here yet";
       body="Top Rated requires at least 10 TableScore ratings from 5 unique diners.";
     }else if(exploreFilter==="new"){
-      title="No new TableScore restaurants here yet";
-      body="Nearby restaurants still building toward 10 ratings and 5 unique diners will appear here.";
+      title="Find something new";
+      body='No nearby TableScore restaurants are building history yet. <button class="linkbtn" onclick="openExploreMap()">Open the 15-mile restaurant map</button> to discover a spot.';
     }
     el.innerHTML=`<div class="card"><div class="section-title">${title}</div><p class="muted" style="font-size:13px">${body}</p></div>`;
     return;
@@ -2073,6 +2102,7 @@ let mapSelectedRestaurant=null;
 function openRestaurantFinder(mode="search"){
   if(!currentUser)return openAccount(()=>openRestaurantFinder(mode));
   document.getElementById("nearbyRestaurantModal").classList.remove("hidden");
+  if(mode==="map")document.getElementById("chipMap")?.classList.add("active");
   setRestaurantFinderMode(mode);
   if(mode==="search"){
     setTimeout(()=>document.getElementById("globalRestaurantSearch")?.focus(),80);
@@ -2085,6 +2115,7 @@ async function openNearbyRestaurantPicker(){
 
 function closeNearbyRestaurantPicker(){
   document.getElementById("nearbyRestaurantModal").classList.add("hidden");
+  document.getElementById("chipMap")?.classList.remove("active");
 }
 
 function setRestaurantFinderMode(mode){
@@ -2230,7 +2261,7 @@ async function loadNearbyRestaurants(forceFresh=false){
         mode:"nearby",
         latitude:coords.latitude,
         longitude:coords.longitude,
-        radiusMeters:5000
+        radiusMeters:24140
       }
     });
 
@@ -2391,7 +2422,7 @@ async function searchRestaurantMapArea(){
   const btn=document.querySelector("#restaurantMapPanel .primary");
   if(btn){btn.disabled=true;btn.textContent="Searching..."}
   try{
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:5000}});
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:24140}});
     if(error)throw error;if(data?.error)throw new Error(data.error);
     nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
     clearRestaurantMapMarkers();mapSelectedRestaurant=null;
@@ -6110,8 +6141,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.36.0";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Ranking Engine";
+const TABLESCORE_VERSION="5.36.1";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Explore Discovery";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
