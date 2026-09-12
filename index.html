@@ -655,7 +655,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </section>
 
   <section id="restaurant" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('explore')">&lsaquo;</button><div class="muted" style="font-size:12px">Restaurant</div></div>
+    <div class="backline"><button class="backbtn" onclick="returnFromRestaurant()">&lsaquo;</button><div class="muted" style="font-size:12px">Restaurant</div></div>
     <div class="restaurant-hero">
       <div>
         <div id="rName" class="hot-title">Restaurant</div>
@@ -1116,8 +1116,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.3</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Restaurant Page Map Access</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.4</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Context Back Navigation</div>
         </div>
       </div>
     </div>
@@ -1419,6 +1419,7 @@ let savedRestaurantIds=new Set();
 let savedRestaurants=[];
 let savedView="ratings";
 let selectedRestaurantId=null;
+let restaurantReturnScreen="explore";
 let selectedRestaurantName="";
 let selectedGoogleRestaurant=null;
 let nearbyGoogleRestaurants=[];
@@ -1919,7 +1920,14 @@ function openRestaurantPageLocation(){
   openRatingRestaurantLocation(selectedRestaurantId);
 }
 
+function returnFromRestaurant(){
+  showScreen(restaurantReturnScreen||"home");
+}
+
 async function openRestaurantById(id){
+  const activeScreen=document.querySelector("section.screen.active");
+  const sourceId=activeScreen?.id;
+  if(sourceId && sourceId!=="restaurant")restaurantReturnScreen=sourceId;
   let r=restaurantStats.find(x=>x.id===id);
   if(!r){
     const {data,error}=await db.from("restaurant_stats").select("*").eq("id",id).maybeSingle();
@@ -6792,8 +6800,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.37.3";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Restaurant Page Map Access";
+const TABLESCORE_VERSION="5.37.4";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Context Back Navigation";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
