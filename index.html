@@ -538,6 +538,15 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .explore-map-search:disabled{opacity:.65}
 #exploreMapSelection .map-selection{margin-top:10px}
 
+
+.rating-location-link{
+  display:inline-flex;align-items:center;gap:5px;
+  border:0;background:transparent;padding:0;margin:0;
+  color:inherit;font:inherit;font-weight:800;cursor:pointer
+}
+.rating-location-link:hover{text-decoration:underline}
+.rating-location-pin{font-size:.95em}
+
 </style>
 </head>
 <body class="booting">
@@ -554,7 +563,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
   <section id="home" class="screen active">
     <div class="hero">
-      <div class="kicker">Good food &middot; Better decisions</div>
+      <div class="kicker">Good food - Better decisions</div>
       <h1>Good food.<br>Better decisions.</h1>
       <div class="search"><input id="homeSearch" placeholder="Search any restaurant by name, city, or address" readonly onclick="openRestaurantFinder('search')"></div>
     </div>
@@ -750,7 +759,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div id="profileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
       <div id="profileTitle" class="profile-title">Table Regular</div>
       <div id="profileBadges" class="profile-badges"></div>
-      <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely &middot; Account required to rate</div>
+      <div id="profileArea" class="muted" style="font-size:12px;margin-top:4px">Browse freely - Account required to rate</div>
       <div id="profileBackgroundActions" class="profile-background-actions hidden">
         <button class="secondary" onclick="chooseProfileBackground()">Customize Background</button>
         <button id="removeBackgroundBtn" class="secondary hidden" onclick="removeProfileBackground()">Remove Background</button>
@@ -1100,8 +1109,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.0</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Restaurant Identity Cleanup</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.1</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Rating Location Map</div>
         </div>
       </div>
     </div>
@@ -1228,6 +1237,30 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+
+<div id="ratingRestaurantLocationModal" class="modal hidden" onclick="if(event.target===this)closeRatingRestaurantLocation()">
+  <div class="sheet" style="max-height:90vh;overflow:auto">
+    <div class="section-head">
+      <div>
+        <div class="kicker">Restaurant location</div>
+        <div id="ratingLocationTitle" class="section-title">Restaurant</div>
+        <div id="ratingLocationAddress" class="muted" style="font-size:11px;margin-top:3px"></div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRatingRestaurantLocation()">Close</button>
+    </div>
+
+    <div class="card" style="margin-top:10px">
+      <div id="ratingRestaurantMap" style="height:300px;border-radius:18px;overflow:hidden;background:#111"></div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px">
+      <button class="secondary" onclick="centerRatingRestaurantMap()">Center Map</button>
+      <button class="primary" onclick="openRatingRestaurantDirections()">Get Directions</button>
+    </div>
+
+    <div id="ratingLocationNote" class="muted" style="font-size:10px;line-height:1.45;margin-top:10px"></div>
+  </div>
+</div>
 
 <div id="restaurantCleanupModal" class="modal hidden" onclick="if(event.target===this)closeRestaurantCleanup()">
   <div class="sheet" style="max-height:90vh;overflow:auto">
@@ -1766,12 +1799,12 @@ function renderExplore(){
     const qualified=topRankingEligible(r);
     const rank=qualified?"Top Rated eligible":"Building history";
     const loc=[r.city,r.state_region].filter(Boolean).join(", ")||"Location not set";
-    const locality=isLocalRestaurant(r)?"":` &middot; ${esc(loc)}`;
+    const locality=isLocalRestaurant(r)?"":` - ${esc(loc)}`;
     const diners=uniqueRaterCount(r);
     return `<div class="row" onclick="openRestaurantById('${r.id}')">
       <div>
         <div class="row-name">${esc(r.name)}</div>
-        <div class="row-meta">${Number(r.rating_count||0)} rating${Number(r.rating_count||0)===1?"":"s"} / ${diners} diner${diners===1?"":"s"} &middot; ${cons} &middot; ${rank}${locality}</div>
+        <div class="row-meta">${Number(r.rating_count||0)} rating${Number(r.rating_count||0)===1?"":"s"} / ${diners} diner${diners===1?"":"s"} - ${cons} - ${rank}${locality}</div>
       </div>
       <div class="row-score">${score}</div>
     </div>`;
@@ -1844,7 +1877,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
           ${avatarMarkup(p,42)}
           <div style="min-width:0;flex:1">
             <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
-            <div class="row-meta">${username}${username?" Â· ":""}${timeAgo(r.created_at)}</div>
+            <div class="row-meta">${username}${username?" - ":""}${timeAgo(r.created_at)}</div>
           </div>
         </button>
         <div style="text-align:right;flex:0 0 auto">
@@ -2960,7 +2993,7 @@ async function renderSaved(){
           <div class="row" style="border:0;padding:0;background:transparent">
             <div style="min-width:0">
               <div class="row-name">${esc(r.name||"Restaurant")}</div>
-              <div class="row-meta">${[r.cuisine,r.city,r.state_region].filter(Boolean).map(esc).join(" &middot; ")||"Saved restaurant"}</div>
+              <div class="row-meta">${[r.cuisine,r.city,r.state_region].filter(Boolean).map(esc).join(" - ")||"Saved restaurant"}</div>
             </div>
             <div style="font-size:24px;color:var(--gold)">&#9829;</div>
           </div>
@@ -2982,7 +3015,7 @@ async function renderSaved(){
     const name=e.restaurants?.name||"Restaurant";
     return `<div class="card" style="margin:0">
       <div class="row" style="border:0;padding:0;background:transparent">
-        <div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} &middot; ${e.verified_visit?"Verified Visit":"Unverified"}</div></div>
+        <div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} - ${e.verified_visit?"Verified Visit":"Unverified"}</div></div>
         <div class="row-score">${Number(e.overall_score).toFixed(2)}</div>
       </div>
       ${e.quick_take?`<div style="font-size:13px;margin-top:9px">${esc(e.quick_take)}</div>`:""}
@@ -3149,7 +3182,10 @@ async function openRatingDetail(ratingId){
   activeRatingDetailId=ratingId;
   const modal=document.getElementById("ratingDetailModal");
   modal.classList.remove("hidden");
-  document.getElementById("ratingDetailRestaurant").textContent="Loading rating...";
+  const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
+  loadingRestaurantTitle.textContent="Loading rating...";
+  loadingRestaurantTitle.onclick=null;
+  loadingRestaurantTitle.style.cursor="default";
   document.getElementById("ratingDetailAuthor").innerHTML="";
   document.getElementById("ratingDetailBreakdown").innerHTML="";
   document.getElementById("ratingDetailPhotos").innerHTML="";
@@ -3186,12 +3222,24 @@ async function openRatingDetail(ratingId){
   const score=Number(r.overall_score);
   const name=p?.display_name||p?.username||"TableScore User";
 
-  document.getElementById("ratingDetailRestaurant").textContent=restaurant.name||"Restaurant";
-  document.getElementById("ratingDetailMeta").textContent=[
-    [restaurant.city,restaurant.state_region].filter(Boolean).join(", "),
-    r.verified_visit?"Verified Visit":"Unverified",
-    new Date(r.created_at).toLocaleDateString()
-  ].filter(Boolean).join(" Â· ");
+  const ratingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
+  ratingRestaurantTitle.textContent=restaurant.name||"Restaurant";
+  ratingRestaurantTitle.style.cursor=r.restaurant_id?"pointer":"default";
+  ratingRestaurantTitle.onclick=r.restaurant_id
+    ?()=>openRatingRestaurantLocation(r.restaurant_id)
+    :null;
+  ratingRestaurantTitle.title=r.restaurant_id?"View restaurant location":"";
+
+  const locHtml=ratingLocationButtonHtml(
+    r.restaurant_id,
+    restaurant.city,
+    restaurant.state_region
+  );
+  document.getElementById("ratingDetailMeta").innerHTML=[
+    locHtml,
+    esc(r.verified_visit?"Verified Visit":"Unverified"),
+    esc(new Date(r.created_at).toLocaleDateString())
+  ].filter(Boolean).join(" - ");
 
   document.getElementById("ratingDetailAuthor").innerHTML=`<button onclick="${own?"closeRatingDetail();showScreen('profile')":`closeRatingDetail();openPublicProfile('${r.user_id}')`}" style="display:flex;align-items:center;gap:10px;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left">
     ${avatarMarkup(p,44)}
@@ -3405,14 +3453,14 @@ function feedRatingCard(r,person){
     Number.isFinite(Number(r.taste))?`Taste ${Number(r.taste).toFixed(1)}`:"",
     Number.isFinite(Number(r.quality))?`Quality ${Number(r.quality).toFixed(1)}`:"",
     Number.isFinite(Number(r.service))?`Service ${Number(r.service).toFixed(1)}`:""
-  ].filter(Boolean).join(" &middot; ");
+  ].filter(Boolean).join(" - ");
 
   return `<div class="rating-clickable feed-rating-card" onclick="openRatingDetail('${r.id}')">
     <div style="display:flex;gap:10px;align-items:center">
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
         <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
-        <div class="row-meta">${p.username?"@"+esc(p.username)+" &middot; ":""}${esc(timeAgo(r.created_at))}</div>
+        <div class="row-meta">${p.username?"@"+esc(p.username)+" - ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
@@ -4120,7 +4168,7 @@ async function renderMyProfileRatings(){
           <button onclick="event.stopPropagation();${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
             <div class="row-name">${esc(restaurantName)}</div>
           </button>
-          <div class="row-meta">${new Date(r.created_at).toLocaleDateString()} &middot; ${r.verified_visit?"Verified Visit":"Unverified"}</div>
+          <div class="row-meta">${new Date(r.created_at).toLocaleDateString()} - ${r.verified_visit?"Verified Visit":"Unverified"}</div>
         </div>
         <div style="text-align:right">
           <div class="row-score">${Number(r.overall_score).toFixed(2)}</div>
@@ -4227,7 +4275,7 @@ function showSecretReward(reward){
     }).join("");
   }
   const burst=document.getElementById("secretRewardBurst");
-  const bits=["â¨","â¦","â¢","ð´","â","â§","â¢","â¨","â¦","â","ð´","â§"];
+  const bits=["â¨","â¦","-","ð´","â","â§","-","â¨","â¦","â","ð´","â§"];
   burst.innerHTML=bits.map((b,i)=>{
     const angle=(Math.PI*2*i/bits.length)+(i%2?.18:0);
     const dist=105+(i%3)*28;
@@ -4729,6 +4777,141 @@ function enableTableScoreLocation(){
   );
 }
 
+
+
+let ratingLocationRestaurant=null;
+let ratingRestaurantMapInstance=null;
+let ratingRestaurantMapMarker=null;
+
+async function openRatingRestaurantLocation(restaurantId){
+  if(!restaurantId)return;
+  try{
+    const {data,error}=await db.from("restaurants")
+      .select("id,name,address,formatted_address,city,state_region,postal_code,latitude,longitude,google_place_id,google_maps_url")
+      .eq("id",restaurantId)
+      .maybeSingle();
+
+    if(error)throw error;
+    if(!data)return alert("Restaurant location is not available yet.");
+
+    ratingLocationRestaurant=data;
+
+    const title=document.getElementById("ratingLocationTitle");
+    const addressEl=document.getElementById("ratingLocationAddress");
+    const note=document.getElementById("ratingLocationNote");
+
+    const fullAddress=data.formatted_address || data.address ||
+      [data.city,data.state_region,data.postal_code].filter(Boolean).join(", ");
+
+    if(title)title.textContent=data.name||"Restaurant";
+    if(addressEl)addressEl.textContent=fullAddress||"Location not verified yet";
+
+    if(note){
+      note.textContent=data.google_place_id
+        ? "This location is tied to the restaurant's verified Google Place record."
+        : "This older TableScore restaurant has not been linked to a verified Google Place yet.";
+    }
+
+    document.getElementById("ratingRestaurantLocationModal")?.classList.remove("hidden");
+
+    if(Number.isFinite(Number(data.latitude)) && Number.isFinite(Number(data.longitude))){
+      await renderRatingRestaurantMap();
+    }else{
+      const mapEl=document.getElementById("ratingRestaurantMap");
+      if(mapEl){
+        mapEl.innerHTML='<div class="empty" style="padding:28px"><div class="section-title">Map not available yet</div><p class="muted" style="font-size:12px">This restaurant still needs a verified location.</p></div>';
+      }
+    }
+  }catch(err){
+    console.error("rating restaurant location:",err);
+    alert(err?.message||"TableScore could not load this restaurant location.");
+  }
+}
+
+function closeRatingRestaurantLocation(){
+  document.getElementById("ratingRestaurantLocationModal")?.classList.add("hidden");
+}
+
+async function renderRatingRestaurantMap(){
+  const r=ratingLocationRestaurant;
+  if(!r)return;
+
+  const lat=Number(r.latitude), lng=Number(r.longitude);
+  if(!Number.isFinite(lat)||!Number.isFinite(lng))return;
+
+  try{
+    await loadGoogleMaps();
+    const host=document.getElementById("ratingRestaurantMap");
+    if(!host)return;
+
+    const center={lat,lng};
+
+    ratingRestaurantMapInstance=new google.maps.Map(host,{
+      center,
+      zoom:15,
+      mapTypeControl:false,
+      streetViewControl:false,
+      fullscreenControl:true,
+      clickableIcons:false,
+      gestureHandling:"greedy"
+    });
+
+    ratingRestaurantMapMarker=new google.maps.Marker({
+      map:ratingRestaurantMapInstance,
+      position:center,
+      title:r.name||"Restaurant"
+    });
+
+    setTimeout(()=>google.maps.event.trigger(ratingRestaurantMapInstance,"resize"),120);
+  }catch(err){
+    console.error("rating map render:",err);
+    const host=document.getElementById("ratingRestaurantMap");
+    if(host){
+      host.innerHTML=`<div class="empty" style="padding:28px"><div class="section-title">Map unavailable</div><p class="muted" style="font-size:12px">${esc(err?.message||"Google Maps could not load.")}</p></div>`;
+    }
+  }
+}
+
+function centerRatingRestaurantMap(){
+  const r=ratingLocationRestaurant;
+  if(!r || !ratingRestaurantMapInstance)return;
+  const lat=Number(r.latitude), lng=Number(r.longitude);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)){
+    ratingRestaurantMapInstance.setCenter({lat,lng});
+    ratingRestaurantMapInstance.setZoom(15);
+  }
+}
+
+function openRatingRestaurantDirections(){
+  const r=ratingLocationRestaurant;
+  if(!r)return;
+
+  // Prefer the canonical Google Maps URL when available.
+  if(r.google_maps_url){
+    window.open(r.google_maps_url,"_blank","noopener");
+    return;
+  }
+
+  const lat=Number(r.latitude), lng=Number(r.longitude);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)){
+    const q=encodeURIComponent(`${lat},${lng}`);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${q}`,"_blank","noopener");
+    return;
+  }
+
+  const fallback=[r.name,r.formatted_address||r.address,r.city,r.state_region].filter(Boolean).join(" ");
+  if(fallback){
+    window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(fallback)}`,"_blank","noopener");
+  }
+}
+
+function ratingLocationButtonHtml(restaurantId, city, stateRegion){
+  const loc=[city,stateRegion].filter(Boolean).join(", ");
+  if(!restaurantId)return esc(loc||"Location unavailable");
+  return `<button class="rating-location-link" onclick="event.stopPropagation();openRatingRestaurantLocation('${restaurantId}')">
+    <span class="rating-location-pin">ð</span><span>${esc(loc||"View location")}</span>
+  </button>`;
+}
 
 let restaurantCleanupRows=[];
 let restaurantCleanupTarget=null;
@@ -5338,7 +5521,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   const out=document.getElementById("connectionsList");
   title.textContent=userId===currentUser?.id
     ? (type==="followers"?"Followers":"Following")
-    : `${ownerLabel} &middot; ${type==="followers"?"Followers":"Following"}`;
+    : `${ownerLabel} - ${type==="followers"?"Followers":"Following"}`;
   modal.classList.remove("hidden");
   out.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">Loading...</div>';
 
@@ -5372,7 +5555,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
       <div style="min-width:0;flex:1">
         <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
           <div class="row-name">${esc(display)}</div>
-          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" &middot; "+esc(u.home_city):""}</div>
+          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" - "+esc(u.home_city):""}</div>
         </button>
       </div>
       ${isMe?"":`<button class="${isFollowing?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
@@ -5414,7 +5597,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
     <div style="min-width:0;flex:1">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
         <div class="row-name">${esc(display)}</div>
-        <div class="row-meta">@${esc(u.username||"")}${u.home_city?" Â· "+esc(u.home_city):""}</div>
+        <div class="row-meta">@${esc(u.username||"")}${u.home_city?" - "+esc(u.home_city):""}</div>
         ${showMutual&&mutualCount>0?`<div class="people-mutual"><span class="people-mutual-dot"></span>${mutualCount} mutual connection${mutualCount===1?"":"s"}</div>`:""}
       </button>
     </div>
@@ -6532,9 +6715,9 @@ async function loadChefsTableStatus(){
   if(!status)return;
   if(!data){status.textContent="";return;}
   if(data.status==="pending_verification"){
-    status.innerHTML=`Application received Â· <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
+    status.innerHTML=`Application received - <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
   }else if(data.status==="pending_review"){
-    status.textContent="Identity verified Â· Application awaiting TableScore review.";
+    status.textContent="Identity verified - Application awaiting TableScore review.";
   }else if(data.status==="approved"){
     status.textContent="Welcome to the Chef's Table. Your account has been approved.";
   }else if(data.status==="denied"){
@@ -6552,8 +6735,8 @@ async function openChefsTableAdmin(){
   if(!data?.length){list.innerHTML='<div class="muted">No applications waiting.</div>';return;}
   list.innerHTML=data.map(a=>`<div class="card" style="margin-bottom:10px">
     <strong>${escapeHtml(a.creator_name||"Creator")}</strong>
-    <div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(a.platform||"")} Â· ${escapeHtml(a.profile_url||"")}</div>
-    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.market||"")} Â· ${Number(a.followers||0).toLocaleString()} followers</div>
+    <div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(a.platform||"")} - ${escapeHtml(a.profile_url||"")}</div>
+    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.market||"")} - ${Number(a.followers||0).toLocaleString()} followers</div>
     <div style="font-size:12px;margin-top:7px">${escapeHtml(a.notes||"")}</div>
     <div style="font-size:12px;margin-top:8px">Verification code: <strong>${escapeHtml(a.verification_code)}</strong></div>
     <div class="muted" style="font-size:10px;margin-top:3px">Status: ${escapeHtml(a.status)}</div>
@@ -6573,8 +6756,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.37.0";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Restaurant Identity Cleanup";
+const TABLESCORE_VERSION="5.37.1";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Rating Location Map";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
