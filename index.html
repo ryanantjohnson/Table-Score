@@ -656,7 +656,15 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
   <section id="restaurant" class="screen">
     <div class="backline"><button class="backbtn" onclick="showScreen('explore')">&lsaquo;</button><div class="muted" style="font-size:12px">Restaurant</div></div>
-    <div class="restaurant-hero"><div><div id="rName" class="hot-title">Restaurant</div><div id="rMeta" class="muted" style="font-size:12px;margin-top:4px">TableScore community ratings</div></div></div>
+    <div class="restaurant-hero">
+      <div>
+        <div id="rName" class="hot-title">Restaurant</div>
+        <div id="rMeta" class="muted" style="font-size:12px;margin-top:4px">TableScore community ratings</div>
+        <button id="rMapBtn" class="secondary hidden"
+                style="width:auto;padding:7px 11px;margin-top:9px;font-size:11px"
+                onclick="openRestaurantPageLocation()">View Restaurant Map</button>
+      </div>
+    </div>
     <div class="stats2" style="margin-top:10px">
       <div class="stat"><div class="stat-label">TABLESCORE</div><div id="rScore" class="stat-value">--</div><div id="rRatingCount" class="muted" style="font-size:11px">No ratings yet</div></div>
       <div class="stat"><div class="stat-label">CONSISTENCY</div><div id="rConsistency" class="stat-value cons">--</div><div class="cons" style="font-size:11px;font-weight:850">Calculated automatically</div></div>
@@ -1108,8 +1116,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.2</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Rating Map Access Fix</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.37.3</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Restaurant Page Map Access</div>
         </div>
       </div>
     </div>
@@ -1906,6 +1914,11 @@ async function loadRestaurantCommunityRatings(restaurantId){
   await hydrateRatingEngagement(visible.map(r=>r.id));
 }
 
+function openRestaurantPageLocation(){
+  if(!selectedRestaurantId)return alert("Restaurant location is not available.");
+  openRatingRestaurantLocation(selectedRestaurantId);
+}
+
 async function openRestaurantById(id){
   let r=restaurantStats.find(x=>x.id===id);
   if(!r){
@@ -1915,8 +1928,14 @@ async function openRestaurantById(id){
   }
   selectedRestaurantId=r.id;
   selectedRestaurantName=r.name;
-  document.getElementById("rName").textContent=r.name;
-  document.getElementById("rMeta").textContent=[r.cuisine,r.city,r.state_region].filter(Boolean).join(" \u00b7 ")||"TableScore community ratings";
+  const restaurantPageName=document.getElementById("rName");
+  restaurantPageName.textContent=r.name;
+  restaurantPageName.style.cursor=r.id?"pointer":"default";
+  restaurantPageName.onclick=r.id?()=>openRestaurantPageLocation():null;
+  restaurantPageName.title=r.id?"View restaurant location":"";
+  document.getElementById("rMeta").textContent=[r.cuisine,[r.city,r.state_region].filter(Boolean).join(", ")].filter(Boolean).join(" - ")||"TableScore community ratings";
+  const rMapBtn=document.getElementById("rMapBtn");
+  if(rMapBtn)rMapBtn.classList.toggle("hidden",!r.id);
   document.getElementById("rScore").textContent=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
   document.getElementById("rRatingCount").textContent=r.rating_count?`${r.rating_count} community rating${r.rating_count===1?"":"s"}`:"No ratings yet";
   document.getElementById("rConsistency").textContent=r.consistency_score===null?"--":Math.round(Number(r.consistency_score))+"%";
@@ -6773,8 +6792,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.37.2";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Rating Map Access Fix";
+const TABLESCORE_VERSION="5.37.3";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Restaurant Page Map Access";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
