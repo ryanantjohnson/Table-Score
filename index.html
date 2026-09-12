@@ -525,6 +525,19 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 #publicProfileHero.has-background #publicProfileArea{color:#fff!important;text-shadow:0 1px 8px rgba(0,0,0,.72)}
 
 
+
+.explore-map-card{overflow:hidden}
+.explore-map-wrap{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#111}
+#exploreRestaurantMap{width:100%;height:330px;min-height:330px}
+.explore-map-search{
+  position:absolute;left:50%;bottom:12px;transform:translateX(-50%);
+  z-index:5;width:auto;min-width:154px;padding:10px 15px;border-radius:999px;
+  border:1px solid rgba(255,255,255,.18);background:rgba(15,18,20,.92);
+  color:#fff;font-weight:900;box-shadow:0 8px 24px rgba(0,0,0,.35)
+}
+.explore-map-search:disabled{opacity:.65}
+#exploreMapSelection .map-selection{margin-top:10px}
+
 </style>
 </head>
 <body class="booting">
@@ -614,17 +627,22 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableScore</button>
       <button id="chipTop" class="chip" onclick="setExploreFilter('top')">Top Rated</button>
       <button id="chipNew" class="chip" onclick="setExploreFilter('new')">New</button>
-      <button id="chipMap" class="chip" onclick="openExploreMap()">Map</button>
     </div>
-    <div class="card" style="margin-top:12px">
+
+    <div class="card explore-map-card" style="margin-top:12px">
       <div class="section-head" style="margin-bottom:8px">
         <div>
           <div class="section-title">Explore the map</div>
-          <div class="muted" style="font-size:11px;margin-top:3px">Browse restaurants across a wider 15-mile local zone.</div>
+          <div class="muted" style="font-size:11px;margin-top:3px">Starts wide around you. Drag, pinch, zoom, or use fullscreen to explore farther.</div>
         </div>
       </div>
-      <button class="primary" onclick="openExploreMap()">Open Restaurant Map</button>
+      <div class="explore-map-wrap">
+        <div id="exploreRestaurantMap"></div>
+        <button id="exploreSearchAreaBtn" class="explore-map-search" onclick="searchExploreMapArea()">Search This Area</button>
+      </div>
+      <div id="exploreMapSelection"></div>
     </div>
+
     <div id="exploreList" class="list"></div>
   </section>
 
@@ -1071,8 +1089,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title" style="font-size:15px">About TableScore</div>
       <div class="settings-row">
         <div>
-          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.1</span></div>
-          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Explore Discovery</div>
+          <div style="font-weight:900">Version <span id="settingsAppVersion">5.36.2</span></div>
+          <div id="settingsBuildLabel" class="muted" style="font-size:11px;margin-top:3px">Launch Sprint - Embedded Explore Map</div>
         </div>
       </div>
     </div>
@@ -1407,7 +1425,10 @@ function showScreen(id,options={}){
 
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
-  if(id==="explore") renderExplore();
+  if(id==="explore"){
+    renderExplore();
+    setTimeout(()=>initExploreDiscoveryMap(),80);
+  }
   if(id==="feed") loadFollowingFeed();
   if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
 }
@@ -1550,7 +1571,11 @@ function newRestaurantSortValue(r){
 }
 
 function openExploreMap(){
-  openRestaurantFinder("map");
+  showScreen("explore");
+  setTimeout(()=>{
+    document.getElementById("exploreRestaurantMap")?.scrollIntoView({behavior:"smooth",block:"center"});
+    initExploreDiscoveryMap();
+  },80);
 }
 
 function setExploreFilter(filter){
@@ -1626,7 +1651,7 @@ function renderHomeRankings(){
     .slice(0,4);
 
   if(!newer.length){
-    newEl.innerHTML='<div class="empty"><div class="section-title">Find something new</div><p class="muted" style="font-size:13px">No nearby TableScore restaurants are building history yet. Browse the 15-mile discovery map to find your next spot.</p><button class="secondary" onclick="openExploreMap()">Open Restaurant Map</button></div>';
+    newEl.innerHTML='<div class="empty"><div class="section-title">Find something new</div><p class="muted" style="font-size:13px">No nearby TableScore restaurants are building history yet. Browse the 15-mile discovery map to find your next spot.</p><button class="secondary" onclick="openExploreMap()">View Restaurant Map</button></div>';
   }else{
     newEl.innerHTML=newer.map(r=>{
       const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
@@ -1677,7 +1702,7 @@ function renderExplore(){
       body="Top Rated requires at least 10 TableScore ratings from 5 unique diners.";
     }else if(exploreFilter==="new"){
       title="Find something new";
-      body='No nearby TableScore restaurants are building history yet. <button class="linkbtn" onclick="openExploreMap()">Open the 15-mile restaurant map</button> to discover a spot.';
+      body='No nearby TableScore restaurants are building history yet. <button class="linkbtn" onclick="openExploreMap()">Jump to the 15-mile restaurant map</button> to discover a spot.';
     }
     el.innerHTML=`<div class="card"><div class="section-title">${title}</div><p class="muted" style="font-size:13px">${body}</p></div>`;
     return;
@@ -2093,6 +2118,154 @@ function showLocationDiagnostic(){
 }
 
 let restaurantFinderMode="search";
+
+let exploreRestaurantMap=null;
+let exploreRestaurantMapMarkers=[];
+let exploreRestaurantMapInfoWindow=null;
+let exploreMapRestaurants=[];
+let exploreMapSelectedRestaurant=null;
+
+function clearExploreRestaurantMapMarkers(){
+  exploreRestaurantMapMarkers.forEach(m=>m.setMap(null));
+  exploreRestaurantMapMarkers=[];
+}
+
+async function initExploreDiscoveryMap(){
+  const host=document.getElementById("exploreRestaurantMap");
+  const exploreScreen=document.getElementById("explore");
+  if(!host || !exploreScreen?.classList.contains("active"))return;
+
+  try{
+    await loadGoogleMapsScript();
+
+    let coords=currentTableScoreCoords();
+    if(!coords){
+      try{coords=await getFreshTableScoreCoords()}catch(e){}
+    }
+    const c=coords||{latitude:30.2672,longitude:-97.7431};
+
+    if(!exploreRestaurantMap){
+      exploreRestaurantMap=new google.maps.Map(host,{
+        center:{lat:+c.latitude,lng:+c.longitude},
+        zoom:10,
+        mapTypeControl:false,
+        streetViewControl:false,
+        fullscreenControl:true,
+        clickableIcons:false,
+        gestureHandling:"greedy"
+      });
+      exploreRestaurantMapInfoWindow=new google.maps.InfoWindow();
+    }else{
+      google.maps.event.trigger(exploreRestaurantMap,"resize");
+    }
+
+    setTimeout(()=>google.maps.event.trigger(exploreRestaurantMap,"resize"),120);
+
+    if(!exploreRestaurantMapMarkers.length){
+      await searchExploreMapArea();
+    }
+  }catch(err){
+    console.error("Explore map:",err);
+    const missingKey=!getTableScoreMapsBrowserKey();
+    host.innerHTML=`<div class="empty" style="padding:24px">
+      <div class="section-title">Map unavailable</div>
+      <p class="muted" style="font-size:12px">${esc(err?.message||"Google Maps could not load.")}</p>
+      ${missingKey?`<button class="secondary" style="margin-top:14px" onclick="saveTableScoreMapsBrowserKey()">Set Map Key Once</button>`:""}
+    </div>`;
+  }
+}
+
+async function searchExploreMapArea(){
+  if(!exploreRestaurantMap)return initExploreDiscoveryMap();
+
+  const center=exploreRestaurantMap.getCenter();
+  const btn=document.getElementById("exploreSearchAreaBtn");
+  if(btn){btn.disabled=true;btn.textContent="Searching..."}
+
+  try{
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{
+      body:{
+        mode:"nearby",
+        latitude:center.lat(),
+        longitude:center.lng(),
+        radiusMeters:24140
+      }
+    });
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+
+    exploreMapRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
+    clearExploreRestaurantMapMarkers();
+    exploreMapSelectedRestaurant=null;
+
+    const selection=document.getElementById("exploreMapSelection");
+    if(selection)selection.innerHTML="";
+
+    exploreMapRestaurants.forEach((r,i)=>{
+      if(!Number.isFinite(+r.latitude)||!Number.isFinite(+r.longitude))return;
+
+      const restaurantIconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
+        <circle cx="15" cy="15" r="13" fill="#15191c" stroke="#B9FF2C" stroke-width="2"/>
+        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+      </svg>`;
+
+      const marker=new google.maps.Marker({
+        map:exploreRestaurantMap,
+        position:{lat:+r.latitude,lng:+r.longitude},
+        title:r.name||"Restaurant",
+        icon:{
+          url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(restaurantIconSvg),
+          scaledSize:new google.maps.Size(30,30),
+          anchor:new google.maps.Point(15,15),
+          labelOrigin:new google.maps.Point(15,38)
+        },
+        label:{
+          text:r.name||"Restaurant",
+          className:"ts-map-label"
+        },
+        zIndex:100+i
+      });
+
+      marker.addListener("click",()=>showExploreMapRestaurant(i,marker));
+      exploreRestaurantMapMarkers.push(marker);
+    });
+
+    if(!exploreMapRestaurants.length && selection){
+      selection.innerHTML='<div class="map-selection"><div class="map-selection-name">No restaurants found here</div><div class="map-selection-meta">Move the map and tap Search This Area.</div></div>';
+    }
+  }catch(err){
+    console.error("Explore map search:",err);
+    alert(err?.message||"TableScore could not search this map area.");
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Search This Area"}
+  }
+}
+
+function showExploreMapRestaurant(i,marker){
+  const r=exploreMapRestaurants[i];
+  if(!r)return;
+
+  exploreMapSelectedRestaurant=r;
+  exploreRestaurantMapInfoWindow?.setContent(
+    `<div style="color:#111;max-width:220px"><strong>${esc(r.name||"Restaurant")}</strong><br><span style="font-size:11px">${esc(r.address||restaurantTypeLabel(r))}</span></div>`
+  );
+  exploreRestaurantMapInfoWindow?.open({map:exploreRestaurantMap,anchor:marker});
+
+  const el=document.getElementById("exploreMapSelection");
+  if(el)el.innerHTML=`<div class="map-selection">
+    <div class="map-selection-name">${esc(r.name||"Restaurant")}</div>
+    <div class="map-selection-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div>
+    <button class="primary" style="margin-top:9px" onclick="chooseExploreMapRestaurant()">Rate This Restaurant</button>
+  </div>`;
+}
+
+function chooseExploreMapRestaurant(){
+  if(!exploreMapSelectedRestaurant)return;
+  nearbyGoogleRestaurants=[exploreMapSelectedRestaurant];
+  chooseNearbyRestaurant(0);
+}
+
 let restaurantMap=null;
 let restaurantMapMarkers=[];
 let restaurantMapInfoWindow=null;
@@ -2102,7 +2275,6 @@ let mapSelectedRestaurant=null;
 function openRestaurantFinder(mode="search"){
   if(!currentUser)return openAccount(()=>openRestaurantFinder(mode));
   document.getElementById("nearbyRestaurantModal").classList.remove("hidden");
-  if(mode==="map")document.getElementById("chipMap")?.classList.add("active");
   setRestaurantFinderMode(mode);
   if(mode==="search"){
     setTimeout(()=>document.getElementById("globalRestaurantSearch")?.focus(),80);
@@ -2115,7 +2287,6 @@ async function openNearbyRestaurantPicker(){
 
 function closeNearbyRestaurantPicker(){
   document.getElementById("nearbyRestaurantModal").classList.add("hidden");
-  document.getElementById("chipMap")?.classList.remove("active");
 }
 
 function setRestaurantFinderMode(mode){
@@ -6141,8 +6312,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.36.1";
-const TABLESCORE_BUILD_LABEL="Launch Sprint - Explore Discovery";
+const TABLESCORE_VERSION="5.36.2";
+const TABLESCORE_BUILD_LABEL="Launch Sprint - Embedded Explore Map";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
