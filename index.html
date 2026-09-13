@@ -1887,6 +1887,57 @@ function renderExplore(){
     </div>`;
   }).join("");
 }
+async function getPublicProfileSafe(userId){
+  if(!userId)return null;
+  const {data,error}=await db.rpc("get_public_profile",{p_user_id:userId});
+  if(error){
+    console.error("public profile:",error);
+    return null;
+  }
+  return Array.isArray(data)?data[0]||null:data||null;
+}
+
+async function getPublicProfilesSafe(userIds=[]){
+  const ids=[...new Set((userIds||[]).filter(Boolean))];
+  if(!ids.length)return [];
+
+  const rows=await Promise.all(ids.map(async id=>{
+    if(currentUser&&id===currentUser.id&&profile){
+      return {
+        id,
+        display_name:profile.display_name||null,
+        username:profile.username||null,
+        avatar_url:profile.avatar_url||null,
+        home_city:profile.home_city||null,
+        is_private:!!profile.is_private,
+        active_title:profile.active_title||null,
+        active_account_mark:profile.active_account_mark||null,
+        background_url:profile.background_url||null
+      };
+    }
+    return getPublicProfileSafe(id);
+  }));
+
+  return rows.filter(Boolean);
+}
+
+async function usernameTakenSafe(username,excludeUserId=null){
+  const q=String(username||"").trim().toLowerCase();
+  if(!q)return false;
+
+  // Username search is already exposed through a safe RPC for signed-in users.
+  // During initial sign-up there is no authenticated user yet, so the database
+  // uniqueness constraint remains the final authority.
+  if(!currentUser)return false;
+
+  const {data,error}=await db.rpc("search_people_by_username",{p_query:q});
+  if(error)throw error;
+  return (data||[]).some(row=>
+    String(row.username||"").toLowerCase()===q &&
+    (!excludeUserId||row.id!==excludeUserId)
+  );
+}
+
 function canSeeRestaurantRatingProfile(p,userId){
   if(!p)return false;
   if(currentUser&&userId===currentUser.id)return true;
@@ -1920,11 +1971,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
   }
 
   const userIds=[...new Set(ratings.map(r=>r.user_id).filter(Boolean))];
-  const {data:people,error:pErr}=userIds.length
-    ? await db.from("profiles").select("id,display_name,username,avatar_url,is_private").in("id",userIds)
-    : {data:[],error:null};
-
-  if(pErr)console.error("restaurant rating profiles:",pErr);
+  const people=await getPublicProfilesSafe(userIds);
   const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
 
   const visible=ratings.filter(r=>canSeeRestaurantRatingProfile(peopleMap.get(r.user_id),r.user_id));
@@ -2963,19 +3010,6 @@ async function signUp(){
   }
 
   setAuthBusy(true);
-  const {data:taken,error:checkError}=await db
-    .from("profiles")
-    .select("id")
-    .ilike("username",username)
-    .limit(1);
-  if(checkError){
-    setAuthBusy(false);
-    return alert("Could not check that username. Please try again.");
-  }
-  if(taken&&taken.length){
-    setAuthBusy(false);
-    return alert("That username is already taken. Choose another one.");
-  }
 
   const {data,error}=await db.auth.signUp({
     email,
@@ -2986,7 +3020,13 @@ async function signUp(){
     }
   });
   setAuthBusy(false);
-  if(error)return alert(error.message);
+  if(error){
+    const msg=String(error.message||"");
+    if(/database error|duplicate|unique|username/i.test(msg)){
+      return alert("Could not create that account. The username or email may already be in use.");
+    }
+    return alert(msg||"Could not create account. Please try again.");
+  }
   if(data.session){
     currentUser=data.user;
     closeAccount();
@@ -3037,9 +3077,12 @@ async function changeUsername(){
   const username=(input.value||"").trim().toLowerCase();
   if(!/^[a-z0-9_]{3,30}$/.test(username))return alert("Username must be 3-30 characters and use only letters, numbers, or underscores.");
   if(username===String(profile?.username||"").toLowerCase())return alert("That is already your username.");
-  const {data:taken,error:checkError}=await db.from("profiles").select("id").ilike("username",username).neq("id",currentUser.id).limit(1);
-  if(checkError)return alert("Could not check that username. Please try again.");
-  if(taken&&taken.length)return alert("That username is already taken. Choose another one.");
+  try{
+    if(await usernameTakenSafe(username,currentUser.id))return alert("That username is already taken. Choose another one.");
+  }catch(checkError){
+    console.error("username check:",checkError);
+    return alert("Could not check that username. Please try again.");
+  }
   const {error}=await db.from("profiles").update({username}).eq("id",currentUser.id);
   if(error){
     if(error.code==="23505")return alert("That username is already taken. Choose another one.");
@@ -3434,12 +3477,7 @@ async function openRatingDetail(ratingId){
     return;
   }
 
-  const {data:p,error:pErr}=await db.from("profiles")
-    .select("id,display_name,username,avatar_url,is_private,active_title")
-    .eq("id",r.user_id)
-    .maybeSingle();
-
-  if(pErr)console.error(pErr);
+  const p=await getPublicProfileSafe(r.user_id);
 
   const own=!!currentUser&&r.user_id===currentUser.id;
   if(p?.is_private&&!own&&!(currentUser&&followingIds.has(r.user_id))){
@@ -3530,12 +3568,7 @@ async function loadRatingComments(ratingId){
   count.textContent=`${comments?.length||0} comment${comments?.length===1?"":"s"}`;
 
   const userIds=[...new Set((comments||[]).map(c=>c.user_id))];
-  let people=[];
-  if(userIds.length){
-    const {data,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url").in("id",userIds);
-    if(pErr)console.error(pErr);
-    people=data||[];
-  }
+  const people=await getPublicProfilesSafe(userIds);
   const peopleMap=new Map(people.map(p=>[p.id,p]));
 
   if(!comments?.length){
@@ -3669,11 +3702,7 @@ async function loadFollowingFeed(){
   }
 
   const userIds=[...new Set(ratings.map(x=>x.user_id))];
-  const {data:people,error:pErr}=await db.from("profiles")
-    .select("id,display_name,username,avatar_url,home_city")
-    .in("id",userIds);
-  if(pErr)console.error("following feed profiles:",pErr);
-
+  const people=await getPublicProfilesSafe(userIds);
   const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
   const photoMap=await getPhotosForRatings((ratings||[]).map(r=>r.id));
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
@@ -5426,8 +5455,7 @@ async function showFollowRequests(){
   if(error){list.innerHTML='<div class="muted">Could not load follow requests.</div>';return;}
   const ids=(reqs||[]).map(x=>x.follower_id);
   if(!ids.length){list.innerHTML='<div class="muted" style="font-size:12px;padding:12px 2px">No pending follow requests.</div>';return;}
-  const {data:people,error:pErr}=await db.from("profiles").select("id,display_name,username,avatar_url,home_city,active_title").in("id",ids);
-  if(pErr){list.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
+  const people=await getPublicProfilesSafe(ids);
   list.innerHTML=(people||[]).map(u=>`<div class="row" style="gap:10px">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
     <div style="min-width:0;flex:1"><div class="row-name">${esc(u.display_name||u.username||"TableScore User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
@@ -5799,10 +5827,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
     return;
   }
 
-  const {data:people,error}=await db.from("profiles")
-    .select("id,display_name,username,home_city,avatar_url,is_private")
-    .in("id",ids);
-  if(error){console.error(error);out.innerHTML='<div class="muted">Could not load profiles.</div>';return;}
+  const people=await getPublicProfilesSafe(ids);
 
   out.innerHTML=(people||[]).map(u=>{
     const isMe=u.id===currentUser?.id;
@@ -5832,9 +5857,12 @@ async function claimUsername(){
   if(!/^[a-z0-9_]{3,30}$/.test(username)){
     return alert("Username must be 3-30 characters and use only letters, numbers, or underscores.");
   }
-  const {data:taken,error:checkError}=await db.from("profiles").select("id").ilike("username",username).limit(1);
-  if(checkError)return alert("Could not check that username. Please try again.");
-  if(taken&&taken.length)return alert("That username is already taken. Choose another one.");
+  try{
+    if(await usernameTakenSafe(username,currentUser.id))return alert("That username is already taken. Choose another one.");
+  }catch(checkError){
+    console.error("username check:",checkError);
+    return alert("Could not check that username. Please try again.");
+  }
   const {error}=await db.from("profiles").update({username}).eq("id",currentUser.id);
   if(error){
     if(error.code==="23505")return alert("That username is already taken. Choose another one.");
@@ -5927,9 +5955,9 @@ async function toggleFollow(userId,btn){
     btn.textContent="Follow";
     btn.className="primary";
   }else{
-    const {data:target,error:pErr}=await db.from("profiles").select("is_private").eq("id",userId).maybeSingle();
-    if(pErr){btn.disabled=false;return alert(pErr.message);}
-    const status=target?.is_private?"pending":"accepted";
+    const target=await getPublicProfileSafe(userId);
+    if(!target){btn.disabled=false;return alert("Could not load that profile. Please try again.");}
+    const status=target.is_private?"pending":"accepted";
     const {error}=await db.from("follows").insert({follower_id:currentUser.id,following_id:userId,status});
     if(error){btn.disabled=false;return alert(error.message);}
     if(status==="pending"){
@@ -7054,8 +7082,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.0";
-const TABLESCORE_BUILD_LABEL="Account Flow Redesign";
+const TABLESCORE_VERSION="5.43.1";
+const TABLESCORE_BUILD_LABEL="Safe Profile Access Hardening";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
