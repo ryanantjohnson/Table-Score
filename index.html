@@ -1573,14 +1573,8 @@ function useLocation(){
     localStorage.setItem("ts_lon",String(lon));
     area="Near you";
     try{
-      const url="https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+encodeURIComponent(lat)+"&longitude="+encodeURIComponent(lon)+"&localityLanguage=en";
-      const res=await fetch(url);
-      if(res.ok){
-        const data=await res.json();
-        const city=data.city||data.locality||data.principalSubdivision||"Near you";
-        const region=data.principalSubdivisionCode?data.principalSubdivisionCode.split("-").pop():"";
-        area=region&&city.indexOf(region)===-1?city+", "+region:city;
-      }
+      const freshArea=await reverseGeocodeBrowseArea(lat,lon);
+      if(freshArea)area=freshArea;
     }catch(e){}
     localStorage.setItem("ts_area",area);
     updateArea();
@@ -2142,6 +2136,54 @@ async function getFreshTableScoreCoords(){
 let tableScoreLocationDebug=null;
 
 async function reverseGeocodeBrowseArea(latitude,longitude){
+  // Primary: use the Google Maps JavaScript Geocoder already loaded by TableScore.
+  // This avoids making the location label depend on a separate third-party service.
+  try{
+    await loadGoogleMaps();
+    const geocoder=new google.maps.Geocoder();
+    const response=await geocoder.geocode({
+      location:{lat:Number(latitude),lng:Number(longitude)}
+    });
+    const results=Array.isArray(response?.results)?response.results:[];
+
+    const component=(type)=>{
+      for(const result of results){
+        const match=(result.address_components||[]).find(c=>(c.types||[]).includes(type));
+        if(match)return match;
+      }
+      return null;
+    };
+
+    const locality=component("locality") || component("postal_town");
+    const sublocality=component("sublocality") || component("sublocality_level_1");
+    const county=component("administrative_area_level_2");
+    const regionComp=component("administrative_area_level_1");
+    const placeName=locality?.long_name || sublocality?.long_name || county?.long_name || null;
+    const region=regionComp?.short_name || regionComp?.long_name || "";
+
+    tableScoreLocationDebug={
+      latitude,
+      longitude,
+      locality:locality?.long_name||null,
+      city:locality?.long_name||null,
+      principalSubdivision:regionComp?.long_name||null,
+      admin7:county?.long_name||null,
+      admin8:sublocality?.long_name||null,
+      selected:placeName||null,
+      provider:"google"
+    };
+
+    if(placeName){
+      return region && !String(placeName).toUpperCase().endsWith(", "+String(region).toUpperCase())
+        ? placeName+", "+region
+        : placeName;
+    }
+  }catch(e){
+    console.warn("Google reverse geocode:",e);
+  }
+
+  // Fallback: preserve the prior BigDataCloud lookup so the label can still
+  // resolve if Google reverse geocoding is temporarily unavailable.
   try{
     const url="https://api.bigdatacloud.net/data/reverse-geocode-client?latitude="+
       encodeURIComponent(latitude)+"&longitude="+encodeURIComponent(longitude)+"&localityLanguage=en";
@@ -2152,21 +2194,9 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
     const administrative=Array.isArray(data?.localityInfo?.administrative)
       ? data.localityInfo.administrative
       : [];
-
     const admin8=administrative.find(x=>Number(x?.adminLevel)===8)?.name || null;
     const admin7=administrative.find(x=>Number(x?.adminLevel)===7)?.name || null;
-
-    // For TableScore's browsing label, the reverse geocoder's locality is the
-    // best representation of the place the GPS point is actually in.
-    // BigDataCloud's city/admin values can identify a nearby/significant city.
-    const placeName=
-      data.locality ||
-      admin8 ||
-      admin7 ||
-      data.city ||
-      data.principalSubdivision ||
-      null;
-
+    const placeName=data.locality || admin8 || admin7 || data.city || data.principalSubdivision || null;
     const region=data.principalSubdivisionCode
       ? data.principalSubdivisionCode.split("-").pop()
       : "";
@@ -2179,19 +2209,20 @@ async function reverseGeocodeBrowseArea(latitude,longitude){
       principalSubdivision:data.principalSubdivision||null,
       admin7,
       admin8,
-      selected:placeName||null
+      selected:placeName||null,
+      provider:"bigdatacloud"
     };
 
     if(!placeName)return null;
-
     return region && !String(placeName).toUpperCase().endsWith(", "+region.toUpperCase())
       ? placeName+", "+region
       : placeName;
   }catch(e){
-    console.warn("reverse geocode:",e);
+    console.warn("reverse geocode fallback:",e);
     return null;
   }
 }
+
 async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
   if(!("geolocation" in navigator))return false;
 
@@ -6907,8 +6938,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.42.3";
-const TABLESCORE_BUILD_LABEL="Current Location Map Pin";
+const TABLESCORE_VERSION="5.42.4";
+const TABLESCORE_BUILD_LABEL="Location Label Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
