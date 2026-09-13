@@ -1432,7 +1432,7 @@ const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
   auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}
 });
 // Paste the website-restricted Google Maps JavaScript API key here.
-const TABLESCORE_MAPS_BROWSER_KEY="AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs"; // website-restricted Maps JavaScript API key
+const TABLESCORE_MAPS_BROWSER_KEY="PASTE_TABLESCORE_WEB_MAP_KEY_HERE"; // website-restricted Maps JavaScript API key
 
 
 const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Service"];
@@ -2699,9 +2699,15 @@ function saveBrowseArea(){
   closeLocationChooser();
 }
 function getTableScoreMapsBrowserKey(){
-  const key=(TABLESCORE_MAPS_BROWSER_KEY||"").trim();
-  if(!key || key==="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return "";
-  return key;
+  const configured=(TABLESCORE_MAPS_BROWSER_KEY||"").trim();
+  if(configured && configured!=="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return configured;
+
+  // Compatibility fallback only: older TableScore builds may already have saved
+  // the website-restricted browser key on this device.
+  const retained=(localStorage.getItem("ts_maps_browser_key")||"").trim();
+  if(retained && retained!=="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return retained;
+
+  return "";
 }
 
 function loadGoogleMaps(){
@@ -6856,9 +6862,21 @@ function preferredAccountMark(markTypes=[], selected=null){
 
 function decorateNameWithMark(nameEl, markTypes=[], selected=null){
   if(!nameEl) return;
-  nameEl.querySelectorAll(".account-mark").forEach(x=>x.remove());
-  const kind = preferredAccountMark(markTypes,selected);
-  if(kind) nameEl.insertAdjacentHTML("beforeend", accountMarkHtml(kind));
+
+  const kind=preferredAccountMark(markTypes,selected);
+  const existing=[...nameEl.querySelectorAll(":scope > .account-mark")];
+  const existingKind=existing.length===1
+    ? [...existing[0].classList].find(c=>c.startsWith("mark-"))?.slice(5) || null
+    : null;
+
+  // Do nothing when the correct mark is already rendered.
+  // This prevents account-mark decoration from creating its own DOM mutation loop.
+  if((kind && existing.length===1 && existingKind===kind) || (!kind && existing.length===0)){
+    return;
+  }
+
+  existing.forEach(x=>x.remove());
+  if(kind) nameEl.insertAdjacentHTML("beforeend",accountMarkHtml(kind));
 }
 
 
@@ -6938,8 +6956,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.42.4";
-const TABLESCORE_BUILD_LABEL="Location Label Fix";
+const TABLESCORE_VERSION="5.42.5";
+const TABLESCORE_BUILD_LABEL="Account Mark Render Loop Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -7039,15 +7057,47 @@ async function applyAccountMarks(root=document){
   });
 }
 
-// Mutation observer makes marks follow newly-rendered feed/comments/profile UI.
+// Mutation observer makes marks follow genuinely new feed/comments/profile UI
+// without reacting to the account-mark nodes that this feature inserts itself.
 let accountMarkTimer;
-const accountMarkObserver = new MutationObserver(() => {
+let accountMarkPassRunning=false;
+
+async function runAccountMarkPass(){
+  if(accountMarkPassRunning)return;
+  accountMarkPassRunning=true;
+  try{
+    await applyAccountMarks(document);
+  }finally{
+    accountMarkPassRunning=false;
+  }
+}
+
+const accountMarkObserver = new MutationObserver(mutations => {
+  if(accountMarkPassRunning)return;
+
+  const hasRelevantMutation=mutations.some(mutation => {
+    const nodes=[...mutation.addedNodes,...mutation.removedNodes];
+    return nodes.some(node => {
+      if(node.nodeType!==1)return false;
+      const el=node;
+      if(el.classList?.contains("account-mark"))return false;
+      if(el.closest?.(".account-mark"))return false;
+      return !!(
+        el.matches?.("[data-user-id]") ||
+        el.querySelector?.("[data-user-id]")
+      );
+    });
+  });
+
+  if(!hasRelevantMutation)return;
+
   clearTimeout(accountMarkTimer);
-  accountMarkTimer = setTimeout(() => applyAccountMarks(document), 60);
+  accountMarkTimer=setTimeout(()=>runAccountMarkPass(),80);
 });
+
 document.addEventListener("DOMContentLoaded", () => {
   accountMarkObserver.observe(document.body,{childList:true,subtree:true});
-  applyAccountMarks(document);
+  runAccountMarkPass();
 });
 
 </script>
