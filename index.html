@@ -2265,6 +2265,23 @@ let exploreRestaurantMapMarkers=[];
 let exploreRestaurantMapInfoWindow=null;
 let exploreMapRestaurants=[];
 let exploreMapSelectedRestaurant=null;
+let exploreUserLocationMarker=null;
+
+function tableScoreUserLocationIcon(){
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="#B9FF2C" stroke="#0b0d0e" stroke-width="3"/><circle cx="17" cy="17" r="5" fill="#0b0d0e"/><circle cx="17" cy="17" r="2" fill="#ffffff"/></svg>`;
+  return {url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg),scaledSize:new google.maps.Size(34,34),anchor:new google.maps.Point(17,17)};
+}
+
+function setExploreUserLocationMarker(coords){
+  if(!exploreRestaurantMap||!coords||!Number.isFinite(+coords.latitude)||!Number.isFinite(+coords.longitude))return;
+  const position={lat:+coords.latitude,lng:+coords.longitude};
+  if(exploreUserLocationMarker){
+    exploreUserLocationMarker.setPosition(position);
+    exploreUserLocationMarker.setMap(exploreRestaurantMap);
+  }else{
+    exploreUserLocationMarker=new google.maps.Marker({map:exploreRestaurantMap,position,title:"You are here",icon:tableScoreUserLocationIcon(),zIndex:10000});
+  }
+}
 
 function clearExploreRestaurantMapMarkers(){
   exploreRestaurantMapMarkers.forEach(m=>m.setMap(null));
@@ -2301,6 +2318,7 @@ async function initExploreDiscoveryMap(){
     }
 
     setTimeout(()=>google.maps.event.trigger(exploreRestaurantMap,"resize"),120);
+    if(coords)setExploreUserLocationMarker(coords);
 
     if(!exploreRestaurantMapMarkers.length){
       await searchExploreMapArea();
@@ -2408,7 +2426,20 @@ function chooseExploreMapRestaurant(){
 let restaurantMap=null;
 let restaurantMapMarkers=[];
 let restaurantMapInfoWindow=null;
+let restaurantUserLocationMarker=null;
 let googleMapsLoaderPromise=null;
+
+function setRestaurantUserLocationMarker(coords){
+  if(!restaurantMap||!coords||!Number.isFinite(+coords.latitude)||!Number.isFinite(+coords.longitude))return;
+  const position={lat:+coords.latitude,lng:+coords.longitude};
+  if(restaurantUserLocationMarker){
+    restaurantUserLocationMarker.setPosition(position);
+    restaurantUserLocationMarker.setMap(restaurantMap);
+  }else{
+    restaurantUserLocationMarker=new google.maps.Marker({map:restaurantMap,position,title:"You are here",icon:tableScoreUserLocationIcon(),zIndex:10000});
+  }
+}
+
 let mapSelectedRestaurant=null;
 
 function openRestaurantFinder(mode="search"){
@@ -2682,6 +2713,7 @@ async function initRestaurantMap(){
       google.maps.event.trigger(restaurantMap,"resize");
     }
     setTimeout(()=>google.maps.event.trigger(restaurantMap,"resize"),120);
+    if(coords)setRestaurantUserLocationMarker(coords);
     if(!restaurantMapMarkers.length)await searchRestaurantMapArea();
   }catch(err){
     console.error(err);
@@ -2759,6 +2791,7 @@ async function centerRestaurantMapOnMe(){
     if(!restaurantMap)await initRestaurantMap();
     restaurantMap.setCenter({lat:+c.latitude,lng:+c.longitude});
     restaurantMap.setZoom(14);
+    setRestaurantUserLocationMarker(c);
     await searchRestaurantMapArea();
   }catch(e){alert("TableScore could not get your current location.")}
 }
@@ -6874,8 +6907,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.42.2";
-const TABLESCORE_BUILD_LABEL="Automatic Web Map";
+const TABLESCORE_VERSION="5.42.3";
+const TABLESCORE_BUILD_LABEL="Current Location Map Pin";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
