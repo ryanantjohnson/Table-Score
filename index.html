@@ -1062,8 +1062,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div id="accountMarksSettingsCard" class="card hidden">
       <div class="section-title" style="font-size:15px">Account Mark</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">If you own more than one distinction, choose which one appears beside your name.</div>
-      <div id="accountMarkPicker" class="account-mark-picker"></div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Your TableScore identity marks appear beside your name everywhere they are shown.</div>
+      <div id="accountMarkPicker" class="account-mark-picker hidden"></div>
     </div>
 
     <div id="chefsTableApplyCard" class="card">
@@ -1938,6 +1938,11 @@ async function usernameTakenSafe(username,excludeUserId=null){
   );
 }
 
+function accountNameAttrs(user){
+  if(!user?.id)return "";
+  return `data-user-id="${esc(user.id)}" data-account-name="true"`;
+}
+
 function canSeeRestaurantRatingProfile(p,userId){
   if(!p)return false;
   if(currentUser&&userId===currentUser.id)return true;
@@ -2000,7 +2005,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
         <button class="community-reviewer-btn" onclick="event.stopPropagation();${own?"showScreen('profile')":`openPublicProfile('${r.user_id}')`}">
           ${avatarMarkup(p,42)}
           <div style="min-width:0;flex:1">
-            <div class="community-reviewer-name">${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
+            <div class="community-reviewer-name" ${accountNameAttrs(p)}>${esc(name)}${own?'<span class="community-own">YOU</span>':""}</div>
             <div class="row-meta">${username}${username?" - ":""}${timeAgo(r.created_at)}</div>
           </div>
         </button>
@@ -4089,7 +4094,7 @@ async function openPublicProfile(userId){
   publicNameEl.dataset.userId=userId;
   publicNameEl.dataset.accountName="true";
   const viewedMarkMap=await loadAccountMarks([userId]);
-  decorateNameWithMark(publicNameEl,viewedMarkMap[userId]||[],p.active_account_mark||null);
+  decorateNameWithMark(publicNameEl,viewedMarkMap[userId]||[]);
   renderMarkAdminControls(userId,viewedMarkMap[userId]||[]);
   document.getElementById("publicProfileUsername").textContent=p.username?"@"+p.username:"";
   const publicTitleEl=document.getElementById("publicProfileTitle"); if(publicTitleEl)publicTitleEl.textContent=p.active_title||"Table Regular";
@@ -5458,7 +5463,7 @@ async function showFollowRequests(){
   const people=await getPublicProfilesSafe(ids);
   list.innerHTML=(people||[]).map(u=>`<div class="row" style="gap:10px">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
-    <div style="min-width:0;flex:1"><div class="row-name">${esc(u.display_name||u.username||"TableScore User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
+    <div style="min-width:0;flex:1"><div class="row-name" ${accountNameAttrs(u)}>${esc(u.display_name||u.username||"TableScore User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
     <div class="request-actions">
       <button class="primary" onclick="approveFollowRequest('${u.id}')">Confirm</button>
       <button class="secondary" onclick="deleteFollowRequest('${u.id}')">Delete</button>
@@ -5837,7 +5842,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
       <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
       <div style="min-width:0;flex:1">
         <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
-          <div class="row-name">${esc(display)}</div>
+          <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
           <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" - "+esc(u.home_city):""}</div>
         </button>
       </div>
@@ -5882,7 +5887,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
     <div style="min-width:0;flex:1">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
-        <div class="row-name">${esc(display)}</div>
+        <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
         <div class="row-meta">@${esc(u.username||"")}${u.home_city?" - "+esc(u.home_city):""}</div>
         ${showMutual&&mutualCount>0?`<div class="people-mutual"><span class="people-mutual-dot"></span>${mutualCount} mutual connection${mutualCount===1?"":"s"}</div>`:""}
       </button>
@@ -6978,31 +6983,30 @@ async function loadAccountMarks(userIds=[]){
   return out;
 }
 
-function preferredAccountMark(markTypes=[], selected=null){
-  if(selected && markTypes.includes(selected)) return selected;
-  if(markTypes.includes("og")) return "og";
-  if(markTypes.includes("chefs_table")) return "chefs_table";
-  if(markTypes.includes("first_round")) return "first_round";
-  return null;
+function orderedAccountMarks(markTypes=[]){
+  const owned=new Set(markTypes||[]);
+  return ["og","chefs_table","first_round"].filter(kind=>owned.has(kind));
 }
 
-function decorateNameWithMark(nameEl, markTypes=[], selected=null){
+function decorateNameWithMark(nameEl, markTypes=[]){
   if(!nameEl) return;
 
-  const kind=preferredAccountMark(markTypes,selected);
+  const desired=orderedAccountMarks(markTypes);
   const existing=[...nameEl.querySelectorAll(":scope > .account-mark")];
-  const existingKind=existing.length===1
-    ? [...existing[0].classList].find(c=>c.startsWith("mark-"))?.slice(5) || null
-    : null;
+  const existingKinds=existing.map(el=>
+    [...el.classList].find(c=>c.startsWith("mark-"))?.slice(5) || ""
+  );
 
-  // Do nothing when the correct mark is already rendered.
-  // This prevents account-mark decoration from creating its own DOM mutation loop.
-  if((kind && existing.length===1 && existingKind===kind) || (!kind && existing.length===0)){
+  // Idempotent: only mutate when the complete mark set is actually different.
+  if(desired.length===existingKinds.length &&
+     desired.every((kind,i)=>existingKinds[i]===kind)){
     return;
   }
 
   existing.forEach(x=>x.remove());
-  if(kind) nameEl.insertAdjacentHTML("beforeend",accountMarkHtml(kind));
+  if(desired.length){
+    nameEl.insertAdjacentHTML("beforeend",desired.map(accountMarkHtml).join(""));
+  }
 }
 
 
@@ -7082,8 +7086,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.1";
-const TABLESCORE_BUILD_LABEL="Safe Profile Access Hardening";
+const TABLESCORE_VERSION="5.43.2";
+const TABLESCORE_BUILD_LABEL="Always Visible Account Marks";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
