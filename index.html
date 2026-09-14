@@ -1193,7 +1193,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div id="connectionsTitle" class="section-title">Followers</div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeConnections()">Close</button>
     </div>
-    <div id="connectionsList" class="list" style="margin-top:10px;max-height:55vh;overflow:auto"></div>
+    <div id="connectionsList" class="list" style="margin-top:10px;max-height:55vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch"></div>
   </div>
 </div>
 
@@ -4137,6 +4137,11 @@ async function openPublicProfile(userId){
 }
 
 function closePublicProfile(){
+  if(publicProfileConnectionsReturn){
+    history.back();
+    return;
+  }
+
   const returnTo=publicProfileReturnScreen&&publicProfileReturnScreen!=="publicProfile"
     ?publicProfileReturnScreen
     :"home";
@@ -5801,6 +5806,34 @@ async function removeProfileBackground(){
   profile={...(profile||{}),background_url:null};renderProfile();
 }
 
+let connectionsContext=null;
+let publicProfileConnectionsReturn=null;
+let lockedPageScrollY=0;
+
+function lockPageScroll(){
+  if(document.body.dataset.tsScrollLocked==="1")return;
+  lockedPageScrollY=window.scrollY||window.pageYOffset||0;
+  document.body.dataset.tsScrollLocked="1";
+  document.body.style.position="fixed";
+  document.body.style.top=`-${lockedPageScrollY}px`;
+  document.body.style.left="0";
+  document.body.style.right="0";
+  document.body.style.width="100%";
+  document.body.style.overflow="hidden";
+}
+
+function unlockPageScroll(){
+  if(document.body.dataset.tsScrollLocked!=="1")return;
+  document.body.dataset.tsScrollLocked="";
+  document.body.style.position="";
+  document.body.style.top="";
+  document.body.style.left="";
+  document.body.style.right="";
+  document.body.style.width="";
+  document.body.style.overflow="";
+  window.scrollTo(0,lockedPageScrollY);
+}
+
 async function openConnections(type){
   if(!currentUser)return openAccount();
   return openConnectionsFor(currentUser.id,type,"Your");
@@ -5810,6 +5843,8 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   const modal=document.getElementById("connectionsModal");
   const title=document.getElementById("connectionsTitle");
   const out=document.getElementById("connectionsList");
+  connectionsContext={userId,type,ownerLabel};
+  lockPageScroll();
   title.textContent=userId===currentUser?.id
     ? (type==="followers"?"Followers":"Following")
     : `${ownerLabel} - ${type==="followers"?"Followers":"Following"}`;
@@ -5839,9 +5874,9 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
     const isFollowing=followingIds.has(u.id);
     const display=u.display_name||u.username||"TableScore User";
     return `<div class="row" style="gap:10px">
-      <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
+      <button onclick="openPublicProfileFromConnections('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
       <div style="min-width:0;flex:1">
-        <button onclick="closeConnections();openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
+        <button onclick="openPublicProfileFromConnections('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
           <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
           <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" - "+esc(u.home_city):""}</div>
         </button>
@@ -5851,9 +5886,51 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   }).join("");
 }
 
-function closeConnections(){
+function closeConnections(preserveContext=false){
   document.getElementById("connectionsModal").classList.add("hidden");
+  unlockPageScroll();
+  if(!preserveContext)connectionsContext=null;
 }
+
+async function openPublicProfileFromConnections(userId){
+  if(!userId)return;
+
+  // Remember exactly which Followers/Following list the user came from.
+  const returnContext=connectionsContext?{...connectionsContext}:null;
+  publicProfileConnectionsReturn=returnContext;
+
+  closeConnections(true);
+
+  // A same-document history entry gives iPhone/Safari swipe-back a real place
+  // to return to without leaving TableScore.
+  if(returnContext){
+    history.pushState({tablescore:"public-profile-from-connections"},"",location.href);
+  }
+
+  await openPublicProfile(userId);
+}
+
+async function restoreConnectionsReturn(context){
+  if(!context)return;
+
+  // Restore the profile that owned the list first, then reopen that exact list.
+  if(currentUser&&context.userId===currentUser.id){
+    viewedProfile=null;
+    viewedProfileRatings=[];
+    showScreen("profile",{restore:true});
+  }else{
+    await openPublicProfile(context.userId);
+  }
+
+  await openConnectionsFor(context.userId,context.type,context.ownerLabel);
+}
+
+window.addEventListener("popstate",()=>{
+  if(!publicProfileConnectionsReturn)return;
+  const context=publicProfileConnectionsReturn;
+  publicProfileConnectionsReturn=null;
+  void restoreConnectionsReturn(context);
+});
 
 async function claimUsername(){
   if(!currentUser)return openAccount();
@@ -7086,8 +7163,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.2";
-const TABLESCORE_BUILD_LABEL="Always Visible Account Marks";
+const TABLESCORE_VERSION="5.43.3";
+const TABLESCORE_BUILD_LABEL="Connection Navigation and Scroll Lock";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
