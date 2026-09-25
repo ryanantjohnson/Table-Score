@@ -1298,7 +1298,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="crop-mask"></div><div class="crop-ring"></div>
     </div>
     <div class="crop-controls">
-      <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="setCropZoom(this.value)">
+      <input id="cropZoom" type="range" min="0.35" max="3" step="0.01" value="1" oninput="setCropZoom(this.value)">
       <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
     </div>
     <div class="crop-actions" style="grid-template-columns:1fr 1fr 1fr">
@@ -5638,9 +5638,15 @@ async function handleProfilePhoto(event){
 }
 
 function changeProfileCropPhoto(){
-  // Close and clean up the current selection, then immediately reopen Photos.
+  // Fully reset the file input so iOS opens a fresh photo-selection session.
   cancelProfileCrop();
-  setTimeout(()=>document.getElementById("profilePhotoInput")?.click(),50);
+  const oldInput=document.getElementById("profilePhotoInput");
+  if(!oldInput)return;
+  const freshInput=oldInput.cloneNode(true);
+  oldInput.parentNode.replaceChild(freshInput,oldInput);
+  freshInput.value="";
+  freshInput.addEventListener("change",handleProfilePhoto);
+  setTimeout(()=>freshInput.click(),150);
 }
 function clampCropPosition(){
   const stage=document.getElementById("cropStage"); if(!stage||!cropImageNaturalW)return;
@@ -5653,7 +5659,7 @@ function updateCropTransform(){
   const scale=cropBaseScale*cropZoom;img.style.width=(cropImageNaturalW*scale)+"px";img.style.height=(cropImageNaturalH*scale)+"px";
   clampCropPosition();img.style.transform=`translate(calc(-50% + ${cropX}px),calc(-50% + ${cropY}px))`;
 }
-function setCropZoom(v){cropZoom=Math.max(1,Math.min(3,Number(v)||1));updateCropTransform();}
+function setCropZoom(v){cropZoom=Math.max(0.35,Math.min(3,Number(v)||1));updateCropTransform();}
 function cropPointerDown(e){
   const stage=document.getElementById("cropStage");stage.setPointerCapture?.(e.pointerId);cropPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(cropPointers.size===1)cropDragStart={x:e.clientX,y:e.clientY,startX:cropX,startY:cropY};
@@ -5677,11 +5683,17 @@ async function saveProfileCrop(){
   const btn=document.getElementById("saveCropBtn");btn.disabled=true;btn.textContent="Saving...";
   try{
     const stage=document.getElementById("cropStage"),cropDisplaySize=stage.clientWidth*.86,scale=cropBaseScale*cropZoom;
-    const sourceCropSize=cropDisplaySize/scale,sourceCenterX=(cropImageNaturalW/2)-(cropX/scale),sourceCenterY=(cropImageNaturalH/2)-(cropY/scale);
-    let sx=Math.max(0,Math.min(cropImageNaturalW-sourceCropSize,sourceCenterX-sourceCropSize/2));
-    let sy=Math.max(0,Math.min(cropImageNaturalH-sourceCropSize,sourceCenterY-sourceCropSize/2));
     const sourceImg=document.getElementById("cropImage"),canvas=document.createElement("canvas");canvas.width=1200;canvas.height=1200;
-    canvas.getContext("2d").drawImage(sourceImg,sx,sy,sourceCropSize,sourceCropSize,0,0,1200,1200);
+    const ctx=canvas.getContext("2d");
+    // Match the crop preview exactly, including zoom levels below "fill".
+    // Any uncovered area becomes a neutral dark background instead of forcing a tighter crop.
+    ctx.fillStyle="#111416";ctx.fillRect(0,0,1200,1200);
+    const outputScale=1200/cropDisplaySize;
+    const drawW=cropImageNaturalW*scale*outputScale;
+    const drawH=cropImageNaturalH*scale*outputScale;
+    const drawX=(1200-drawW)/2+(cropX*outputScale);
+    const drawY=(1200-drawH)/2+(cropY*outputScale);
+    ctx.drawImage(sourceImg,drawX,drawY,drawW,drawH);
     const jpegBlob=await new Promise((resolve,reject)=>canvas.toBlob(b=>b?resolve(b):reject(new Error("Could not prepare that photo.")),"image/jpeg",0.88));
     const path=`${currentUser.id}/avatar.jpg`;
     const {error:uploadError}=await db.storage.from("avatars").upload(path,jpegBlob,{contentType:"image/jpeg",upsert:true,cacheControl:"3600"});if(uploadError)throw uploadError;
@@ -7239,8 +7251,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.5";
-const TABLESCORE_BUILD_LABEL="Profile Photo Crop Fix";
+const TABLESCORE_VERSION="5.43.6";
+const TABLESCORE_BUILD_LABEL="Profile Photo Crop UX Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
