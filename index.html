@@ -5640,10 +5640,17 @@ async function handleProfilePhoto(event){
 
 
 let cropTouchMode="";
-let cropTouchLastX=0,cropTouchLastY=0,cropTouchLastDistance=0,cropTouchStartZoom=1;
+let cropTouchLastX=0,cropTouchLastY=0,cropTouchLastDistance=0;
 
 function cropTouchDistance(t1,t2){
   return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+}
+
+function cropTouchMidpoint(t1,t2){
+  return {
+    x:(t1.clientX+t2.clientX)/2,
+    y:(t1.clientY+t2.clientY)/2
+  };
 }
 
 function initProfileCropGestures(){
@@ -5660,28 +5667,50 @@ function initProfileCropGestures(){
     }else if(e.touches.length>=2){
       cropTouchMode="pinch";
       cropTouchLastDistance=cropTouchDistance(e.touches[0],e.touches[1]);
-      cropTouchStartZoom=cropZoom;
+      const mid=cropTouchMidpoint(e.touches[0],e.touches[1]);
+      cropTouchLastX=mid.x;
+      cropTouchLastY=mid.y;
     }
     e.preventDefault();
   },{passive:false});
 
   stage.addEventListener("touchmove",(e)=>{
-    if(cropTouchMode==="pan" && e.touches.length===1){
+    if(e.touches.length===1){
       const t=e.touches[0];
-      cropX+=t.clientX-cropTouchLastX;
-      cropY+=t.clientY-cropTouchLastY;
-      cropTouchLastX=t.clientX;
-      cropTouchLastY=t.clientY;
-      updateCropTransform();
+      if(cropTouchMode!=="pan"){
+        cropTouchMode="pan";
+        cropTouchLastX=t.clientX;
+        cropTouchLastY=t.clientY;
+      }else{
+        cropX+=t.clientX-cropTouchLastX;
+        cropY+=t.clientY-cropTouchLastY;
+        cropTouchLastX=t.clientX;
+        cropTouchLastY=t.clientY;
+        updateCropTransform();
+      }
     }else if(e.touches.length>=2){
       const d=cropTouchDistance(e.touches[0],e.touches[1]);
-      if(cropTouchMode!=="pinch"){
+      const mid=cropTouchMidpoint(e.touches[0],e.touches[1]);
+
+      if(cropTouchMode!=="pinch" || cropTouchLastDistance<=0){
         cropTouchMode="pinch";
         cropTouchLastDistance=d;
-        cropTouchStartZoom=cropZoom;
-      }
-      if(cropTouchLastDistance>0){
-        cropZoom=Math.max(0.20,Math.min(5,cropTouchStartZoom*(d/cropTouchLastDistance)));
+        cropTouchLastX=mid.x;
+        cropTouchLastY=mid.y;
+      }else{
+        // Incremental pinch: every finger movement changes the current zoom,
+        // so the image can keep shrinking/growing naturally without snapping.
+        const ratio=d/cropTouchLastDistance;
+        cropZoom=Math.max(0.02,Math.min(12,cropZoom*ratio));
+
+        // Move with the pinch midpoint too, giving true two-finger free positioning.
+        cropX+=mid.x-cropTouchLastX;
+        cropY+=mid.y-cropTouchLastY;
+
+        cropTouchLastDistance=d;
+        cropTouchLastX=mid.x;
+        cropTouchLastY=mid.y;
+
         const z=document.getElementById("cropZoom");
         if(z)z.value=String(cropZoom);
         updateCropTransform();
@@ -5691,13 +5720,21 @@ function initProfileCropGestures(){
   },{passive:false});
 
   stage.addEventListener("touchend",(e)=>{
-    if(e.touches.length===0)cropTouchMode="";
-    else if(e.touches.length===1){
+    if(e.touches.length===0){
+      cropTouchMode="";
+      cropTouchLastDistance=0;
+    }else if(e.touches.length===1){
       cropTouchMode="pan";
+      cropTouchLastDistance=0;
       cropTouchLastX=e.touches[0].clientX;
       cropTouchLastY=e.touches[0].clientY;
     }
     e.preventDefault();
+  },{passive:false});
+
+  stage.addEventListener("touchcancel",()=>{
+    cropTouchMode="";
+    cropTouchLastDistance=0;
   },{passive:false});
 }
 
@@ -5731,7 +5768,7 @@ function updateCropTransform(){
   const scale=cropBaseScale*cropZoom;img.style.width=(cropImageNaturalW*scale)+"px";img.style.height=(cropImageNaturalH*scale)+"px";
   clampCropPosition();img.style.transform=`translate(calc(-50% + ${cropX}px),calc(-50% + ${cropY}px))`;
 }
-function setCropZoom(v){cropZoom=Math.max(0.20,Math.min(5,Number(v)||1));updateCropTransform();}
+function setCropZoom(v){cropZoom=Math.max(0.02,Math.min(12,Number(v)||1));updateCropTransform();}
 function cropPointerDown(e){
   const stage=document.getElementById("cropStage");stage.setPointerCapture?.(e.pointerId);cropPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(cropPointers.size===1)cropDragStart={x:e.clientX,y:e.clientY,startX:cropX,startY:cropY};
@@ -7323,8 +7360,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.7";
-const TABLESCORE_BUILD_LABEL="Native Profile Crop Gestures";
+const TABLESCORE_VERSION="5.43.8";
+const TABLESCORE_BUILD_LABEL="Freeform Profile Crop Gestures";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
