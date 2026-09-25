@@ -1301,8 +1301,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <input id="cropZoom" type="range" min="1" max="3" step="0.01" value="1" oninput="setCropZoom(this.value)">
       <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
     </div>
-    <div class="crop-actions">
+    <div class="crop-actions" style="grid-template-columns:1fr 1fr 1fr">
       <button class="secondary" onclick="cancelProfileCrop()">Cancel</button>
+      <button class="secondary" onclick="changeProfileCropPhoto()">Change Photo</button>
       <button id="saveCropBtn" class="primary" onclick="saveProfileCrop()">Use Photo</button>
     </div>
   </div>
@@ -5598,18 +5599,48 @@ async function handleProfilePhoto(event){
   if(!file)return;
   if(file.size>20*1024*1024)return alert("That photo is too large. Choose an image under 20 MB.");
   if(!file.type.startsWith("image/"))return alert("Choose an image file.");
+
   cancelProfileCrop();
-  cropSourceFile=file; cropObjectUrl=URL.createObjectURL(file);
+  cropSourceFile=file;
+  cropObjectUrl=URL.createObjectURL(file);
+
+  const modal=document.getElementById("profileCropModal");
   const img=document.getElementById("cropImage");
+
   img.onload=()=>{
-    cropImageNaturalW=img.naturalWidth; cropImageNaturalH=img.naturalHeight;
-    const size=document.getElementById("cropStage").clientWidth;
-    cropBaseScale=Math.max(size/cropImageNaturalW,size/cropImageNaturalH);
-    cropZoom=1;cropX=0;cropY=0;document.getElementById("cropZoom").value="1";
-    updateCropTransform();document.getElementById("profileCropModal").classList.remove("hidden");
+    cropImageNaturalW=img.naturalWidth;
+    cropImageNaturalH=img.naturalHeight;
+
+    // iPhone Safari reports cropStage as 0px while the modal is hidden.
+    // Show it first, then measure on the next animation frame.
+    modal.classList.remove("hidden");
+
+    requestAnimationFrame(()=>{
+      const stage=document.getElementById("cropStage");
+      const size=stage?.clientWidth||0;
+      if(size<1){
+        cancelProfileCrop();
+        alert("The crop area could not load. Please choose the photo again.");
+        return;
+      }
+
+      cropBaseScale=Math.max(size/cropImageNaturalW,size/cropImageNaturalH);
+      cropZoom=1;
+      cropX=0;
+      cropY=0;
+      document.getElementById("cropZoom").value="1";
+      updateCropTransform();
+    });
   };
+
   img.onerror=()=>{cancelProfileCrop();alert("That photo could not be opened.");};
   img.src=cropObjectUrl;
+}
+
+function changeProfileCropPhoto(){
+  // Close and clean up the current selection, then immediately reopen Photos.
+  cancelProfileCrop();
+  setTimeout(()=>document.getElementById("profilePhotoInput")?.click(),50);
 }
 function clampCropPosition(){
   const stage=document.getElementById("cropStage"); if(!stage||!cropImageNaturalW)return;
@@ -7208,8 +7239,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.4";
-const TABLESCORE_BUILD_LABEL="Map and Connection Row Fix";
+const TABLESCORE_VERSION="5.43.5";
+const TABLESCORE_BUILD_LABEL="Profile Photo Crop Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
