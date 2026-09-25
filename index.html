@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#090b0d">
-<title>TableScore</title>
+<title>TableRec</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{
@@ -289,7 +289,7 @@ body.booting .app, body.booting .nav{visibility:hidden}
 .comment-compose button{width:auto;flex:0 0 auto;padding:10px 12px}
 
 
-/* ===== TableScore V5.16 Visual System + Themes ===== */
+/* ===== TableRec V5.16 Visual System + Themes ===== */
 :root{--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
 html[data-theme="classic"]{--bg:#fbfbfa;--card:#fff;--card2:#f4f5f3;--ink:#171a18;--muted:#747a76;--line:#e3e6e1;--gold:#3e7b59;--gold2:#4e946c;--green:#3e9b6c;--red:#cf5f5f;--accentText:#fff;--navBg:rgba(251,251,250,.95);--topBg:rgba(251,251,250,.92);--sheetBg:#fff;--inputBg:#f6f7f5;--chipBg:#f4f5f3;--shadow:0 10px 28px rgba(30,40,34,.07);--heroSoft:linear-gradient(135deg,rgba(78,148,108,.11),rgba(255,255,255,0))}
 html[data-theme="fresh"]{--bg:#f7faf9;--card:#fff;--card2:#f0f5f4;--ink:#13201f;--muted:#6f7f7d;--line:#dce7e5;--gold:#168b8f;--gold2:#22a9ad;--green:#39a977;--red:#d95d5d;--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
@@ -614,7 +614,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 <body class="booting">
 <div class="app">
   <div class="topbar">
-    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLESCORE</div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
+    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLEREC</div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
     <div class="top-actions">
       <button id="topNotificationsBtn" class="top-notifications hidden" onclick="openNotifications()" aria-label="Notifications">
         <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="notificationCount" class="notification-count hidden">0</span>
@@ -632,20 +632,20 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div id="locationCard" class="card">
       <div class="section-title">Find what's good near you</div>
-      <p class="muted" style="font-size:13px;line-height:1.45">TableScore uses your location to keep results relevant. Guests can browse without an account.</p>
+      <p class="muted" style="font-size:13px;line-height:1.45">TableRec uses your location to keep results relevant. Guests can browse without an account.</p>
       <button class="primary" onclick="useLocation()">&#128205; Use My Current Location</button>
       <div class="field"><input id="cityInput" placeholder="Or enter city, state / ZIP"></div>
       <button class="secondary" onclick="saveCity()">Use This Area</button>
-      <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableScore ratings shown in this version come only from the TableScore database.</p>
+      <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableRec ratings shown in this version come only from the TableRec database.</p>
     </div>
 
     <div id="socialCard" class="card hidden">
       <div class="section-head">
         <div>
           <div class="section-title">Find People</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Search TableScore members by username</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by username</div>
         </div>
-        <span class="muted" style="font-size:11px">TableScore Social</span>
+        <span class="muted" style="font-size:11px">TableRec Social</span>
       </div>
       <div class="search">
         <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search @username" onkeydown="if(event.key==='Enter')searchPeople()">
@@ -684,7 +684,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="card">
       <div class="section-head">
         <div>
-          <div class="section-title">New to TableScore</div>
+          <div class="section-title">New to TableRec</div>
           <div class="muted" style="font-size:11px;margin-top:2px">Nearby restaurants still building enough community history to rank</div>
         </div>
         <button class="linkbtn" onclick="setExploreFilter('new');showScreen('explore')">See all &rsaquo;</button>
@@ -697,7 +697,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
   <section id="feed" class="screen">
     <div class="hero" style="padding-bottom:4px">
-      <div class="kicker">TableScore Social</div>
+      <div class="kicker">TableRec Social</div>
       <h1 style="font-size:34px">What's on the table?</h1>
       <div class="muted" style="font-size:13px;line-height:1.45">Recent ratings, dish photos, and restaurant picks from people you follow.</div>
     </div>
@@ -706,7 +706,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-head">
         <div>
           <div class="section-title">Following</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableScore circle</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableRec circle</div>
         </div>
         <button class="linkbtn" onclick="showScreen('home');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find people &rsaquo;</button>
       </div>
@@ -717,7 +717,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   <section id="explore" class="screen">
     <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
     <div class="chips">
-      <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableScore</button>
+      <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableRec</button>
       <button id="chipTop" class="chip" onclick="setExploreFilter('top')">Top Rated</button>
       <button id="chipNew" class="chip" onclick="setExploreFilter('new')">New</button>
     </div>
@@ -744,14 +744,14 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div class="restaurant-hero">
       <div>
         <div id="rName" class="hot-title">Restaurant</div>
-        <div id="rMeta" class="muted" style="font-size:12px;margin-top:4px">TableScore community ratings</div>
+        <div id="rMeta" class="muted" style="font-size:12px;margin-top:4px">TableRec community ratings</div>
         <button id="rMapBtn" class="secondary hidden"
                 style="width:auto;padding:7px 11px;margin-top:9px;font-size:11px"
                 onclick="openRestaurantPageLocation()">View Restaurant Map</button>
       </div>
     </div>
     <div class="stats2" style="margin-top:10px">
-      <div class="stat"><div class="stat-label">TABLESCORE</div><div id="rScore" class="stat-value">--</div><div id="rRatingCount" class="muted" style="font-size:11px">No ratings yet</div></div>
+      <div class="stat"><div class="stat-label">TABLEREC</div><div id="rScore" class="stat-value">--</div><div id="rRatingCount" class="muted" style="font-size:11px">No ratings yet</div></div>
       <div class="stat"><div class="stat-label">CONSISTENCY</div><div id="rConsistency" class="stat-value cons">--</div><div class="cons" style="font-size:11px;font-weight:850">Calculated automatically</div></div>
     </div>
     <div class="card">
@@ -768,7 +768,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-head">
         <div>
           <div class="section-title">Recent Ratings</div>
-          <div id="restaurantCommunitySummary" class="muted" style="font-size:11px;margin-top:3px">TableScore community</div>
+          <div id="restaurantCommunitySummary" class="muted" style="font-size:11px;margin-top:3px">TableRec community</div>
         </div>
         <span class="muted" style="font-size:10px">Newest first</span>
       </div>
@@ -818,13 +818,13 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <div class="rating-photo-picker">
           <input id="ratingPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="handleRatingPhotos(event)">
           <button type="button" class="photo-add-btn" onclick="document.getElementById('ratingPhotoInput').click()">&#128247; Add Dish Photos</button>
-          <div class="row-meta" style="margin-top:7px">Add up to 5 photos. Tap a photo anywhere in TableScore to view it full screen.</div>
+          <div class="row-meta" style="margin-top:7px">Add up to 5 photos. Tap a photo anywhere in TableRec to view it full screen.</div>
           <div id="ratingPhotoPreviews" class="photo-preview-grid"></div>
         </div>
       </div>
-      <div class="notice">Consistency is never rated by users. TableScore calculates it automatically from rating history.</div>
+      <div class="notice">Consistency is never rated by users. TableRec calculates it automatically from rating history.</div>
     </div>
-    <button id="submitBtn" class="primary" onclick="submitRating()">Submit TableScore</button>
+    <button id="submitBtn" class="primary" onclick="submitRating()">Submit TableRec</button>
   </section>
 
   <section id="saved" class="screen">
@@ -886,7 +886,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div id="claimUsernameCard" class="card hidden">
-      <div class="section-title">Claim your TableScore username</div>
+      <div class="section-title">Claim your TableRec username</div>
       <p class="muted" style="font-size:12px;line-height:1.45">Your account was created before usernames were added. Pick a unique username to use the social features.</p>
       <div class="field"><input id="claimUsernameInput" autocapitalize="none" spellcheck="false" placeholder="Choose a username"></div>
       <button class="primary" onclick="claimUsername()">Save Username</button>
@@ -916,7 +916,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="profile-hero-shade"></div>
       <div class="profile-hero-content">
         <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
-        <div id="publicProfileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">TableScore User</div>
+        <div id="publicProfileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">TableRec User</div>
         <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
         <div id="publicProfileTitle" class="profile-title">Table Regular</div>
         <div id="publicProfileBadges" class="profile-badges"></div>
@@ -1045,7 +1045,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div class="card" style="margin-top:8px">
       <div class="section-title" style="font-size:15px">Notifications</div>
-      <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">TableScore will keep an in-app notification history for account marks and important activity.</div>
+      <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">TableRec will keep an in-app notification history for account marks and important activity.</div>
       <div class="notification-permission">
         <div style="font-weight:900">Browser alerts</div>
         <div id="browserNotificationStatus" class="muted" style="font-size:10px;line-height:1.4;margin-top:3px">Checking support...</div>
@@ -1091,20 +1091,20 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div id="accountMarksSettingsCard" class="card hidden">
       <div class="section-title" style="font-size:15px">Account Mark</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Your TableScore identity marks appear beside your name everywhere they are shown.</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Your TableRec identity marks appear beside your name everywhere they are shown.</div>
       <div id="accountMarkPicker" class="account-mark-picker hidden"></div>
     </div>
 
     <div id="chefsTableApplyCard" class="card">
       <div class="section-title" style="font-size:15px">Verified Accounts</div>
-      <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">Verification confirms that a notable public account is authentic. Established food creators, chefs, celebrities, athletes, public figures, and other notable accounts may be eligible. Verified accounts receive TableScore's small golden fork beside their name. Verification does not endorse or give extra weight to their ratings.</div>
+      <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">Verification confirms that a notable public account is authentic. Established food creators, chefs, celebrities, athletes, public figures, and other notable accounts may be eligible. Verified accounts receive TableRec's small golden fork beside their name. Verification does not endorse or give extra weight to their ratings.</div>
       <button class="primary" style="margin-top:12px;width:100%" onclick="openChefsTableApplication()">Request Verification</button>
       <div id="chefsTableApplicationStatus" class="muted" style="font-size:11px;margin-top:9px"></div>
     </div>
 
     <div class="card">
       <div class="section-title" style="font-size:15px">Appearance</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Same TableScore. Pick the color personality that feels right to you.</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Same TableRec. Pick the color personality that feels right to you.</div>
       <div class="theme-grid" id="themeGrid">
         <button class="theme-choice" data-theme-choice="classic" onclick="setTheme('classic')"><span class="theme-swatch sw-classic"></span>Classic</button>
         <button class="theme-choice" data-theme-choice="fresh" onclick="setTheme('fresh')"><span class="theme-swatch sw-fresh"></span>Fresh</button>
@@ -1131,12 +1131,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         </div>
         <button id="locationEnableBtn" class="secondary" style="width:auto;padding:8px 11px" onclick="enableTableScoreLocation()">Enable</button>
       </div>
-      <div class="muted" style="font-size:10px;line-height:1.4;margin-top:9px">TableScore will use your location for nearby restaurant discovery and local rankings. Your exact coordinates are not shown on your profile.</div>
+      <div class="muted" style="font-size:10px;line-height:1.4;margin-top:9px">TableRec will use your location for nearby restaurant discovery and local rankings. Your exact coordinates are not shown on your profile.</div>
     </div>
 
     <div class="card">
       <div class="section-title" style="font-size:15px">Birthday</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Used for your TableScore profile experience. Your birthday is not shown publicly.</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Used for your TableRec profile experience. Your birthday is not shown publicly.</div>
       <div class="inline-actions" style="margin-top:10px">
         <input id="settingsBirthDate" type="date" style="flex:1;min-width:0;background:var(--inputBg);border:1px solid var(--line);border-radius:12px;color:var(--ink);padding:11px 12px">
         <button class="primary" onclick="saveBirthDate()">Save</button>
@@ -1147,7 +1147,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-head">
         <div>
           <div class="section-title" style="font-size:15px">Restaurant Identity Cleanup</div>
-          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">OG-only launch tool. Link older TableScore restaurant records to verified Google Places without changing their existing ratings.</div>
+          <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">OG-only launch tool. Link older TableRec restaurant records to verified Google Places without changing their existing ratings.</div>
         </div>
         <button class="secondary" style="width:auto;padding:8px 11px" onclick="openRestaurantCleanup()">Open</button>
       </div>
@@ -1189,13 +1189,13 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
       <div class="settings-row" style="display:block;margin-top:14px;border-top:1px solid var(--line);border-bottom:0;padding-top:16px">
         <div style="font-weight:950;color:var(--red)">Delete Account</div>
-        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">Permanently deletes your TableScore account and account-linked data. This cannot be undone.</div>
+        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">Permanently deletes your TableRec account and account-linked data. This cannot be undone.</div>
         <button id="deleteAccountBtn" class="secondary" style="margin-top:10px;border-color:var(--red);color:var(--red)" onclick="deleteTableScoreAccount()">Delete My Account</button>
       </div>
     </div>
 
     <div class="card">
-      <div class="section-title" style="font-size:15px">About TableScore</div>
+      <div class="section-title" style="font-size:15px">About TableRec</div>
       <div class="settings-row">
         <div>
           <div style="font-weight:900">Version <span id="settingsAppVersion">5.42.1</span></div>
@@ -1244,7 +1244,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px">
       <div>
-        <div class="stat-label">THEIR TABLESCORE</div>
+        <div class="stat-label">THEIR TABLEREC</div>
         <div id="ratingDetailScore" style="font-family:Georgia,serif;font-size:40px;font-weight:900;line-height:1">--</div>
       </div>
       <div id="ratingDetailLabel" style="color:var(--gold);font-weight:900;font-size:12px;text-align:right"></div>
@@ -1279,7 +1279,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title">Set a New Password</div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
     </div>
-    <p class="muted" style="font-size:12px;line-height:1.45">Enter a new TableScore password below.</p>
+    <p class="muted" style="font-size:12px;line-height:1.45">Enter a new TableRec password below.</p>
     <div class="field"><input id="recoveryNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
     <div class="field"><input id="recoveryConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
     <button class="primary" onclick="finishPasswordRecovery()">Save New Password</button>
@@ -1366,7 +1366,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
 
     <div class="notice" style="margin-top:8px">
-      Existing ratings stay attached to the same TableScore restaurant. Only link a result when you are confident it is the same physical restaurant.
+      Existing ratings stay attached to the same TableRec restaurant. Only link a result when you are confident it is the same physical restaurant.
     </div>
 
     <div id="restaurantCleanupList" class="list" style="margin-top:10px"></div>
@@ -1444,7 +1444,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
     </div>
-    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are on refresh. For best accuracy, allow Precise Location for TableScore in Safari.</div>
+    <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are on refresh. For best accuracy, allow Precise Location for TableRec in Safari.</div>
     <div class="location-sheet-actions">
       <button class="primary" onclick="useCurrentBrowseLocation()">&#128205; Use My Current Location</button>
       <div class="or">or choose another area</div>
@@ -1459,7 +1459,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 <div id="accountModal" class="modal hidden">
   <div class="sheet account-sheet">
     <div class="account-head">
-      <div class="account-brand">TableScore</div>
+      <div class="account-brand">TableRec</div>
       <div class="account-tagline">Rate it. Remember it. Find your next favorite.</div>
     </div>
 
@@ -1490,7 +1490,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <button id="accountPrimaryBtn" class="primary account-primary" onclick="submitAccountMode()">Sign In</button>
 
     <div class="account-switch">
-      <span id="accountSwitchPrompt">New to TableScore?</span>
+      <span id="accountSwitchPrompt">New to TableRec?</span>
       <button id="accountSwitchBtn" type="button" class="account-link" onclick="toggleAccountMode()">Create an account</button>
     </div>
 
@@ -1815,7 +1815,7 @@ function renderHomeRankings(){
     );
 
   if(!hot.length){
-    hotEl.innerHTML='<div class="empty"><div class="section-title">Nothing hot yet</div><p class="muted" style="font-size:13px">Hot Right Now needs recent activity from multiple TableScore diners.</p></div>';
+    hotEl.innerHTML='<div class="empty"><div class="section-title">Nothing hot yet</div><p class="muted" style="font-size:13px">Hot Right Now needs recent activity from multiple TableRec diners.</p></div>';
   }else{
     const r=hot[0];
     const recent=Number(r.ratings_30d||0);
@@ -1834,7 +1834,7 @@ function renderHomeRankings(){
     </div>`;
   }
 
-  // NEW TO TABLESCORE: nearby restaurants that have not qualified for Top Rated.
+  // NEW TO TABLEREC: nearby restaurants that have not qualified for Top Rated.
   const newEl=document.getElementById("newNearby");
   const newer=local
     .filter(r=>!topRankingEligible(r))
@@ -1842,7 +1842,7 @@ function renderHomeRankings(){
     .slice(0,4);
 
   if(!newer.length){
-    newEl.innerHTML='<div class="empty"><div class="section-title">Find something new</div><p class="muted" style="font-size:13px">No nearby TableScore restaurants are building history yet. Browse the 15-mile discovery map to find your next spot.</p><button class="secondary" onclick="openExploreMap()">View Restaurant Map</button></div>';
+    newEl.innerHTML='<div class="empty"><div class="section-title">Find something new</div><p class="muted" style="font-size:13px">No nearby TableRec restaurants are building history yet. Browse the 15-mile discovery map to find your next spot.</p><button class="secondary" onclick="openExploreMap()">View Restaurant Map</button></div>';
   }else{
     newEl.innerHTML=newer.map(r=>{
       const score=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
@@ -1873,7 +1873,7 @@ function renderExplore(){
       .filter(r=>isLocalRestaurant(r)&&!topRankingEligible(r))
       .sort((a,b)=>newRestaurantSortValue(b)-newRestaurantSortValue(a));
   }else{
-    // Main TableScore tab keeps local restaurants first, then the strongest
+    // Main TableRec tab keeps local restaurants first, then the strongest
     // community-supported restaurants.
     rows.sort((a,b)=>{
       const al=isLocalRestaurant(a)?1:0;
@@ -1886,14 +1886,14 @@ function renderExplore(){
   }
 
   if(!rows.length){
-    let title="No TableScore restaurants here yet";
-    let body="Restaurants will appear after they receive TableScore ratings.";
+    let title="No TableRec restaurants here yet";
+    let body="Restaurants will appear after they receive TableRec ratings.";
     if(exploreFilter==="top"){
       title="No Top Rated restaurants here yet";
-      body="Top Rated requires at least 10 TableScore ratings from 5 unique diners.";
+      body="Top Rated requires at least 10 TableRec ratings from 5 unique diners.";
     }else if(exploreFilter==="new"){
       title="Find something new";
-      body='No nearby TableScore restaurants are building history yet. <button class="linkbtn" onclick="openExploreMap()">Jump to the 15-mile restaurant map</button> to discover a spot.';
+      body='No nearby TableRec restaurants are building history yet. <button class="linkbtn" onclick="openExploreMap()">Jump to the 15-mile restaurant map</button> to discover a spot.';
     }
     el.innerHTML=`<div class="card"><div class="section-title">${title}</div><p class="muted" style="font-size:13px">${body}</p></div>`;
     return;
@@ -2022,7 +2022,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
 
   out.innerHTML=visible.map(r=>{
     const p=peopleMap.get(r.user_id);
-    const name=p?.display_name||p?.username||"TableScore User";
+    const name=p?.display_name||p?.username||"TableRec User";
     const username=p?.username?`@${esc(p.username)}`:"";
     const own=!!currentUser&&r.user_id===currentUser.id;
     const photos=photoMap.get(r.id)||[];
@@ -2088,7 +2088,7 @@ async function openRestaurantById(id){
   restaurantPageName.style.cursor=r.id?"pointer":"default";
   restaurantPageName.onclick=r.id?()=>openRestaurantPageLocation():null;
   restaurantPageName.title=r.id?"View restaurant location":"";
-  document.getElementById("rMeta").textContent=[r.cuisine,[r.city,r.state_region].filter(Boolean).join(", ")].filter(Boolean).join(" - ")||"TableScore community ratings";
+  document.getElementById("rMeta").textContent=[r.cuisine,[r.city,r.state_region].filter(Boolean).join(", ")].filter(Boolean).join(" - ")||"TableRec community ratings";
   const rMapBtn=document.getElementById("rMapBtn");
   if(rMapBtn)rMapBtn.classList.toggle("hidden",!r.id);
   document.getElementById("rScore").textContent=r.tablescore===null?"--":Number(r.tablescore).toFixed(2);
@@ -2120,7 +2120,7 @@ async function startRating(name){
     selectedRestaurantName=name||selectedRestaurantName||"";
     selectedGoogleRestaurant=null;
 
-    // If this TableScore restaurant is already linked to Google, preserve that link.
+    // If this TableRec restaurant is already linked to Google, preserve that link.
     if(selectedRestaurantId){
       const {data}=await db.from("restaurants")
         .select("id,name,google_place_id,address,formatted_address,city,state_region,postal_code,latitude,longitude,google_primary_type,google_primary_type_name,google_maps_url")
@@ -2162,7 +2162,7 @@ function syncRateRestaurantPicker(){
 
   if(selectedRestaurantName){
     nameEl.textContent=selectedRestaurantName;
-    addressEl.textContent=selectedGoogleRestaurant?.address||"TableScore restaurant";
+    addressEl.textContent=selectedGoogleRestaurant?.address||"TableRec restaurant";
     if(action)action.textContent="Change";
     if(note)note.classList.toggle("hidden",!selectedGoogleRestaurant?.google_place_id);
   }else{
@@ -2231,7 +2231,7 @@ async function getFreshTableScoreCoords(){
       }else if(!settled){
         settled=true;
         if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-        reject(new Error("TableScore could not get a fresh GPS fix."));
+        reject(new Error("TableRec could not get a fresh GPS fix."));
       }
     },10000);
 
@@ -2252,8 +2252,8 @@ async function getFreshTableScoreCoords(){
         if(settled)return;
         settled=true;
         if(watchId!==null)navigator.geolocation.clearWatch(watchId);
-        if(err.code===1)reject(new Error("Location permission is blocked. Allow precise location for TableScore in Safari."));
-        else reject(new Error("TableScore could not get your current location."));
+        if(err.code===1)reject(new Error("Location permission is blocked. Allow precise location for TableRec in Safari."));
+        else reject(new Error("TableRec could not get your current location."));
       },
       {enableHighAccuracy:true,maximumAge:0,timeout:10000}
     );
@@ -2262,7 +2262,7 @@ async function getFreshTableScoreCoords(){
 let tableScoreLocationDebug=null;
 
 async function reverseGeocodeBrowseArea(latitude,longitude){
-  // Primary: use the Google Maps JavaScript Geocoder already loaded by TableScore.
+  // Primary: use the Google Maps JavaScript Geocoder already loaded by TableRec.
   // This avoids making the location label depend on a separate third-party service.
   try{
     await loadGoogleMaps();
@@ -2412,7 +2412,7 @@ function showLocationDiagnostic(){
   if(navigator.clipboard?.writeText){
     navigator.clipboard.writeText(msg).catch(()=>{});
   }
-  alert("TableScore Location Diagnostic\n\n"+msg+"\n\nTake a screenshot of this and send it to me.");
+  alert("TableRec Location Diagnostic\n\n"+msg+"\n\nTake a screenshot of this and send it to me.");
 }
 
 let restaurantFinderMode="search";
@@ -2550,7 +2550,7 @@ async function searchExploreMapArea(){
     }
   }catch(err){
     console.error("Explore map search:",err);
-    alert(err?.message||"TableScore could not search this map area.");
+    alert(err?.message||"TableRec could not search this map area.");
   }finally{
     if(btn){btn.disabled=false;btn.textContent="Search This Area"}
   }
@@ -2711,7 +2711,7 @@ async function searchRestaurantsAnywhere(){
   }catch(err){
     console.error("restaurant search:",err);
     nearbyGoogleRestaurants=[];
-    if(status)status.textContent=err?.message||"TableScore could not search restaurants.";
+    if(status)status.textContent=err?.message||"TableRec could not search restaurants.";
   }
 }
 
@@ -2771,7 +2771,7 @@ async function loadNearbyRestaurants(forceFresh=false){
   }catch(err){
     console.error("nearby restaurants:",err);
     nearbyGoogleRestaurants=[];
-    status.textContent=err?.message||"TableScore could not load nearby restaurants.";
+    status.textContent=err?.message||"TableRec could not load nearby restaurants.";
     retry.classList.remove("hidden");
   }
 }
@@ -2817,7 +2817,7 @@ function saveBrowseArea(){
   if(!v)return alert("Enter a city, state, or ZIP first.");
 
   area=v;
-  // Manual browsing is temporary. On the next full refresh, TableScore returns
+  // Manual browsing is temporary. On the next full refresh, TableRec returns
   // to the user's actual current GPS area automatically.
   localStorage.setItem("ts_location_mode","manual");
   updateArea();
@@ -2828,7 +2828,7 @@ function getTableScoreMapsBrowserKey(){
   const configured=(TABLESCORE_MAPS_BROWSER_KEY||"").trim();
   if(configured && configured!=="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return configured;
 
-  // Compatibility fallback only: older TableScore builds may already have saved
+  // Compatibility fallback only: older TableRec builds may already have saved
   // the website-restricted browser key on this device.
   const retained=(localStorage.getItem("ts_maps_browser_key")||"").trim();
   if(retained && retained!=="PASTE_TABLESCORE_WEB_MAP_KEY_HERE")return retained;
@@ -2842,7 +2842,7 @@ function loadGoogleMaps(){
 
   const mapKey=getTableScoreMapsBrowserKey();
   if(!mapKey){
-    return Promise.reject(new Error("TableScore Web Map key has not been configured in this build."));
+    return Promise.reject(new Error("TableRec Web Map key has not been configured in this build."));
   }
 
   googleMapsLoaderPromise=new Promise((resolve,reject)=>{
@@ -2947,7 +2947,7 @@ async function searchRestaurantMapArea(){
       restaurantMapMarkers.push(marker);
     });
     if(!nearbyGoogleRestaurants.length&&selection)selection.innerHTML='<div class="map-selection"><div class="map-selection-name">No restaurants found here</div><div class="map-selection-meta">Move the map and tap Search This Area again.</div></div>';
-  }catch(err){console.error(err);alert(err?.message||"TableScore could not search this map area.")}
+  }catch(err){console.error(err);alert(err?.message||"TableRec could not search this map area.")}
   finally{if(btn){btn.disabled=false;btn.textContent="Search This Area"}}
 }
 
@@ -2972,7 +2972,7 @@ async function centerRestaurantMapOnMe(){
     restaurantMap.setZoom(14);
     setRestaurantUserLocationMarker(c);
     await searchRestaurantMapArea();
-  }catch(e){alert("TableScore could not get your current location.")}
+  }catch(e){alert("TableRec could not get your current location.")}
 }
 
 let accountMode="signin";
@@ -2997,10 +2997,10 @@ function setAccountMode(mode="signin"){
 
   if(title)title.textContent=isSignup?"Create Account":"Sign In";
   if(copy)copy.textContent=isSignup
-    ?"Create your TableScore identity and start rating."
+    ?"Create your TableRec identity and start rating."
     :"Welcome back. Sign in with your email and password.";
   if(primary)primary.textContent=isSignup?"Create Account":"Sign In";
-  if(prompt)prompt.textContent=isSignup?"Already have an account?":"New to TableScore?";
+  if(prompt)prompt.textContent=isSignup?"Already have an account?":"New to TableRec?";
   if(switchBtn)switchBtn.textContent=isSignup?"Sign in":"Create an account";
 
   if(password){
@@ -3083,7 +3083,7 @@ async function signUp(){
     await refreshUserData();
     const cb=afterAuth;afterAuth=null;if(cb)cb();
   }else{
-    alert("Account created. Check your email for the confirmation link, then return to TableScore and sign in.");
+    alert("Account created. Check your email for the confirmation link, then return to TableRec and sign in.");
   }
 }
 
@@ -3097,7 +3097,7 @@ async function forgotPassword(){
   const redirectTo=window.location.origin+window.location.pathname;
   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
   if(error)return alert("Could not send the reset email: "+error.message);
-  alert("Password reset email sent. Open the link in that email, then return to TableScore to choose a new password.");
+  alert("Password reset email sent. Open the link in that email, then return to TableRec to choose a new password.");
 }
 
 function openPasswordRecovery(){
@@ -3189,7 +3189,7 @@ async function deleteTableScoreAccount(){
   if(!currentUser)return openAccount();
 
   const first=confirm(
-    "Delete your TableScore account permanently?\n\nThis cannot be undone."
+    "Delete your TableRec account permanently?\n\nThis cannot be undone."
   );
   if(!first)return;
 
@@ -3210,10 +3210,10 @@ async function deleteTableScoreAccount(){
 
     closeSettings();
     await signOut();
-    alert("Your TableScore account has been permanently deleted.");
+    alert("Your TableRec account has been permanently deleted.");
   }catch(err){
     console.error("delete account:",err);
-    alert(err?.message||"TableScore could not delete your account. Please try again.");
+    alert(err?.message||"TableRec could not delete your account. Please try again.");
     if(btn){btn.disabled=false;btn.textContent=originalText;}
   }
 }
@@ -3298,7 +3298,7 @@ async function renderSaved(){
   if(restaurantsTab)restaurantsTab.classList.toggle("active",savedView==="restaurants");
 
   if(!currentUser){
-    el.innerHTML='<div class="card"><div class="section-title">Sign in to use Saved</div><p class="muted" style="font-size:13px">Your ratings and saved restaurants will stay connected to your TableScore account.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
+    el.innerHTML='<div class="card"><div class="section-title">Sign in to use Saved</div><p class="muted" style="font-size:13px">Your ratings and saved restaurants will stay connected to your TableRec account.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
     return;
   }
 
@@ -3543,7 +3543,7 @@ async function openRatingDetail(ratingId){
   const mapAction=document.getElementById("ratingDetailMapAction");
   if(mapAction)mapAction.classList.toggle("hidden",!activeRatingRestaurantId);
   const score=Number(r.overall_score);
-  const name=p?.display_name||p?.username||"TableScore User";
+  const name=p?.display_name||p?.username||"TableRec User";
 
   const ratingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
   ratingRestaurantTitle.textContent=restaurant.name||"Restaurant";
@@ -3631,7 +3631,7 @@ async function loadRatingComments(ratingId){
         <button onclick="closeRatingDetail();${own?"showScreen('profile')":`openPublicProfile('${c.user_id}')`}" style="padding:0;border:0;background:none">${avatarMarkup(p,32)}</button>
         <div class="comment-body">
           <div style="display:flex;align-items:center;gap:6px">
-            <span style="font-size:11px;font-weight:900">${esc(p?.display_name||p?.username||"TableScore User")}</span>
+            <span style="font-size:11px;font-weight:900">${esc(p?.display_name||p?.username||"TableRec User")}</span>
             <span class="row-meta">${timeAgo(c.created_at)}</span>
           </div>
           <div class="comment-text">${esc(c.body)}</div>
@@ -3686,7 +3686,7 @@ function scoreWord(score){
   if(n>=9)return "Phenomenal";
   if(n>=8.5)return "Great Pick";
   if(n>=8)return "Good Pick";
-  return "TableScore";
+  return "TableRec";
 }
 
 function timeAgo(value){
@@ -3761,7 +3761,7 @@ async function loadFollowingFeed(){
 }
 
 function feedRatingCard(r,person){
-  const p=person||{id:r.user_id,display_name:"TableScore User",username:"member"};
+  const p=person||{id:r.user_id,display_name:"TableRec User",username:"member"};
   const restaurant=r.restaurants||{};
   const score=Number(r.overall_score);
   const details=[
@@ -3774,7 +3774,7 @@ function feedRatingCard(r,person){
     <div style="display:flex;gap:10px;align-items:center">
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
-        <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableScore User")}</button>
+        <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableRec User")}</button>
         <div class="row-meta">${p.username?"@"+esc(p.username)+" - ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
@@ -3821,9 +3821,9 @@ async function checkOGEncounterProfileVisit(userId){
     reward_name:"OG Encounter",
     reward_emoji:"OG",
     is_secret:true,
-    tagline:"You found the table where TableScore started.",
+    tagline:"You found the table where TableRec started.",
     requirements:[
-      "Visited the official OG TableScore profile"
+      "Visited the official OG TableRec profile"
     ]
   });
 }
@@ -3848,7 +3848,7 @@ async function checkSecretBadgeBatch({announce=true}={}){
     "after-hours":["Submitted a rating between 10 PM and 3:59 AM in your local timezone"],
     "early-bite":["Submitted a rating between 5 AM and 8:59 AM in your local timezone"],
     "same-table":["Mutually followed another user and both rated at least one of the same restaurants"],
-    "off-the-menu":["Rated 5 different restaurants while each still had fewer than 10 TableScore ratings"],
+    "off-the-menu":["Rated 5 different restaurants while each still had fewer than 10 TableRec ratings"],
     "crowd-favorite":["Received 100 Dig Its across your ratings"],
     "local-legend":["Rated 10 different restaurants in your home city"],
     "conversation-starter":["Received 50 comments across your ratings"],
@@ -3857,7 +3857,7 @@ async function checkSecretBadgeBatch({announce=true}={}){
     "road-tripper":["Rated restaurants in 3 different cities"],
     "global-taste":["Rated restaurants across 5 different cuisines"],
     "trend-spotter":["Found 3 restaurants early that later earned strong community scores"],
-    "birthday-bite":["Submitted a TableScore rating on your birthday"],
+    "birthday-bite":["Submitted a TableRec rating on your birthday"],
     "second-helping":["Rated the same restaurant on 3 separate visits"],
     "taste-twins":["Matched closely with another user across at least 5 shared restaurants"]
   };
@@ -3885,7 +3885,7 @@ async function checkSecretBadgeBatch({announce=true}={}){
   showSecretReward({
     ...earned,
     is_secret:true,
-    tagline:taglines[first.reward_slug]||"A hidden TableScore reward is yours.",
+    tagline:taglines[first.reward_slug]||"A hidden TableRec reward is yours.",
     requirements:requirements[first.reward_slug]||[]
   });
 }
@@ -3907,7 +3907,7 @@ async function saveBirthDate(){
   if(!value)return alert("Choose your birthday first.");
   const {data,error}=await db.rpc("set_my_birth_date",{p_birth_date:value});
   if(error)return alert("Could not save birthday: "+error.message);
-  if(!data)return alert("TableScore could not save your birthday.");
+  if(!data)return alert("TableRec could not save your birthday.");
   profile={...(profile||{}),birth_date:value};
   await checkSecretBadgeBatch({announce:true});
   alert("Birthday saved.");
@@ -3963,7 +3963,7 @@ function renderOwnBadgeFolder(targetSlug=""){
   if(!equippedGrid||!earnedGrid)return;
 
   document.getElementById("badgeFolderTitle").textContent="My Reward Collection";
-  document.getElementById("badgeFolderSubtitle").textContent="Everything you have earned in TableScore, all in one place. Tap a badge to choose whether it appears on your profile.";
+  document.getElementById("badgeFolderSubtitle").textContent="Everything you have earned in TableRec, all in one place. Tap a badge to choose whether it appears on your profile.";
   document.getElementById("badgeFolderEquipHint").textContent="Tap to equip or remove.";
   count.textContent=`${equippedBadgeSlugs.length} / 4 equipped`;
 
@@ -4011,7 +4011,7 @@ async function openPublicBadgeFolder(targetSlug=""){
   const equippedGrid=document.getElementById("badgeFolderEquippedGrid");
   const earnedGrid=document.getElementById("badgeFolderEarnedGrid");
   document.getElementById("badgeFolderTitle").textContent=(viewedProfile?.username?`@${viewedProfile.username}`:"This member")+" - Rewards";
-  document.getElementById("badgeFolderSubtitle").textContent="A look at the rewards and badges this member has earned on TableScore.";
+  document.getElementById("badgeFolderSubtitle").textContent="A look at the rewards and badges this member has earned on TableRec.";
   document.getElementById("badgeFolderEquipHint").textContent="Currently shown on their profile.";
 
   const displayed=badgeFolderPublicRewards.filter(x=>x.collection_type==="displayed");
@@ -4135,7 +4135,7 @@ async function openPublicProfile(userId){
   }
 
   const publicNameEl=document.getElementById("publicProfileName");
-  publicNameEl.textContent=p.display_name||p.username||"TableScore User";
+  publicNameEl.textContent=p.display_name||p.username||"TableRec User";
   publicNameEl.dataset.userId=userId;
   publicNameEl.dataset.accountName="true";
   const viewedMarkMap=await loadAccountMarks([userId]);
@@ -4145,7 +4145,7 @@ async function openPublicProfile(userId){
   const publicTitleEl=document.getElementById("publicProfileTitle"); if(publicTitleEl)publicTitleEl.textContent=p.active_title||"Table Regular";
   const publicBadgeSlugs=await loadPublicBadges(userId);
   const publicBadgesEl=document.getElementById("publicProfileBadges");if(publicBadgesEl)publicBadgesEl.innerHTML=publicBadgeSlugs.map(badgeMarkup).join("");
-  document.getElementById("publicProfileArea").textContent=p.home_city||"TableScore member";
+  document.getElementById("publicProfileArea").textContent=p.home_city||"TableRec member";
   document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"â";
   document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"â";
   document.getElementById("publicFollowersCount").textContent=(followers||[]).length;
@@ -4387,9 +4387,9 @@ async function checkHiddenGemHunter({announce=true}={}){
       is_secret:true,
       tagline:"You found great tables before the crowd did.",
       requirements:[
-        "Rated 5 different restaurants while each had fewer than 10 TableScore ratings",
+        "Rated 5 different restaurants while each had fewer than 10 TableRec ratings",
         "Scored each discovery 8.0 or higher",
-        "At least 3 of those restaurants were later rated by other TableScore users"
+        "At least 3 of those restaurants were later rated by other TableRec users"
       ]
     });
   }
@@ -4414,7 +4414,7 @@ async function loadProgressRewards(){
     const secretDescriptions={
       "secret-sauce":"You found something that wasn't on the menu.",
       "hidden-gem":"You found great tables before the crowd did.",
-      "og-encounter":"You found the table where TableScore started.",
+      "og-encounter":"You found the table where TableRec started.",
       "after-hours":"Good food never sleeps.",
       "early-bite":"Good things come early.",
       "same-table":"Different tastes. Same good taste.",
@@ -4436,7 +4436,7 @@ async function loadProgressRewards(){
       reward_name:r.reward_name||"Secret Reward",
       reward_type:r.reward_type||"badge",
       is_secret:true,
-      description:secretDescriptions[r.reward_slug]||"A hidden TableScore reward.",
+      description:secretDescriptions[r.reward_slug]||"A hidden TableRec reward.",
       earned_at:r.unlocked_at,
       metadata:{legacy_secret_reward:true}
     });
@@ -4482,7 +4482,7 @@ function renderProfile(){
   renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
   const profileTitleEl=document.getElementById("profileTitle"); if(profileTitleEl)profileTitleEl.textContent=profile?.active_title||"Table Regular";
-  document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableScore member":"Browse freely \u00b7 Account required to rate");
+  document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableRec member":"Browse freely \u00b7 Account required to rate");
   document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
   document.getElementById("profileRestaurants").textContent=currentUser?new Set(myRatings.map(e=>e.restaurant_id)).size:0;
   document.getElementById("profileFollowers").textContent=currentUser?followerCount:0;
@@ -4603,7 +4603,7 @@ async function tryUnlockSecretReward(slug){
   showSecretReward({
     ...data,
     tagline:"You found something that wasn't on the menu.",
-    requirements:["Found the hidden TableScore test Easter egg","Completed the secret interaction"]
+    requirements:["Found the hidden TableRec test Easter egg","Completed the secret interaction"]
   });
 }
 
@@ -4613,7 +4613,7 @@ function showSecretReward(reward){
   const secretIconEl=document.getElementById("secretRewardIcon");
   secretIconEl.innerHTML=rewardVisualMarkup(reward.reward_slug);
   document.getElementById("secretRewardName").textContent=reward.reward_name||"Secret Reward";
-  document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableScore reward is yours.";
+  document.getElementById("secretRewardLine").textContent=reward.tagline||"A hidden TableRec reward is yours.";
   const req=document.getElementById("secretRewardRequirements");
   req.innerHTML=(reward.requirements||[]).map((x,i)=>`<div class="secret-requirement" style="animation-delay:${.92+i*.16}s">${esc(x)}</div>`).join("");
   const flash=document.getElementById("secretRewardFlash");
@@ -4696,7 +4696,7 @@ async function loadFoodBadges(){
 
 function ogEncounterIconSvg(){
   // Secret reward badge â intentionally separate from the OG account/name mark.
-  // Uses the same compact, icon-first visual language as TableScore's other badges.
+  // Uses the same compact, icon-first visual language as TableRec's other badges.
   return `<svg viewBox="0 0 72 72" width="42" height="42" aria-hidden="true">
     <path d="M20 31
              C15 30 12 26 12 21
@@ -5065,8 +5065,8 @@ function tableScoreLocationError(err){
   tableScoreLocation=null;
   const status=document.getElementById("locationStatusText");
   const btn=document.getElementById("locationEnableBtn");
-  let message="TableScore could not get your location.";
-  if(err && err.code===1)message="Location permission was denied. Allow location access for TableScore in Safari settings, then try again.";
+  let message="TableRec could not get your location.";
+  if(err && err.code===1)message="Location permission was denied. Allow location access for TableRec in Safari settings, then try again.";
   else if(err && err.code===2)message="Your device could not determine a location. Check Location Services and try again.";
   else if(err && err.code===3)message="Location timed out. Tap Try Again.";
   if(status)status.textContent=message;
@@ -5103,7 +5103,7 @@ function enableTableScoreLocation(){
     pos=>{
       acceptTableScorePosition(pos);
       if(btn){btn.disabled=false;btn.textContent="Refresh";}
-      // Then keep the in-memory position current while TableScore is open.
+      // Then keep the in-memory position current while TableRec is open.
       startTableScoreLocationWatch();
     },
     tableScoreLocationError,
@@ -5148,7 +5148,7 @@ async function openRatingRestaurantLocation(restaurantId){
     if(note){
       note.textContent=data.google_place_id
         ? "This location is tied to the restaurant's verified Google Place record."
-        : "This older TableScore restaurant has not been linked to a verified Google Place yet.";
+        : "This older TableRec restaurant has not been linked to a verified Google Place yet.";
     }
 
     const directionsBtn=document.querySelector("#ratingRestaurantLocationModal .primary");
@@ -5161,12 +5161,12 @@ async function openRatingRestaurantLocation(restaurantId){
     }else{
       const mapEl=document.getElementById("ratingRestaurantMap");
       if(mapEl){
-        mapEl.innerHTML='<div class="empty" style="padding:28px"><div class="section-title">Location not linked yet</div><p class="muted" style="font-size:12px">You can still find this restaurant in Google Maps while TableScore verifies its exact location.</p></div>';
+        mapEl.innerHTML='<div class="empty" style="padding:28px"><div class="section-title">Location not linked yet</div><p class="muted" style="font-size:12px">You can still find this restaurant in Google Maps while TableRec verifies its exact location.</p></div>';
       }
     }
   }catch(err){
     console.error("rating restaurant location:",err);
-    alert(err?.message||"TableScore could not load this restaurant location.");
+    alert(err?.message||"TableRec could not load this restaurant location.");
   }
 }
 
@@ -5319,7 +5319,7 @@ async function loadRestaurantCleanupQueue(){
     if(countEl)countEl.textContent=`${restaurantCleanupRows.length} unlinked restaurant${restaurantCleanupRows.length===1?"":"s"} remaining`;
 
     if(!restaurantCleanupRows.length){
-      if(list)list.innerHTML='<div class="empty"><div class="section-title">Cleanup complete</div><p class="muted" style="font-size:12px">Every TableScore restaurant is linked to a Google Place.</p></div>';
+      if(list)list.innerHTML='<div class="empty"><div class="section-title">Cleanup complete</div><p class="muted" style="font-size:12px">Every TableRec restaurant is linked to a Google Place.</p></div>';
       await refreshRestaurantCleanupSummary();
       return;
     }
@@ -5357,7 +5357,7 @@ function openRestaurantCleanupMatch(index){
   const status=document.getElementById("cleanupMatchStatus");
 
   if(title)title.textContent=r.name||"Find the real location";
-  if(meta)meta.textContent=[r.city,r.state_region].filter(Boolean).join(", ")||"Legacy TableScore restaurant";
+  if(meta)meta.textContent=[r.city,r.state_region].filter(Boolean).join(", ")||"Legacy TableRec restaurant";
   if(input)input.value=[r.name,r.city,r.state_region].filter(Boolean).join(" ");
   if(results)results.innerHTML="";
   if(status)status.textContent="Search Google Places, then link only the exact physical restaurant.";
@@ -5427,7 +5427,7 @@ async function linkCleanupRestaurant(index){
   const where=place.address||[place.city,place.state_region].filter(Boolean).join(", ")||"this location";
   const ok=confirm(
     `Link "${target.name}" to "${place.name}" at ${where}?\n\n`+
-    `This keeps all existing TableScore ratings on the same restaurant record and adds the verified Google identity.`
+    `This keeps all existing TableRec ratings on the same restaurant record and adds the verified Google identity.`
   );
   if(!ok)return;
 
@@ -5456,7 +5456,7 @@ async function linkCleanupRestaurant(index){
     alert(`Linked ${target.name} to its verified Google location.`);
   }catch(err){
     console.error("cleanup link:",err);
-    alert(err?.message||"TableScore could not link this restaurant.");
+    alert(err?.message||"TableRec could not link this restaurant.");
   }
 }
 
@@ -5513,7 +5513,7 @@ async function showFollowRequests(){
   const people=await getPublicProfilesSafe(ids);
   list.innerHTML=(people||[]).map(u=>`<div class="row" style="gap:10px">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
-    <div style="min-width:0;flex:1"><div class="row-name" ${accountNameAttrs(u)}>${esc(u.display_name||u.username||"TableScore User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
+    <div style="min-width:0;flex:1"><div class="row-name" ${accountNameAttrs(u)}>${esc(u.display_name||u.username||"TableRec User")}</div><div class="row-meta">${u.username?"@"+esc(u.username):""}</div></div>
     <div class="request-actions">
       <button class="primary" onclick="approveFollowRequest('${u.id}')">Confirm</button>
       <button class="secondary" onclick="deleteFollowRequest('${u.id}')">Delete</button>
@@ -5749,7 +5749,7 @@ async function saveProfileBackgroundCrop(){
   const btn=document.getElementById("saveBackgroundCropBtn");
 
   if(!currentUser){
-    alert("Your TableScore session is not active. Sign in again and retry.");
+    alert("Your TableRec session is not active. Sign in again and retry.");
     return;
   }
   if(!backgroundSourceFile||!backgroundNaturalW||!backgroundNaturalH){
@@ -5826,7 +5826,7 @@ async function saveProfileBackgroundCrop(){
     );
 
     if(profileError)throw new Error("Could not save background to your profile: "+profileError.message);
-    if(!saved)throw new Error("TableScore could not save the background to your account.");
+    if(!saved)throw new Error("TableRec could not save the background to your account.");
 
     profile={...(profile||{}),background_url:publicUrl};
     cancelBackgroundCrop();
@@ -5847,7 +5847,7 @@ async function removeProfileBackground(){
   const {error:storageError}=await db.storage.from("avatars").remove([path]);if(storageError)console.error("background remove:",storageError);
   const {data:saved,error}=await db.rpc("set_my_profile_background",{p_background_url:null});
   if(error)return alert("Could not remove background: "+error.message);
-  if(!saved)return alert("TableScore could not remove the background.");
+  if(!saved)return alert("TableRec could not remove the background.");
   profile={...(profile||{}),background_url:null};renderProfile();
 }
 
@@ -5917,13 +5917,13 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
   out.innerHTML=(people||[]).map(u=>{
     const isMe=u.id===currentUser?.id;
     const isFollowing=followingIds.has(u.id);
-    const display=u.display_name||u.username||"TableScore User";
+    const display=u.display_name||u.username||"TableRec User";
     return `<div class="row connection-row">
       <button onclick="openPublicProfileFromConnections('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
       <div class="connection-identity">
         <button onclick="openPublicProfileFromConnections('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
           <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
-          <div class="row-meta">${u.username?"@"+esc(u.username):"TableScore member"}${u.home_city?" - "+esc(u.home_city):""}</div>
+          <div class="row-meta">${u.username?"@"+esc(u.username):"TableRec member"}${u.home_city?" - "+esc(u.home_city):""}</div>
         </button>
       </div>
       ${isMe?"":`<button class="${isFollowing?"secondary":"primary"} connection-action" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
@@ -5947,7 +5947,7 @@ async function openPublicProfileFromConnections(userId){
   closeConnections(true);
 
   // A same-document history entry gives iPhone/Safari swipe-back a real place
-  // to return to without leaving TableScore.
+  // to return to without leaving TableRec.
   if(returnContext){
     history.pushState({tablescore:"public-profile-from-connections"},"",location.href);
   }
@@ -5997,13 +5997,13 @@ async function claimUsername(){
   }
   input.value="";
   await refreshUserData();
-  alert("Username saved. Welcome to TableScore Social.");
+  alert("Username saved. Welcome to TableRec Social.");
 }
 
 function peopleRowMarkup(u,{showMutual=false}={}){
   const isFollowing=followingIds.has(u.id);
   const isPending=pendingFollowingIds.has(u.id);
-  const display=u.display_name||u.username||"TableScore User";
+  const display=u.display_name||u.username||"TableRec User";
   const mutualCount=Number(u.mutual_count||0);
   return `<div class="row" style="gap:10px">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
@@ -6063,7 +6063,7 @@ async function loadPeopleSuggestions(){
     return;
   }
   if(!data||!data.length){
-    out.innerHTML='<div class="people-suggested-empty">No suggestions yet. As more people connect on TableScore, mutual connections will appear here.</div>';
+    out.innerHTML='<div class="people-suggested-empty">No suggestions yet. As more people connect on TableRec, mutual connections will appear here.</div>';
     return;
   }
 
@@ -6166,7 +6166,7 @@ async function findOrCreateRestaurant(name){
   const clean=name.trim();
   if(!clean)throw new Error("Choose a restaurant.");
 
-  // A restaurant already opened from a TableScore page can be reused directly.
+  // A restaurant already opened from a TableRec page can be reused directly.
   if(selectedRestaurantId && !selectedGoogleRestaurant?.google_place_id){
     const {data,error}=await db.from("restaurants")
       .select("id,name")
@@ -6220,7 +6220,7 @@ async function findOrCreateRestaurant(name){
       return row||byPlace;
     }
 
-    // If an older manually-created TableScore row has the same exact name,
+    // If an older manually-created TableRec row has the same exact name,
     // attach the Google identity instead of creating a duplicate.
     const {data:legacyRows,error:legacyError}=await db.from("restaurants")
       .select("id,name,city,google_place_id")
@@ -6320,7 +6320,7 @@ async function handleRatingPhotos(event){
       pendingRatingPhotos.push({blob,preview:URL.createObjectURL(blob)});
     }catch(e){console.error("photo compression:",e);}
   }
-  if(files.length>remaining)alert("TableScore allows up to 5 photos per rating.");
+  if(files.length>remaining)alert("TableRec allows up to 5 photos per rating.");
   event.target.value="";
   renderRatingPhotoPreviews();
 }
@@ -6483,7 +6483,7 @@ async function handleEditRatingPhotos(event){
       editNewPhotos.push({blob,preview:URL.createObjectURL(blob)});
     }catch(e){console.error(e);}
   }
-  if(files.length>remaining)alert("TableScore allows up to 5 photos per rating.");
+  if(files.length>remaining)alert("TableRec allows up to 5 photos per rating.");
   event.target.value="";
   renderEditPhotos();
 }
@@ -6674,7 +6674,7 @@ async function submitRating(){
     clearPendingRatingPhotos();
 
     alert(
-      `TableScore submitted: ${Number(data.overall_score).toFixed(2)}/10\n\n`+
+      `TableRec submitted: ${Number(data.overall_score).toFixed(2)}/10\n\n`+
       (data.verified_visit
         ?"Verified Visit confirmed - your submitted location was within the restaurant verification zone."
         :"Visit not verified - the rating still counts normally.")
@@ -6685,10 +6685,10 @@ async function submitRating(){
     showScreen("saved");
   }catch(err){
     console.error(err);
-    alert("TableScore could not submit this rating: "+(err.message||"Unknown error"));
+    alert("TableRec could not submit this rating: "+(err.message||"Unknown error"));
   }finally{
     btn.disabled=false;
-    btn.textContent="Submit TableScore";
+    btn.textContent="Submit TableRec";
   }
 }
 
@@ -6809,7 +6809,7 @@ function renderNotifications(){
     <div style="display:flex;gap:9px;align-items:flex-start">
       <div style="font-size:21px">${notificationIcon(n.type)}</div>
       <div style="min-width:0;flex:1">
-        <div class="notification-title">${esc(n.title||"TableScore")}</div>
+        <div class="notification-title">${esc(n.title||"TableRec")}</div>
         <div class="notification-body">${esc(n.body||"")}</div>
         <div class="notification-time">${notificationAge(n.created_at)}</div>
       </div>
@@ -6862,12 +6862,12 @@ function updateBrowserNotificationUI(){
   if(!status||!btn)return;
 
   if(!("Notification" in window)){
-    status.textContent="This browser does not support page-level notification alerts. Full background push will come with TableScore's PWA/native notification service.";
+    status.textContent="This browser does not support page-level notification alerts. Full background push will come with TableRec's PWA/native notification service.";
     btn.classList.add("hidden");
     return;
   }
   if(Notification.permission==="granted"){
-    status.textContent="Enabled. TableScore can show browser alerts while this web session is active.";
+    status.textContent="Enabled. TableRec can show browser alerts while this web session is active.";
     btn.textContent="Alerts Enabled";
     btn.disabled=true;
   }else if(Notification.permission==="denied"){
@@ -6875,7 +6875,7 @@ function updateBrowserNotificationUI(){
     btn.textContent="Alerts Blocked";
     btn.disabled=true;
   }else{
-    status.textContent="Optional: allow browser alerts while TableScore is active. This is not yet full background push.";
+    status.textContent="Optional: allow browser alerts while TableRec is active. This is not yet full background push.";
     btn.textContent="Enable Alerts";
     btn.disabled=false;
   }
@@ -6894,7 +6894,7 @@ async function requestBrowserNotifications(){
 function showBrowserNotification(n){
   if(!("Notification" in window) || Notification.permission!=="granted")return;
   try{
-    new Notification(n.title||"TableScore",{body:n.body||"",tag:"tablescore-"+n.id});
+    new Notification(n.title||"TableRec",{body:n.body||"",tag:"tablescore-"+n.id});
   }catch(e){
     console.warn("Browser notification unavailable:",e);
   }
@@ -6991,7 +6991,7 @@ const ACCOUNT_MARK_META = {
   },
   chefs_table: {
     title: "Verified",
-    copy: "TableScore has confirmed the identity of this notable account. Verification does not endorse or give extra weight to their ratings."
+    copy: "TableRec has confirmed the identity of this notable account. Verification does not endorse or give extra weight to their ratings."
   },
   first_round: {
     title: "First Round",
@@ -7154,7 +7154,7 @@ async function submitChefsTableApplication(){
   if(error){console.error(error);return alert("Could not submit application.");}
   closeChefsTableApplication();
   await loadChefsTableStatus();
-  alert("Verification request submitted. Your verification code is "+data+". Add it temporarily to the bio of the public profile you submitted so TableScore can confirm you control that account.");
+  alert("Verification request submitted. Your verification code is "+data+". Add it temporarily to the bio of the public profile you submitted so TableRec can confirm you control that account.");
 }
 async function loadChefsTableStatus(){
   if(!currentUser)return;
@@ -7169,9 +7169,9 @@ async function loadChefsTableStatus(){
   if(data.status==="pending_verification"){
     status.innerHTML=`Application received - <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
   }else if(data.status==="pending_review"){
-    status.textContent="Identity confirmed - Verification request awaiting TableScore review.";
+    status.textContent="Identity confirmed - Verification request awaiting TableRec review.";
   }else if(data.status==="approved"){
-    status.textContent="Verified. TableScore has confirmed your account identity.";
+    status.textContent="Verified. TableRec has confirmed your account identity.";
   }else if(data.status==="denied"){
     status.textContent="This verification request was not approved.";
   }
@@ -7471,7 +7471,7 @@ document.addEventListener("DOMContentLoaded", () => {
     <div class="section-head">
       <div>
         <div class="section-title">Notifications</div>
-        <div class="muted" style="font-size:10px;margin-top:2px">Your TableScore activity and account distinctions.</div>
+        <div class="muted" style="font-size:10px;margin-top:2px">Your TableRec activity and account distinctions.</div>
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNotifications()">Close</button>
     </div>
