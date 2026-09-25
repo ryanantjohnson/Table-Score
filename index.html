@@ -1298,8 +1298,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="crop-mask"></div><div class="crop-ring"></div>
     </div>
     <div class="crop-controls">
-      <input id="cropZoom" type="range" min="0.35" max="3" step="0.01" value="1" oninput="setCropZoom(this.value)">
-      <div class="crop-help">Drag to reposition. Pinch or use the slider to zoom.</div>
+      <input id="cropZoom" type="hidden" value="1">
+      <div class="crop-help">Drag to reposition • Pinch to zoom.</div>
     </div>
     <div class="crop-actions" style="grid-template-columns:1fr 1fr 1fr">
       <button class="secondary" onclick="cancelProfileCrop()">Cancel</button>
@@ -3507,6 +3507,7 @@ async function openRatingDetail(ratingId){
   activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
   modal.classList.remove("hidden");
+    initProfileCropGestures();
   const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
   loadingRestaurantTitle.textContent="Loading rating...";
   loadingRestaurantTitle.onclick=null;
@@ -5637,29 +5638,100 @@ async function handleProfilePhoto(event){
   img.src=cropObjectUrl;
 }
 
+
+let cropTouchMode="";
+let cropTouchLastX=0,cropTouchLastY=0,cropTouchLastDistance=0,cropTouchStartZoom=1;
+
+function cropTouchDistance(t1,t2){
+  return Math.hypot(t2.clientX-t1.clientX,t2.clientY-t1.clientY);
+}
+
+function initProfileCropGestures(){
+  const stage=document.getElementById("cropStage");
+  if(!stage || stage.dataset.gesturesReady==="1")return;
+  stage.dataset.gesturesReady="1";
+  stage.style.touchAction="none";
+
+  stage.addEventListener("touchstart",(e)=>{
+    if(e.touches.length===1){
+      cropTouchMode="pan";
+      cropTouchLastX=e.touches[0].clientX;
+      cropTouchLastY=e.touches[0].clientY;
+    }else if(e.touches.length>=2){
+      cropTouchMode="pinch";
+      cropTouchLastDistance=cropTouchDistance(e.touches[0],e.touches[1]);
+      cropTouchStartZoom=cropZoom;
+    }
+    e.preventDefault();
+  },{passive:false});
+
+  stage.addEventListener("touchmove",(e)=>{
+    if(cropTouchMode==="pan" && e.touches.length===1){
+      const t=e.touches[0];
+      cropX+=t.clientX-cropTouchLastX;
+      cropY+=t.clientY-cropTouchLastY;
+      cropTouchLastX=t.clientX;
+      cropTouchLastY=t.clientY;
+      updateCropTransform();
+    }else if(e.touches.length>=2){
+      const d=cropTouchDistance(e.touches[0],e.touches[1]);
+      if(cropTouchMode!=="pinch"){
+        cropTouchMode="pinch";
+        cropTouchLastDistance=d;
+        cropTouchStartZoom=cropZoom;
+      }
+      if(cropTouchLastDistance>0){
+        cropZoom=Math.max(0.20,Math.min(5,cropTouchStartZoom*(d/cropTouchLastDistance)));
+        const z=document.getElementById("cropZoom");
+        if(z)z.value=String(cropZoom);
+        updateCropTransform();
+      }
+    }
+    e.preventDefault();
+  },{passive:false});
+
+  stage.addEventListener("touchend",(e)=>{
+    if(e.touches.length===0)cropTouchMode="";
+    else if(e.touches.length===1){
+      cropTouchMode="pan";
+      cropTouchLastX=e.touches[0].clientX;
+      cropTouchLastY=e.touches[0].clientY;
+    }
+    e.preventDefault();
+  },{passive:false});
+}
+
 function changeProfileCropPhoto(){
-  // Fully reset the file input so iOS opens a fresh photo-selection session.
   cancelProfileCrop();
+
   const oldInput=document.getElementById("profilePhotoInput");
   if(!oldInput)return;
-  const freshInput=oldInput.cloneNode(true);
-  oldInput.parentNode.replaceChild(freshInput,oldInput);
-  freshInput.value="";
+
+  const freshInput=document.createElement("input");
+  freshInput.type="file";
+  freshInput.id="profilePhotoInput";
+  freshInput.accept="image/*";
+  freshInput.style.display="none";
   freshInput.addEventListener("change",handleProfilePhoto);
-  setTimeout(()=>freshInput.click(),150);
+
+  oldInput.replaceWith(freshInput);
+
+  // Opening a brand-new file input gives iOS a new picker request instead of
+  // preserving the previous selected-file state.
+  setTimeout(()=>freshInput.click(),250);
 }
 function clampCropPosition(){
   const stage=document.getElementById("cropStage"); if(!stage||!cropImageNaturalW)return;
   const cropSize=stage.clientWidth*.86,scale=cropBaseScale*cropZoom,shownW=cropImageNaturalW*scale,shownH=cropImageNaturalH*scale;
   const maxX=Math.max(0,(shownW-cropSize)/2),maxY=Math.max(0,(shownH-cropSize)/2);
-  cropX=Math.max(-maxX,Math.min(maxX,cropX));cropY=Math.max(-maxY,Math.min(maxY,cropY));
+  
 }
 function updateCropTransform(){
   const img=document.getElementById("cropImage"); if(!img||!cropImageNaturalW)return;
   const scale=cropBaseScale*cropZoom;img.style.width=(cropImageNaturalW*scale)+"px";img.style.height=(cropImageNaturalH*scale)+"px";
   clampCropPosition();img.style.transform=`translate(calc(-50% + ${cropX}px),calc(-50% + ${cropY}px))`;
 }
-function setCropZoom(v){cropZoom=Math.max(0.35,Math.min(3,Number(v)||1));updateCropTransform();}
+function setCropZoom(v){cropZoom=Math.max(0.20,Math.min(5,Number(v)||1));updateCropTransform();}
 function cropPointerDown(e){
   const stage=document.getElementById("cropStage");stage.setPointerCapture?.(e.pointerId);cropPointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
   if(cropPointers.size===1)cropDragStart={x:e.clientX,y:e.clientY,startX:cropX,startY:cropY};
@@ -7251,8 +7323,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.6";
-const TABLESCORE_BUILD_LABEL="Profile Photo Crop UX Fix";
+const TABLESCORE_VERSION="5.43.7";
+const TABLESCORE_BUILD_LABEL="Native Profile Crop Gestures";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
