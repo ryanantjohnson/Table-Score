@@ -649,6 +649,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   #settingsModal .section-head:first-of-type{
     position:static;
   }
+
+  /* V5.45.2: Settings exit lives outside the scrolling sheet */
+  #settingsModal{position:fixed}
+  #settingsModal .settings-external-close{
+    position:fixed;
+    top:max(8px,calc(12vh - 52px));
+    right:14px;
+    z-index:180;
+    width:auto;
+    padding:8px 12px;
+    background:#101418;
+  }
+  #settingsModal>.sheet>.section-head:first-child{
+    position:static;
+  }
 </style>
 </head>
 <body class="booting">
@@ -1077,10 +1092,10 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 </div>
 
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
+  <button class="secondary settings-external-close" onclick="closeSettings()">Close</button>
   <div class="sheet" style="max-height:88vh;overflow:auto">
     <div class="section-head">
       <div class="section-title">Settings</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeSettings()">Close</button>
     </div>
 
     <div class="card" style="margin-top:8px">
@@ -7488,8 +7503,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.45.1";
-const TABLESCORE_BUILD_LABEL="Floating Modal Close Controls";
+const TABLESCORE_VERSION="5.45.2";
+const TABLESCORE_BUILD_LABEL="External Settings Close Control";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
