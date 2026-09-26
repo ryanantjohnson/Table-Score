@@ -1049,6 +1049,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 @keyframes whereWinner{0%{transform:scale(.78);opacity:.2}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
 @keyframes whereBurst{0%{transform:translate(0,0) scale(.3);opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(160deg) scale(1.25);opacity:0}}
 
+
+/* V5.50.0 App Flow */
+.v550-nav{overflow:visible!important}
+.v550-nav .run-it-nav{
+  position:relative!important;overflow:visible!important;transform:translateY(-13px);
+  color:var(--ink)!important
+}
+.run-it-orb{
+  display:flex;width:52px;height:52px;margin:0 auto 2px;align-items:center;justify-content:center;
+  border-radius:50%;background:var(--gold);color:#111;font-size:25px;
+  border:4px solid var(--bg);box-shadow:0 7px 18px rgba(0,0,0,.48)
+}
+.run-it-label{font-size:9px;font-weight:1000;letter-spacing:.06em;color:var(--gold)}
+.profile-saved-card .badge-folder-icon{font-size:23px;font-weight:900}
+
 </style>
 </head>
 <body class="booting">
@@ -1063,7 +1078,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     </div>
   </div>
 
-  <section id="home" class="screen active">
+  <section id="discover" class="screen">
     <div class="hero">
       <div class="kicker">Good food - Better decisions</div>
       <h1>Good food.<br>Better decisions.</h1>
@@ -1101,27 +1116,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
-    <div class="card" onclick="showScreen('feed')" style="cursor:pointer">
-      <div class="section-head" style="margin-bottom:5px">
-        <div>
-          <div class="section-title">Your Feed</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">See what people you follow are rating</div>
-        </div>
-        <button class="linkbtn" onclick="event.stopPropagation();showScreen('feed')">Open &rsaquo;</button>
-      </div>
-    </div>
-
-    <div class="card where-eat-card">
-      <div class="section-head" style="margin-bottom:7px">
-        <div>
-          <div class="section-title">Where to Eat?</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Can't decide? Let us help!</div>
-        </div>
-        <span style="font-size:24px">&#127922;</span>
-      </div>
-      <button class="primary" onclick="openWhereToEat()">Pick for Me</button>
-    </div>
-
     <div class="card">
       <div class="section-head"><div class="section-title">&#128293; Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
       <div id="hotNow"></div>
@@ -1146,7 +1140,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
   </section>
 
-  <section id="feed" class="screen">
+  <section id="home" class="screen active">
     <div class="hero" style="padding-bottom:4px">
       <div class="kicker">TableRec Social</div>
       <h1 style="font-size:34px">What's on the table?</h1>
@@ -1159,14 +1153,14 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
           <div class="section-title">Following</div>
           <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableRec circle</div>
         </div>
-        <button class="linkbtn" onclick="showScreen('home');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find people &rsaquo;</button>
+        <button class="linkbtn" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find people &rsaquo;</button>
       </div>
       <div id="followingFeed" style="margin-top:8px"></div>
     </div>
   </section>
 
   <section id="explore" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
+    <div class="backline"><button class="backbtn" onclick="showScreen('discover')">&lsaquo;</button><div class="page-title" style="margin:0">Explore</div></div>
     <div class="chips">
       <button id="chipAll" class="chip active" onclick="setExploreFilter('all')">TableRec</button>
       <button id="chipTop" class="chip" onclick="setExploreFilter('top')">Top Rated</button>
@@ -1320,6 +1314,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
     </div>
 
+    <div class="card profile-saved-card">
+      <button class="badge-folder-btn" onclick="openSavedFromProfile()">
+        <span class="badge-folder-icon" aria-hidden="true">&#9825;</span>
+        <span class="badge-folder-copy">
+          <span class="badge-folder-title">Saved</span>
+          <span class="badge-folder-sub">Your saved restaurants and rating history.</span>
+        </span>
+        <span class="badge-folder-arrow">&rsaquo;</span>
+      </button>
+    </div>
+
     <div id="profileBadgeFolderCard" class="card hidden">
       <button class="badge-folder-btn" onclick="openOwnBadgeFolder()">
         <span class="badge-folder-icon" aria-hidden="true">
@@ -1431,11 +1436,11 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 </div>
 
 <div class="nav">
-  <div class="nav-inner">
-    <button data-s="feed" onclick="showScreen('feed')"><span class="ico">&#9776;</span>Feed</button>
+  <div class="nav-inner v550-nav">
     <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
+    <button data-s="discover" onclick="showScreen('discover')"><span class="ico">&#128269;</span>Discover</button>
+    <button class="run-it-nav" onclick="openWhereToEat()" aria-label="Run It"><span class="run-it-orb">&#127922;</span><span class="run-it-label">RUN IT</span></button>
     <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
-    <button data-s="saved" onclick="showScreen('saved')"><span class="ico">&#9825;</span>Saved</button>
     <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
   </div>
 </div>
@@ -2073,19 +2078,24 @@ function showScreen(id,options={}){
 
   // Remember the user's main page so a browser refresh returns here.
   // Do not persist temporary rating-flow screens.
-  const persistentScreens=["home","explore","feed","saved","profile"];
+  const persistentScreens=["home","discover","explore","saved","profile"];
   if(persistentScreens.includes(id)){
     localStorage.setItem("ts_current_screen",id);
   }
 
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
+  if(id==="discover") loadRestaurantStats();
   if(id==="explore"){
     renderExplore();
     setTimeout(()=>initExploreDiscoveryMap(),80);
   }
-  if(id==="feed") loadFollowingFeed();
+  if(id==="home") loadFollowingFeed();
   if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
+}
+
+function openSavedFromProfile(){
+  showScreen("saved");
 }
 
 function useLocation(){
@@ -8159,8 +8169,9 @@ async function init(){
     currentUser=null;
   }
 
-  const savedScreen=localStorage.getItem("ts_current_screen");
-  if(["home","explore","feed","saved","profile"].includes(savedScreen)){
+  let savedScreen=localStorage.getItem("ts_current_screen");
+  if(savedScreen==="feed")savedScreen="home";
+  if(["home","discover","explore","saved","profile"].includes(savedScreen)){
     showScreen(savedScreen,{restore:true});
   }else{
     showScreen("home",{restore:true});
@@ -8446,8 +8457,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.49.2";
-const TABLESCORE_BUILD_LABEL="Where to Eat Strict Matching";
+const TABLESCORE_VERSION="5.50.0";
+const TABLESCORE_BUILD_LABEL="Home Discover Run It Navigation";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
