@@ -4559,6 +4559,12 @@ function renderCommentBody(body){
 async function openMentionedProfile(username){
   const clean=String(username||"").trim().replace(/^@/,"");
   if(!clean||!currentUser)return;
+  const myUsername=String(currentProfile?.username||"").trim();
+  if(myUsername && myUsername.toLowerCase()===clean.toLowerCase()){
+    closeRatingDetail();
+    showScreen("profile");
+    return;
+  }
   const {data,error}=await db.rpc("search_people_predictive",{p_query:clean,p_limit:20});
   if(error){console.warn("mention profile lookup:",error);return;}
   const p=(data||[]).find(u=>String(u.username||"").toLowerCase()===clean.toLowerCase());
@@ -4683,6 +4689,12 @@ function voteHomePoll(id,choice,btn){
   }
   const label=p?(choice==="a"?p.a:p.b):btn.textContent;
   note.innerHTML=`Your pick: <b>${esc(label)}</b>`;
+  card.querySelectorAll(".home-poll-option").forEach(b=>b.disabled=true);
+  setTimeout(()=>{
+    if(!card.isConnected)return;
+    const available=unansweredHomePolls();
+    card.outerHTML=available.length?homePollCard(available[0]):noHomePollsCard();
+  },700);
 }
 function homePollCard(p){
  const choice=homePollChoice(p.id);
@@ -4715,24 +4727,51 @@ function homeEngagementInserts(){
 }
 function buildMixedHomeFeed(ratingCards){
  if(!ratingCards?.length)return "";
- const engagement=homeEngagementInserts();
- const day=Math.floor(Date.now()/86400000);
- // Rotate which engagement prompt leads each day without reshuffling on refresh.
- const firstEngagement=engagement[day%engagement.length];
- const laterEngagement=engagement[(day+1)%engagement.length];
- const out=[];
- ratingCards.forEach((card,i)=>{
-   out.push(card);
-   const n=i+1;
-   if(n===2)out.push(`<div class="home-feed-break">${firstEngagement}</div>`);
-   if(n===4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
-   if(n===6)out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
-   if(n===9)out.push(`<div class="home-feed-break">${laterEngagement}</div>`);
-   if(n>9 && (n-9)%6===0)out.push(`<div class="home-feed-break">${engagement[(day+n)%engagement.length]}</div>`);
+ const inserts=homeEngagementInserts();
+ const count=ratingCards.length;
+ const out=[...ratingCards];
+
+ // Pick fresh positions on every Home render. Keep inserts separated so ratings
+ // remain the backbone and the feed never becomes a wall of feature cards.
+ const available=[];
+ for(let i=1;i<count;i++)available.push(i);
+ for(let i=available.length-1;i>0;i--){
+   const j=Math.floor(Math.random()*(i+1));
+   [available[i],available[j]]=[available[j],available[i]];
+ }
+ const chosen=[];
+ function takePosition(){
+   let idx=available.findIndex(p=>chosen.every(c=>Math.abs(c-p)>=2));
+   if(idx<0)idx=0;
+   const p=available.splice(idx,1)[0];
+   if(p!==undefined)chosen.push(p);
+   return p;
+ }
+ const placements=[];
+ const pollPos=takePosition();
+ if(pollPos!==undefined)placements.push([pollPos,inserts[0]]);
+ const dinerPos=takePosition();
+ if(dinerPos!==undefined)placements.push([dinerPos,`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`]);
+ const runPos=takePosition();
+ if(runPos!==undefined)placements.push([runPos,homeRunInsert()]);
+ const restaurantPos=takePosition();
+ if(restaurantPos!==undefined)placements.push([restaurantPos,`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`]);
+ if(count>=8){
+   const secondPollPos=takePosition();
+   if(secondPollPos!==undefined)placements.push([secondPollPos,inserts[2]]);
+ }
+
+ placements.sort((a,b)=>b[0]-a[0]).forEach(([pos,html])=>{
+   out.splice(pos,0,`<div class="home-feed-break">${html}</div>`);
  });
- if(ratingCards.length<2)out.push(`<div class="home-feed-break">${firstEngagement}</div>`);
- if(ratingCards.length<4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
- if(ratingCards.length<6)out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
+
+ // Very short feeds still get useful engagement without forcing fixed positions.
+ if(count===1){
+   out.push(`<div class="home-feed-break">${inserts[0]}</div>`);
+   out.push(`<div class="home-feed-break">${homeRunInsert()}</div>`);
+   out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
+   out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
+ }
  return out.join("");
 }
 
@@ -8872,7 +8911,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.2";
+const TABLESCORE_VERSION="5.54.3";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
