@@ -1075,6 +1075,25 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 }
 .profile-saved-card .badge-folder-icon{font-size:23px;font-weight:900}
 
+
+/* V5.51.0 Home Engagement */
+.home-social-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:12px 2px 2px}
+.home-social-title{font-family:Georgia,serif;font-size:25px;font-weight:850;line-height:1.05;margin-top:3px}
+.home-people-btn{width:auto;border:0;background:transparent;color:var(--gold);font-size:11px;font-weight:950;padding:7px 2px}
+.home-engagement-stream{display:grid;gap:10px;margin-top:10px}
+.home-play-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.home-play-kicker{font-size:9px;font-weight:1000;letter-spacing:.13em;text-transform:uppercase;color:var(--gold)}
+.home-play-question{font-family:Georgia,serif;font-size:20px;font-weight:850;line-height:1.12;margin-top:5px}
+.home-poll-options{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.home-poll-option{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:14px;padding:13px 8px;font-weight:950;font-size:12px}
+.home-poll-option.selected{border-color:var(--gold);color:var(--gold);box-shadow:inset 0 0 0 1px var(--gold)}
+.home-poll-result{height:5px;border-radius:999px;background:var(--line);overflow:hidden;margin-top:7px}
+.home-poll-result i{display:block;height:100%;background:var(--gold);border-radius:999px}
+.home-poll-meta{display:flex;justify-content:space-between;gap:8px;margin-top:6px;font-size:10px;color:var(--muted);font-weight:800}
+.home-run-card{display:flex;align-items:center;gap:12px}
+.home-run-dice{width:44px;height:44px;border:1px solid var(--gold);border-radius:14px;display:grid;place-items:center;color:var(--gold);font-size:22px;flex:0 0 auto}
+.home-run-copy{min-width:0;flex:1}.home-run-btn{width:auto!important;padding:9px 13px!important;font-size:11px!important}
+
 </style>
 </head>
 <body class="booting">
@@ -1152,10 +1171,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </section>
 
   <section id="home" class="screen active">
-    <div class="hero" style="padding-bottom:4px">
-      <div class="kicker">TableRec Social</div>
-      <h1 style="font-size:34px">What's on the table?</h1>
-      <div class="muted" style="font-size:13px;line-height:1.45">Recent ratings, dish photos, and restaurant picks from people you follow.</div>
+    <div class="home-social-head">
+      <div><div class="kicker">TableRec Social</div><div class="home-social-title">What's on the table?</div></div>
+      <button class="home-people-btn" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button>
     </div>
 
     <div class="card" style="margin-top:10px">
@@ -1168,6 +1186,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <div id="followingFeed" style="margin-top:8px"></div>
     </div>
+    <div id="homeEngagementStream" class="home-engagement-stream"></div>
   </section>
 
   <section id="explore" class="screen">
@@ -2111,7 +2130,7 @@ function showScreen(id,options={}){
     renderExplore();
     setTimeout(()=>initExploreDiscoveryMap(),80);
   }
-  if(id==="home") loadFollowingFeed();
+  if(id==="home"){ loadFollowingFeed(); renderHomeEngagement(); }
   if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
 }
 
@@ -4500,6 +4519,31 @@ function renderFollowingFeedGuest(){
   el.innerHTML='<div class="empty"><div class="section-title">Your food circle starts here</div><p class="muted" style="font-size:13px">Sign in to follow people and see their latest restaurant ratings.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
 }
 
+const HOME_POLL_DECK=[
+{id:"tacos-burgers",kicker:"THIS OR THAT",q:"You can only pick one tonight.",a:"Tacos",b:"Burgers"},
+{id:"thai-mexican",kicker:"PICK ONE",q:"What's the move tonight?",a:"Thai",b:"Mexican"},
+{id:"breakfast-dinner",kicker:"HOT TAKE",q:"Which meal wins?",a:"Breakfast",b:"Dinner"},
+{id:"sushi-steak",kicker:"THIS OR THAT",q:"Date night. What are you choosing?",a:"Sushi",b:"Steak"},
+{id:"bbq-italian",kicker:"PICK ONE",q:"One cuisine has to go.",a:"BBQ",b:"Italian"},
+{id:"sweet-savory",kicker:"HOT TAKE",q:"Which side are you on?",a:"Sweet",b:"Savory"}
+];
+function homePollKey(id){return `ts_home_poll_${id}`}
+function homePollChoice(id){try{return localStorage.getItem(homePollKey(id))||""}catch(_){return ""}}
+function voteHomePoll(id,choice){try{localStorage.setItem(homePollKey(id),choice)}catch(_){}renderHomeEngagement()}
+function homePollCard(p){
+ const choice=homePollChoice(p.id);
+ return `<div class="home-play-card"><div class="home-play-kicker">${esc(p.kicker)}</div><div class="home-play-question">${esc(p.q)}</div>
+ <div class="home-poll-options"><button class="home-poll-option ${choice==="a"?"selected":""}" onclick="voteHomePoll('${p.id}','a')">${esc(p.a)}</button><button class="home-poll-option ${choice==="b"?"selected":""}" onclick="voteHomePoll('${p.id}','b')">${esc(p.b)}</button></div>
+ ${choice?`<div class="muted" style="font-size:10px;margin-top:8px">Your pick: <b>${esc(choice==="a"?p.a:p.b)}</b></div>`:""}</div>`;
+}
+function renderHomeEngagement(){
+ const el=document.getElementById("homeEngagementStream");if(!el)return;
+ const day=Math.floor(Date.now()/86400000), first=HOME_POLL_DECK[day%HOME_POLL_DECK.length], second=HOME_POLL_DECK[(day+3)%HOME_POLL_DECK.length];
+ el.innerHTML=`${homePollCard(first)}
+ <div class="home-play-card home-run-card"><div class="home-run-dice">&#9856;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>
+ ${homePollCard(second)}`;
+}
+
 async function loadFollowingFeed(){
   const el=document.getElementById("followingFeed");
   if(!el)return;
@@ -4508,7 +4552,7 @@ async function loadFollowingFeed(){
     return;
   }
   if(!followingIds.size){
-    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('home');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div>`;
+    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div>`;
     return;
   }
 
@@ -8481,8 +8525,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.50.2";
-const TABLESCORE_BUILD_LABEL="Single Active Bottom Navigation State";
+const TABLESCORE_VERSION="5.51.0";
+const TABLESCORE_BUILD_LABEL="Home Engagement Foundation";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
