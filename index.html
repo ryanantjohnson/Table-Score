@@ -1117,6 +1117,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .home-restaurant-reason{font-size:10px;color:var(--muted);font-weight:800;margin-top:4px}
 .home-quiet-grid{display:grid;gap:10px;margin-top:10px}
 
+
+/* V5.54.0 Final QA Corrections */
+.comment-mention{color:var(--gold);font-weight:900;cursor:pointer;text-decoration:none}
+.comment-dig-btn{margin-top:7px;border:0;background:transparent;color:var(--muted);padding:2px 0;font-size:10px;font-weight:900}
+.comment-dig-btn.dug{color:var(--gold)}
+
 </style>
 </head>
 <body class="booting">
@@ -1960,6 +1966,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
+<div id="restaurantActionModal" class="modal hidden">
+  <div class="sheet">
+    <div class="section-head" style="margin-bottom:8px">
+      <div><div class="kicker">Restaurant</div><h2 id="restaurantActionName" style="margin-top:3px">Restaurant</h2></div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantAction()">Close</button>
+    </div>
+    <div id="restaurantActionMeta" class="muted" style="font-size:11px;line-height:1.45"></div>
+    <div style="display:grid;gap:8px;margin-top:14px">
+      <button class="primary" onclick="openRestaurantActionDirections()">Directions</button>
+      <button class="secondary" onclick="openRestaurantActionGoogle()">View Restaurant Listing</button>
+      <button class="secondary" onclick="rateRestaurantAction()">Rate on TableRec</button>
+    </div>
+  </div>
+</div>
+
 <div id="locationChooserModal" class="modal hidden">
   <div class="sheet">
     <div class="section-head" style="margin-bottom:8px">
@@ -2592,19 +2613,27 @@ async function loadRestaurantCommunityRatings(restaurantId){
   await hydrateRatingEngagement(visible.map(r=>r.id));
 }
 
+let restaurantReturnScrollY=0;
 function openRestaurantPageLocation(){
   if(!selectedRestaurantId)return alert("Restaurant location is not available.");
   openRatingRestaurantLocation(selectedRestaurantId);
 }
 
 function returnFromRestaurant(){
-  showScreen(restaurantReturnScreen||"home");
+  const target=restaurantReturnScreen||"home";
+  showScreen(target,{restore:true});
+  if(target==="discover"){
+    requestAnimationFrame(()=>window.scrollTo({top:restaurantReturnScrollY||0,behavior:"auto"}));
+  }
 }
 
 async function openRestaurantById(id){
   const activeScreen=document.querySelector("section.screen.active");
   const sourceId=activeScreen?.id;
-  if(sourceId && sourceId!=="restaurant")restaurantReturnScreen=sourceId;
+  if(sourceId && sourceId!=="restaurant"){
+    restaurantReturnScreen=sourceId;
+    if(sourceId==="discover")restaurantReturnScrollY=window.scrollY||0;
+  }
   let r=restaurantStats.find(x=>x.id===id);
   if(!r){
     const {data,error}=await db.from("restaurant_stats").select("*").eq("id",id).maybeSingle();
@@ -3326,15 +3355,42 @@ async function loadRestaurantPredictions(query){
   }
 }
 
+let restaurantActionPlace=null;
 function chooseRestaurantPrediction(index){
   const r=restaurantPredictionRows[index];
   if(!r)return;
-
-  // Preserve the exact Google Places result the user tapped and send it
-  // through the same proven selection path used by restaurant result cards.
-  nearbyGoogleRestaurants=[r];
   hideRestaurantPredictions();
-  chooseNearbyRestaurant(0);
+  closeNearbyRestaurantPicker();
+  openRestaurantAction(r);
+}
+function openRestaurantAction(r){
+  restaurantActionPlace=r||null;
+  if(!r)return;
+  document.getElementById("restaurantActionName").textContent=r.name||"Restaurant";
+  document.getElementById("restaurantActionMeta").textContent=[restaurantTypeLabel(r),r.address].filter(Boolean).join(" - ");
+  lockBackgroundScroll();
+  document.getElementById("restaurantActionModal").classList.remove("hidden");
+}
+function closeRestaurantAction(){
+  document.getElementById("restaurantActionModal")?.classList.add("hidden");
+  unlockBackgroundScroll();
+}
+function restaurantActionMapsUrl(){
+  if(!restaurantActionPlace)return "";
+  if(restaurantActionPlace.google_maps_url)return restaurantActionPlace.google_maps_url;
+  const q=encodeURIComponent([restaurantActionPlace.name,restaurantActionPlace.address].filter(Boolean).join(" "));
+  return `https://www.google.com/maps/search/?api=1&query=${q}`;
+}
+function openRestaurantActionDirections(){
+  const url=restaurantActionMapsUrl(); if(url)window.open(url,"_blank","noopener");
+}
+function openRestaurantActionGoogle(){
+  const url=restaurantActionMapsUrl(); if(url)window.open(url,"_blank","noopener");
+}
+function rateRestaurantAction(){
+  const r=restaurantActionPlace;if(!r)return;
+  selectedRestaurantId=null;selectedGoogleRestaurant={...r};selectedRestaurantName=r.name||"Restaurant";
+  syncRateRestaurantPicker();closeRestaurantAction();showScreen("rate");
 }
 
 function handleRestaurantPredictionKeydown(event){
@@ -4309,6 +4365,7 @@ async function loadRatingComments(ratingId){
             <span class="row-meta">${timeAgo(c.created_at)}</span>
           </div>
           <div class="comment-text">${renderCommentBody(c.body)}</div>
+          <button id="commentDigBtn-${c.id}" class="comment-dig-btn" onclick="toggleCommentDig('${c.id}','${ratingId}')">Dig It <span id="commentDigCount-${c.id}">0</span></button>
         </div>
         ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
       </div>`;
@@ -4330,6 +4387,25 @@ async function loadRatingComments(ratingId){
   }
 
   await hydrateRatingEngagement([ratingId]);
+  await hydrateCommentDigs((comments||[]).map(c=>c.id));
+}
+
+async function hydrateCommentDigs(commentIds=[]){
+  const ids=[...new Set(commentIds.filter(Boolean))]; if(!ids.length)return;
+  const {data,error}=await db.rpc("get_comment_dig_state",{p_comment_ids:ids});
+  if(error){console.warn("comment digs:",error);return;}
+  (data||[]).forEach(r=>{
+    const count=document.getElementById(`commentDigCount-${r.comment_id}`);
+    const btn=document.getElementById(`commentDigBtn-${r.comment_id}`);
+    if(count)count.textContent=Number(r.dig_count||0);
+    if(btn)btn.classList.toggle("dug",!!r.dug_by_me);
+  });
+}
+async function toggleCommentDig(commentId,ratingId){
+  if(!currentUser)return openAccount(()=>openRatingDetail(ratingId));
+  const {error}=await db.rpc("toggle_comment_dig",{p_comment_id:commentId});
+  if(error)return alert("Could not update comment Dig It: "+error.message);
+  await hydrateCommentDigs([commentId]);
 }
 
 let mentionSearchTimer=null;
@@ -4561,7 +4637,7 @@ const HOME_POLL_DECK=[
 ];
 function homePollKey(id){return `ts_home_poll_${id}`}
 function homePollChoice(id){try{return localStorage.getItem(homePollKey(id))||""}catch(_){return ""}}
-function voteHomePoll(id,choice){try{localStorage.setItem(homePollKey(id),choice)}catch(_){}renderHomeEngagement()}
+function voteHomePoll(id,choice){try{localStorage.setItem(homePollKey(id),choice)}catch(_){}void loadFollowingFeed()}
 function homePollCard(p){
  const choice=homePollChoice(p.id);
  return `<div class="home-play-card"><div class="home-play-kicker">${esc(p.kicker)}</div><div class="home-play-question">${esc(p.q)}</div>
@@ -8139,6 +8215,7 @@ let whereEatCuisine="mexican";
 let whereEatPrices=new Set([1,2,3,4]);
 let whereEatPool=[];
 let whereEatPick=null;
+const WHERE_RECENT_KEY="ts_where_recent_v1";
 
 function openWhereToEat(){
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s==="runit"));
@@ -8310,6 +8387,19 @@ async function animateWhereCuisine(label){
   document.getElementById("whereStage").classList.add("where-winner");
   await sleepWhere(700);
 }
+function whereRestaurantKey(r){return String(r?.google_place_id||r?.place_id||r?.id||`${r?.name||""}|${r?.address||""}`)}
+function whereRecentKeys(){try{return JSON.parse(localStorage.getItem(WHERE_RECENT_KEY)||"[]")}catch(_){return []}}
+function rememberWherePick(r){
+  const key=whereRestaurantKey(r);if(!key)return;
+  const next=[key,...whereRecentKeys().filter(x=>x!==key)].slice(0,30);
+  try{localStorage.setItem(WHERE_RECENT_KEY,JSON.stringify(next))}catch(_){}
+}
+function chooseFreshWherePick(pool){
+  const recent=new Set(whereRecentKeys());
+  const fresh=pool.filter(r=>!recent.has(whereRestaurantKey(r)));
+  const source=fresh.length?fresh:pool;
+  return source[Math.floor(Math.random()*source.length)];
+}
 async function spinWhereToEat(){
   const btn=document.getElementById("whereEatSpinBtn");
   const status=document.getElementById("whereEatStatus");
@@ -8343,7 +8433,8 @@ async function spinWhereToEat(){
     if(!pool.length)throw new Error("No matches for those choices. Try a larger radius, another cuisine, or more price points.");
 
     whereEatPool=pool;
-    whereEatPick=pool[Math.floor(Math.random()*pool.length)];
+    whereEatPick=chooseFreshWherePick(pool);
+    rememberWherePick(whereEatPick);
     status.textContent="";
     await animateWhereRestaurant(pool,whereEatPick,whereEatMode==="cuisine"?`${cuisineLabel.toUpperCase()} IS LOCKED IN`:"HERE WE GO...");
     renderWhereEatPick(whereEatPick,cuisineLabel);
@@ -8672,7 +8763,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.53.2";
+const TABLESCORE_VERSION="5.54.0";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
