@@ -950,6 +950,27 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   transform:translateY(112px) !important;
 }
 
+
+/* V5.48.0 Predictive Restaurant Search */
+.restaurant-predict-wrap{position:relative;flex:1;min-width:0}
+.restaurant-predictions{
+  position:absolute;left:0;right:0;top:calc(100% + 6px);z-index:8000;
+  max-height:300px;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:5px;background:#11161a;border:1px solid var(--line);
+  border-radius:14px;box-shadow:0 16px 38px rgba(0,0,0,.85);
+  opacity:1;isolation:isolate
+}
+.restaurant-predictions.hidden{display:none!important}
+.restaurant-prediction{
+  display:flex;width:100%;gap:10px;align-items:flex-start;
+  padding:11px 10px;margin:0;border:0;border-bottom:1px solid #343a40;
+  border-radius:0;background:#11161a;color:var(--ink);text-align:left
+}
+.restaurant-prediction:last-child{border-bottom:0}
+.restaurant-prediction:active{background:#20262b}
+.restaurant-prediction-name{font-weight:950;font-size:13px;line-height:1.25}
+.restaurant-prediction-meta{font-size:10px;color:var(--muted);line-height:1.35;margin-top:3px}
+
 </style>
 </head>
 <body class="booting">
@@ -1757,7 +1778,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
     <div id="placeSearchPanel">
       <div class="place-search-row">
-        <input id="globalRestaurantSearch" placeholder="Example: Uchi Austin or restaurant + city" autocomplete="off">
+        <div class="restaurant-predict-wrap">
+          <input id="globalRestaurantSearch" placeholder="Restaurant, city, or address" autocomplete="off"
+                 oninput="queueRestaurantPredictions()"
+                 onkeydown="handleRestaurantPredictionKeydown(event)">
+          <div id="restaurantPredictionList" class="restaurant-predictions hidden"></div>
+        </div>
         <button class="primary" onclick="searchRestaurantsAnywhere()">Search</button>
       </div>
       <div class="muted" style="font-size:10px;line-height:1.4;margin-bottom:7px">Search for a restaurant you visited earlier even if it is nowhere near your current location.</div>
@@ -3005,10 +3031,12 @@ async function openNearbyRestaurantPicker(){
 }
 
 function closeNearbyRestaurantPicker(){
+  hideRestaurantPredictions();
   document.getElementById("nearbyRestaurantModal").classList.add("hidden");
 }
 
 function setRestaurantFinderMode(mode){
+  hideRestaurantPredictions();
   restaurantFinderMode=["search","nearby","map"].includes(mode)?mode:"search";
   const searchTab=document.getElementById("placeSearchTab");
   const nearbyTab=document.getElementById("placeNearbyTab");
@@ -3072,7 +3100,98 @@ function renderNearbyRestaurantResults(label="restaurants"){
   </button>`).join("");
 }
 
+let restaurantPredictionTimer=null;
+let restaurantPredictionSeq=0;
+let restaurantPredictionRows=[];
+
+function hideRestaurantPredictions(){
+  const list=document.getElementById("restaurantPredictionList");
+  if(list){list.classList.add("hidden");list.innerHTML="";}
+  restaurantPredictionRows=[];
+}
+
+function queueRestaurantPredictions(){
+  clearTimeout(restaurantPredictionTimer);
+  const input=document.getElementById("globalRestaurantSearch");
+  const q=(input?.value||"").trim();
+
+  if(q.length<2){
+    restaurantPredictionSeq++;
+    hideRestaurantPredictions();
+    return;
+  }
+
+  restaurantPredictionTimer=setTimeout(()=>loadRestaurantPredictions(q),260);
+}
+
+async function loadRestaurantPredictions(query){
+  const list=document.getElementById("restaurantPredictionList");
+  if(!list)return;
+  const seq=++restaurantPredictionSeq;
+
+  try{
+    const coords=currentTableScoreCoords();
+    const body={mode:"search",query};
+    if(coords){
+      body.latitude=coords.latitude;
+      body.longitude=coords.longitude;
+    }
+
+    // Reuse the hardened Google Places Edge Function already used by TableRec.
+    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    if(error)throw error;
+    if(data?.error)throw new Error(data.error);
+    if(seq!==restaurantPredictionSeq)return;
+
+    restaurantPredictionRows=(Array.isArray(data?.restaurants)?data.restaurants:[]).slice(0,7);
+
+    if(!restaurantPredictionRows.length){
+      hideRestaurantPredictions();
+      return;
+    }
+
+    list.innerHTML=restaurantPredictionRows.map((r,i)=>`
+      <button type="button" class="restaurant-prediction" onclick="chooseRestaurantPrediction(${i})">
+        <span style="font-size:18px;line-height:1">🍴</span>
+        <span style="min-width:0">
+          <div class="restaurant-prediction-name">${esc(r.name||"Restaurant")}</div>
+          <div class="restaurant-prediction-meta">${esc(restaurantTypeLabel(r))}${r.address?` · ${esc(r.address)}`:""}</div>
+        </span>
+      </button>`).join("");
+    list.classList.remove("hidden");
+  }catch(err){
+    console.warn("Restaurant predictions:",err);
+    if(seq===restaurantPredictionSeq)hideRestaurantPredictions();
+  }
+}
+
+function chooseRestaurantPrediction(index){
+  const r=restaurantPredictionRows[index];
+  if(!r)return;
+
+  const input=document.getElementById("globalRestaurantSearch");
+  if(input)input.value=r.name||"";
+
+  hideRestaurantPredictions();
+
+  // Use the exact Google Places result object and existing selection path.
+  selectNearbyRestaurant(r);
+}
+
+function handleRestaurantPredictionKeydown(event){
+  if(event.key==="Escape"){
+    hideRestaurantPredictions();
+    return;
+  }
+  if(event.key==="Enter"){
+    event.preventDefault();
+    hideRestaurantPredictions();
+    searchRestaurantsAnywhere();
+  }
+}
+
 async function searchRestaurantsAnywhere(){
+  hideRestaurantPredictions();
   const input=document.getElementById("globalRestaurantSearch");
   const status=document.getElementById("nearbyRestaurantStatus");
   const list=document.getElementById("nearbyRestaurantList");
@@ -7997,8 +8116,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.47.6";
-const TABLESCORE_BUILD_LABEL="Safe Mention Placement Patch";
+const TABLESCORE_VERSION="5.48.0";
+const TABLESCORE_BUILD_LABEL="Predictive Restaurant Search";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -8270,4 +8389,4 @@ document.addEventListener("DOMContentLoaded", () => {
 
 <div id="rewardToast" class="reward-toast"></div>
 </body>
-</html
+</html>
