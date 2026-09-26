@@ -838,6 +838,60 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   /* Disable the old nested result box completely. */
   #ratingDetailModal #mentionResults{display:none !important}
 
+
+/* V5.47.3 - opaque mentions + corrected rating close */
+#ratingDetailModal .rating-detail-floating-close{
+  position:fixed !important;
+  top:calc(env(safe-area-inset-top) + 10px) !important;
+  right:24px !important;
+  z-index:3000 !important;
+  width:auto !important;
+  margin:0 !important;
+  padding:8px 14px !important;
+  transform:none !important;
+  opacity:1 !important;
+  background:var(--panel) !important;
+}
+
+/* The portal is completely opaque. Nothing underneath can show through. */
+#mentionPortal{
+  position:fixed !important;
+  z-index:4000 !important;
+  display:none;
+  overflow-y:auto !important;
+  -webkit-overflow-scrolling:touch !important;
+  max-height:190px !important;
+  margin:0 !important;
+  padding:0 !important;
+  opacity:1 !important;
+  background:#11161a !important;
+  border:2px solid var(--gold) !important;
+  border-radius:14px !important;
+  box-shadow:0 18px 46px rgba(0,0,0,.95) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  isolation:isolate !important;
+}
+#mentionPortal.show{display:block !important}
+#mentionPortal .mention-portal-option{
+  display:flex !important;
+  align-items:center !important;
+  gap:10px !important;
+  width:100% !important;
+  min-height:60px !important;
+  padding:10px 12px !important;
+  margin:0 !important;
+  border:0 !important;
+  border-bottom:1px solid #343a40 !important;
+  border-radius:0 !important;
+  opacity:1 !important;
+  background:#11161a !important;
+  color:#f7f7f4 !important;
+  text-align:left !important;
+}
+#mentionPortal .mention-portal-option:last-child{border-bottom:0 !important}
+#mentionPortal .mention-portal-option:active{background:#20262b !important}
+
 </style>
 </head>
 <body class="booting">
@@ -3979,19 +4033,29 @@ function hideMentionPortal(){
 function positionMentionPortal(){
   const input=document.getElementById("ratingCommentInput");
   const portal=document.getElementById("mentionPortal");
-  if(!input||!portal)return;
-  const r=input.getBoundingClientRect();
-  const side=12;
-  const width=Math.min(r.width,window.innerWidth-(side*2));
-  portal.style.width=width+"px";
-  portal.style.left=Math.max(side,Math.min(r.left,window.innerWidth-width-side))+"px";
+  if(!input||!portal||!portal.classList.contains("show"))return;
 
-  // Prefer directly above the composer. If there is not enough room,
-  // use the space immediately below it.
-  const portalHeight=Math.min(portal.scrollHeight||220,250);
-  const above=r.top-portalHeight-8;
-  const top=above>80 ? above : Math.min(window.innerHeight-portalHeight-12,r.bottom+8);
-  portal.style.top=Math.max(80,top)+"px";
+  const r=input.getBoundingClientRect();
+  const vv=window.visualViewport;
+  const viewportTop=vv ? vv.offsetTop : 0;
+  const viewportHeight=vv ? vv.height : window.innerHeight;
+  const gap=8;
+  const side=12;
+
+  const width=Math.min(r.width,window.innerWidth-(side*2));
+  const left=Math.max(side,Math.min(r.left,window.innerWidth-width-side));
+
+  // Never jump the picker into the rating body. It belongs to the textarea.
+  // Use only the space directly above the textarea and make the list itself scroll.
+  const availableAbove=Math.max(72,r.top-viewportTop-gap-8);
+  const wanted=Math.min(190,Math.max(60,portal.scrollHeight));
+  const height=Math.min(wanted,availableAbove);
+  const top=Math.max(viewportTop+8,r.top-gap-height);
+
+  portal.style.left=left+"px";
+  portal.style.width=width+"px";
+  portal.style.maxHeight=height+"px";
+  portal.style.top=top+"px";
 }
 
 async function loadMentionSuggestions(q){
@@ -4011,7 +4075,7 @@ async function loadMentionSuggestions(q){
     <span style="min-width:0"><b>${esc(u.display_name||u.username||"TableRec User")}</b><br><span class="row-meta">@${esc(u.username||"")}</span></span>
   </button>`).join("");
   portal.classList.add("show");
-  requestAnimationFrame(positionMentionPortal);
+  requestAnimationFrame(()=>{positionMentionPortal();setTimeout(positionMentionPortal,140);});
 }
 
 function insertMention(i){
@@ -4027,12 +4091,16 @@ function insertMention(i){
   mentionCandidates=[];
 }
 
-window.visualViewport?.addEventListener("resize",()=>{
-  if(document.getElementById("mentionPortal")?.classList.contains("show"))positionMentionPortal();
-});
-window.visualViewport?.addEventListener("scroll",()=>{
-  if(document.getElementById("mentionPortal")?.classList.contains("show"))positionMentionPortal();
-});
+let mentionViewportTimer=null;
+function settleMentionPortal(){
+  clearTimeout(mentionViewportTimer);
+  mentionViewportTimer=setTimeout(()=>{
+    if(document.getElementById("mentionPortal")?.classList.contains("show"))positionMentionPortal();
+  },120);
+}
+window.visualViewport?.addEventListener("resize",settleMentionPortal);
+window.visualViewport?.addEventListener("scroll",settleMentionPortal);
+window.addEventListener("scroll",settleMentionPortal,true);
 
 function handleMentionKeydown(e){
   if(e.key==="Escape"){
@@ -7862,8 +7930,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.47.2";
-const TABLESCORE_BUILD_LABEL="Mention Portal and Rating Close Fix";
+const TABLESCORE_VERSION="5.47.3";
+const TABLESCORE_BUILD_LABEL="Opaque Mention Picker and Rating Close";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
