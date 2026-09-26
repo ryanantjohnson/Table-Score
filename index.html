@@ -1180,6 +1180,11 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   backface-visibility:hidden;
   transform:translate3d(0,0,0);
 }
+
+/* V5.54.9 universal drill-in swipe navigation */
+.screen,.modal,.app-header,.topbar,.nav,header{
+  backface-visibility:hidden;
+}
 </style>
 </head>
 <body class="booting">
@@ -2211,9 +2216,163 @@ function esc(v){
   return String(v??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
 }
 
+
+const TABLE_REC_ROOT_SCREENS=new Set(["home","discover","rate","profile"]);
+let tableRecNavStack=[];
+let tableRecGesture=null;
+let tableRecGestureDragging=false;
+let tableRecSuppressNavCapture=false;
+
+function tableRecActiveScreenId(){
+  return document.querySelector(".screen.active")?.id||"";
+}
+function tableRecSnapshot(){
+  return {screen:tableRecActiveScreenId(),scrollY:window.scrollY||document.documentElement.scrollTop||0};
+}
+function tableRecPushOrigin(){
+  if(tableRecSuppressNavCapture)return;
+  const snap=tableRecSnapshot();
+  if(!snap.screen)return;
+  const last=tableRecNavStack[tableRecNavStack.length-1];
+  if(!last||last.screen!==snap.screen||Math.abs((last.scrollY||0)-snap.scrollY)>4){
+    tableRecNavStack.push(snap);
+    if(tableRecNavStack.length>20)tableRecNavStack.shift();
+  }
+}
+function tableRecBack(){
+  const prev=tableRecNavStack.pop();
+  if(!prev)return false;
+  tableRecSuppressNavCapture=true;
+  showScreen(prev.screen,{restore:true});
+  requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,prev.scrollY||0)));
+  setTimeout(()=>{tableRecSuppressNavCapture=false},80);
+  return true;
+}
+function tableRecIsDrillScreen(id){
+  return !!id&&!TABLE_REC_ROOT_SCREENS.has(id);
+}
+function tableRecTopOpenModal(){
+  const ids=["ratingDetailModal","restaurantActionModal","nearbyRestaurantModal"];
+  return ids.map(id=>document.getElementById(id)).find(el=>el&&!el.classList.contains("hidden"))||null;
+}
+function tableRecGestureTarget(){
+  const modal=tableRecTopOpenModal();
+  if(modal)return {kind:"modal",el:modal};
+  const id=tableRecActiveScreenId();
+  if(tableRecIsDrillScreen(id))return {kind:"screen",el:document.getElementById(id)};
+  return null;
+}
+function tableRecSwipeSurfaces(target){
+  if(!target)return[];
+  if(target.kind==="modal")return [target.el].filter(Boolean);
+  const nav=document.querySelector(".nav");
+  const header=document.querySelector(".app-header,.topbar,header");
+  return [header,target.el,nav].filter(Boolean);
+}
+function tableRecSetSwipe(target,x,opacity=1,transition="none"){
+  tableRecSwipeSurfaces(target).forEach(el=>{
+    el.style.transition=transition;
+    el.style.transform=`translate3d(${x}px,0,0)`;
+    el.style.opacity=String(opacity);
+    el.style.willChange="transform";
+  });
+}
+function tableRecClearSwipe(target){
+  tableRecSwipeSurfaces(target).forEach(el=>{
+    el.style.transition="";
+    el.style.transform="";
+    el.style.opacity="";
+    el.style.willChange="";
+  });
+}
+function tableRecCancelSwipe(target,animated=true){
+  const tr=animated?"transform .24s cubic-bezier(.22,.8,.3,1), opacity .24s ease":"none";
+  tableRecSetSwipe(target,0,1,tr);
+  if(animated)setTimeout(()=>tableRecClearSwipe(target),260);
+}
+function tableRecCloseGestureTarget(target){
+  if(!target)return;
+  if(target.kind==="modal"){
+    const id=target.el.id;
+    if(id==="ratingDetailModal")return closeRatingDetail();
+    if(id==="restaurantActionModal")return closeRestaurantAction();
+    if(id==="nearbyRestaurantModal")return closeNearbyRestaurantPicker();
+    target.el.classList.add("hidden");
+    unlockBackgroundScroll();
+    return;
+  }
+  if(target.el?.id==="publicProfile")return closePublicProfile();
+  if(!tableRecBack()){
+    const fallback=localStorage.getItem("ts_current_screen")||"home";
+    showScreen(TABLE_REC_ROOT_SCREENS.has(fallback)?fallback:"home",{restore:true});
+  }
+}
+function tableRecInstallUniversalSwipe(){
+  document.addEventListener("touchstart",(event)=>{
+    const target=tableRecGestureTarget();
+    const t=event.touches?.[0];
+    if(!target||!t||t.clientX>30||event.touches.length!==1){
+      tableRecGesture=null;tableRecGestureDragging=false;return;
+    }
+    tableRecGesture={target,x:t.clientX,y:t.clientY,time:performance.now()};
+    tableRecGestureDragging=false;
+    tableRecSetSwipe(target,0,1,"none");
+  },{passive:true});
+
+  document.addEventListener("touchmove",(event)=>{
+    if(!tableRecGesture)return;
+    const t=event.touches?.[0];if(!t)return;
+    const dx=Math.max(0,t.clientX-tableRecGesture.x);
+    const dy=Math.abs(t.clientY-tableRecGesture.y);
+    if(!tableRecGestureDragging){
+      if(dy>18&&dy>dx){
+        const target=tableRecGesture.target;
+        tableRecGesture=null;
+        tableRecCancelSwipe(target,false);
+        return;
+      }
+      if(dx<5)return;
+      tableRecGestureDragging=true;
+    }
+    event.preventDefault();
+    const progress=Math.min(1,dx/Math.max(1,window.innerWidth));
+    tableRecSetSwipe(tableRecGesture.target,dx,1-progress*.06,"none");
+  },{passive:false});
+
+  document.addEventListener("touchend",(event)=>{
+    if(!tableRecGesture)return;
+    const gesture=tableRecGesture;
+    const dragged=tableRecGestureDragging;
+    const t=event.changedTouches?.[0];
+    tableRecGesture=null;tableRecGestureDragging=false;
+    if(!t||!dragged){tableRecCancelSwipe(gesture.target,true);return;}
+    const dx=Math.max(0,t.clientX-gesture.x);
+    const velocity=dx/Math.max(1,performance.now()-gesture.time);
+    const width=Math.max(1,window.innerWidth);
+    if(dx<=width*.30&&velocity<=.52){
+      tableRecCancelSwipe(gesture.target,true);return;
+    }
+    tableRecSetSwipe(gesture.target,width,.94,"transform .18s cubic-bezier(.2,.75,.25,1), opacity .18s ease");
+    setTimeout(()=>{
+      tableRecCloseGestureTarget(gesture.target);
+      tableRecClearSwipe(gesture.target);
+    },180);
+  },{passive:true});
+
+  document.addEventListener("touchcancel",()=>{
+    if(!tableRecGesture)return;
+    const target=tableRecGesture.target;
+    tableRecGesture=null;tableRecGestureDragging=false;
+    tableRecCancelSwipe(target,true);
+  },{passive:true});
+}
 function showScreen(id,options={}){
   const screen=document.getElementById(id);
   if(!screen)return;
+  const fromId=tableRecActiveScreenId();
+  if(!options.restore&&!tableRecSuppressNavCapture&&fromId&&fromId!==id&&tableRecIsDrillScreen(id)){
+    tableRecPushOrigin();
+  }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
   screen.classList.add("active");
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s===id));
@@ -3425,6 +3584,7 @@ function chooseRestaurantPrediction(index){
   openRestaurantAction(r);
 }
 function openRestaurantAction(r){
+  tableRecPushOrigin();
   restaurantActionPlace=r||null;
   if(!r)return;
   document.getElementById("restaurantActionName").textContent=r.name||"Restaurant";
@@ -4306,6 +4466,7 @@ async function renderRatingDetailEngagement(ratingId){
 
 async function openRatingDetail(ratingId){
   if(!ratingId)return;
+  tableRecPushOrigin();
   activeRatingDetailId=ratingId;
   activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
@@ -5482,105 +5643,7 @@ function closePublicProfile(){
   window.__tableRecPublicProfileReturn=null;
 }
 
-let publicProfileEdgeStart=null;
-let publicProfileEdgeDragging=false;
-
-function publicProfileSwipeSurfaces(){
-  const page=document.getElementById("publicProfile");
-  const nav=document.querySelector(".nav");
-  // The app header is the visible top-level header immediately above screens.
-  const header=document.querySelector(".app-header,.topbar,header");
-  return [header,page,nav].filter(Boolean);
-}
-function setPublicProfileSwipeTransform(x,opacity=1,transition="none"){
-  publicProfileSwipeSurfaces().forEach(el=>{
-    el.style.transition=transition;
-    el.style.transform=`translate3d(${x}px,0,0)`;
-    el.style.opacity=String(opacity);
-    el.style.willChange="transform";
-  });
-}
-function clearPublicProfileSwipeStyles(){
-  publicProfileSwipeSurfaces().forEach(el=>{
-    el.style.transition="";
-    el.style.transform="";
-    el.style.opacity="";
-    el.style.willChange="";
-  });
-}
-function resetPublicProfileSwipe(animated=true){
-  const transition=animated?"transform .24s cubic-bezier(.22,.8,.3,1), opacity .24s ease":"none";
-  setPublicProfileSwipeTransform(0,1,transition);
-  if(animated)setTimeout(clearPublicProfileSwipeStyles,260);
-}
-
-document.addEventListener("touchstart",(event)=>{
-  const page=document.getElementById("publicProfile");
-  const active=page?.classList.contains("active");
-  const t=event.touches?.[0];
-  if(!active||!t||t.clientX>30||event.touches.length!==1){
-    publicProfileEdgeStart=null;
-    publicProfileEdgeDragging=false;
-    return;
-  }
-  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:performance.now()};
-  publicProfileEdgeDragging=false;
-  setPublicProfileSwipeTransform(0,1,"none");
-},{passive:true});
-
-document.addEventListener("touchmove",(event)=>{
-  if(!publicProfileEdgeStart)return;
-  const t=event.touches?.[0];
-  if(!t)return;
-  const dx=Math.max(0,t.clientX-publicProfileEdgeStart.x);
-  const dy=Math.abs(t.clientY-publicProfileEdgeStart.y);
-  if(!publicProfileEdgeDragging){
-    if(dy>18&&dy>dx){
-      publicProfileEdgeStart=null;
-      resetPublicProfileSwipe(false);
-      return;
-    }
-    if(dx<5)return;
-    publicProfileEdgeDragging=true;
-  }
-  event.preventDefault();
-  const width=Math.max(1,window.innerWidth);
-  const progress=Math.min(1,dx/width);
-  setPublicProfileSwipeTransform(dx,1-(progress*.06),"none");
-},{passive:false});
-
-document.addEventListener("touchend",(event)=>{
-  if(!publicProfileEdgeStart)return;
-  const t=event.changedTouches?.[0];
-  const start=publicProfileEdgeStart;
-  const dragged=publicProfileEdgeDragging;
-  publicProfileEdgeStart=null;
-  publicProfileEdgeDragging=false;
-  if(!t||!dragged){
-    resetPublicProfileSwipe(true);
-    return;
-  }
-  const dx=Math.max(0,t.clientX-start.x);
-  const elapsed=Math.max(1,performance.now()-start.time);
-  const velocity=dx/elapsed;
-  const width=Math.max(1,window.innerWidth);
-  if(dx<=width*.30&&velocity<=.52){
-    resetPublicProfileSwipe(true);
-    return;
-  }
-  setPublicProfileSwipeTransform(width,.94,"transform .18s cubic-bezier(.2,.75,.25,1), opacity .18s ease");
-  setTimeout(()=>{
-    closePublicProfile();
-    clearPublicProfileSwipeStyles();
-  },180);
-},{passive:true});
-
-document.addEventListener("touchcancel",()=>{
-  if(!publicProfileEdgeStart)return;
-  publicProfileEdgeStart=null;
-  publicProfileEdgeDragging=false;
-  resetPublicProfileSwipe(true);
-},{passive:true});
+/* V5.54.9: profile-only swipe retired; universal navigation owns edge gestures. */
 
 async function togglePublicProfileFollow(){
   if(!viewedProfile)return;
@@ -9192,7 +9255,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.8";
+const TABLESCORE_VERSION="5.54.9";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
@@ -9336,6 +9399,12 @@ document.addEventListener("DOMContentLoaded", () => {
   runAccountMarkPass();
 });
 
+
+if(document.readyState==="loading"){
+  document.addEventListener("DOMContentLoaded",tableRecInstallUniversalSwipe,{once:true});
+}else{
+  tableRecInstallUniversalSwipe();
+}
 </script>
 
   <div id="editRatingModal" class="modal hidden" onclick="if(event.target===this)closeEditRating()">
