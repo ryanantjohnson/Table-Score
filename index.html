@@ -1002,6 +1002,31 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   -webkit-backdrop-filter:none !important;
 }
 
+
+/* V5.49.0 Where to Eat */
+.where-eat-sheet{max-height:88vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.where-eat-close{
+  position:fixed!important;top:calc(env(safe-area-inset-top) + 58px)!important;right:24px!important;
+  z-index:5000!important;width:auto!important;min-width:96px!important;margin:0!important;padding:9px 15px!important;
+  opacity:1!important;background:#11161a!important;background-image:none!important;border:2px solid var(--gold)!important;
+  border-radius:16px!important;box-shadow:0 8px 24px rgba(0,0,0,.75)!important
+}
+.where-mode-grid{display:grid;grid-template-columns:1fr;gap:7px;margin:15px 0}
+.where-mode{display:flex;justify-content:space-between;align-items:center;gap:10px;text-align:left;border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:14px;padding:12px}
+.where-mode span{font-size:10px;color:var(--muted)}
+.where-mode.active{border-color:var(--gold);background:#1d1810}
+.where-radius{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.where-radius button,.where-cuisines button{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:11px;padding:9px 5px;font-weight:850;font-size:11px}
+.where-radius button.active,.where-cuisines button.active{background:var(--gold);border-color:var(--gold);color:#111}
+.where-cuisines{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.where-result-card{border:1px solid var(--gold);background:#11161a;border-radius:18px;padding:15px;margin:12px 0}
+.where-result-name{font-size:22px;font-weight:950;line-height:1.1}
+.where-result-meta{font-size:11px;color:var(--muted);line-height:1.45;margin-top:6px}
+.where-result-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.where-result-actions button{padding:10px}
+.where-spin{animation:wherePulse .16s ease-in-out alternate 5}
+@keyframes wherePulse{from{transform:scale(.985);opacity:.7}to{transform:scale(1);opacity:1}}
+
 </style>
 </head>
 <body class="booting">
@@ -1062,6 +1087,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         </div>
         <button class="linkbtn" onclick="event.stopPropagation();showScreen('feed')">Open &rsaquo;</button>
       </div>
+    </div>
+
+    <div class="card where-eat-card">
+      <div class="section-head" style="margin-bottom:7px">
+        <div>
+          <div class="section-title">Where to Eat?</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Can't decide? Let TableRec pick.</div>
+        </div>
+        <span style="font-size:24px">&#127922;</span>
+      </div>
+      <button class="primary" onclick="openWhereToEat()">Pick for Me</button>
     </div>
 
     <div class="card">
@@ -7846,6 +7882,146 @@ function startNotificationPolling(){
   notificationPollTimer=setInterval(()=>loadNotifications({showSystemAlerts:true}),30000);
 }
 
+const WHERE_EAT_CUISINES=[
+  ["Mexican","mexican"],["Burgers","burger"],["BBQ","barbecue"],["Italian","italian"],
+  ["Chinese","chinese"],["Thai","thai"],["Sushi","sushi"],["Breakfast","breakfast"],
+  ["Sandwiches","sandwich"],["Indian","indian"],["Mediterranean","mediterranean"],["American","american"]
+];
+let whereEatMode="surprise";
+let whereEatRadius=10;
+let whereEatCuisine="mexican";
+let whereEatPool=[];
+let whereEatPick=null;
+
+function openWhereToEat(){
+  const grid=document.getElementById("whereCuisineGrid");
+  if(grid&&!grid.innerHTML){
+    grid.innerHTML=WHERE_EAT_CUISINES.map(([label,key],i)=>`<button class="${i===0?"active":""}" data-cuisine="${key}" onclick="setWhereEatCuisine('${key}')">${label}</button>`).join("");
+  }
+  document.getElementById("whereEatResult").innerHTML="";
+  document.getElementById("whereEatStatus").textContent="Choose your options, then let TableRec decide.";
+  document.getElementById("whereEatSpinBtn").textContent="Pick a Restaurant";
+  lockBackgroundScroll();
+  document.getElementById("whereToEatModal").classList.remove("hidden");
+}
+function closeWhereToEat(){
+  document.getElementById("whereToEatModal").classList.add("hidden");
+  unlockBackgroundScroll();
+}
+function setWhereEatMode(mode){
+  whereEatMode=mode;
+  ["surprise","cuisine","dealer"].forEach(x=>document.getElementById("whereMode"+(x==="surprise"?"Surprise":x==="cuisine"?"Cuisine":"Dealer"))?.classList.toggle("active",x===mode));
+  document.getElementById("whereCuisineWrap").classList.toggle("hidden",mode!=="cuisine");
+  document.getElementById("whereEatResult").innerHTML="";
+}
+function setWhereEatRadius(miles){
+  whereEatRadius=miles;
+  document.querySelectorAll(".where-radius button").forEach(b=>b.classList.toggle("active",Number(b.dataset.miles)===miles));
+}
+function setWhereEatCuisine(key){
+  whereEatCuisine=key;
+  document.querySelectorAll(".where-cuisines button").forEach(b=>b.classList.toggle("active",b.dataset.cuisine===key));
+}
+function whereEatRestaurantType(r){
+  return String(r?.primary_type||r?.type||r?.cuisine||"").toLowerCase();
+}
+function whereEatMatchesCuisine(r,key){
+  const hay=[r?.name,r?.primary_type,r?.type,r?.cuisine,...(Array.isArray(r?.types)?r.types:[])].filter(Boolean).join(" ").toLowerCase();
+  const aliases={
+    mexican:["mexican","taco","tex-mex","tex mex"],
+    burger:["burger","hamburger"],
+    barbecue:["barbecue","bbq"],
+    italian:["italian","pizza","pasta"],
+    chinese:["chinese"],
+    thai:["thai"],
+    sushi:["sushi","japanese"],
+    breakfast:["breakfast","brunch"],
+    sandwich:["sandwich","deli","sub"],
+    indian:["indian"],
+    mediterranean:["mediterranean","greek"],
+    american:["american","steak","grill"]
+  };
+  return (aliases[key]||[key]).some(x=>hay.includes(x));
+}
+async function loadWhereEatPool(){
+  const status=document.getElementById("whereEatStatus");
+  status.textContent="Finding restaurants nearby...";
+  let coords=currentTableScoreCoords();
+  if(!coords)coords=await getFreshTableScoreCoords();
+  const radiusMeters=Math.round(whereEatRadius*1609.344);
+  const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{
+    mode:"nearby",latitude:coords.latitude,longitude:coords.longitude,radiusMeters
+  }});
+  if(error)throw error;
+  if(data?.error)throw new Error(data.error);
+  return Array.isArray(data?.restaurants)?data.restaurants:[];
+}
+function renderWhereEatPick(r,cuisineLabel){
+  const result=document.getElementById("whereEatResult");
+  const address=r.address||[r.city,r.state_region].filter(Boolean).join(", ");
+  const cuisine=cuisineLabel||restaurantTypeLabel(r)||"Restaurant";
+  result.innerHTML=`<div class="where-result-card where-spin">
+    <div class="kicker">${whereEatMode==="dealer"?"Dealer's Choice":whereEatMode==="cuisine"?"Cuisine Pick":"Surprise Pick"}</div>
+    <div class="where-result-name">${esc(r.name||"Restaurant")}</div>
+    <div class="where-result-meta">${esc(cuisine)}${address?`<br>${esc(address)}`:""}</div>
+    <div class="where-result-actions">
+      <button class="secondary" onclick="chooseWhereEatRestaurant()">View / Rate</button>
+      <button class="secondary" onclick="openWhereEatDirections()">Directions</button>
+    </div>
+  </div>`;
+  document.getElementById("whereEatSpinBtn").textContent="Spin Again";
+}
+async function spinWhereToEat(){
+  const btn=document.getElementById("whereEatSpinBtn");
+  const status=document.getElementById("whereEatStatus");
+  btn.disabled=true;
+  try{
+    const all=await loadWhereEatPool();
+    if(!all.length)throw new Error("No restaurants found in that radius.");
+
+    let pool=all;
+    let cuisineLabel="";
+    if(whereEatMode==="cuisine"){
+      pool=all.filter(r=>whereEatMatchesCuisine(r,whereEatCuisine));
+      cuisineLabel=WHERE_EAT_CUISINES.find(x=>x[1]===whereEatCuisine)?.[0]||whereEatCuisine;
+    }else if(whereEatMode==="dealer"){
+      const available=WHERE_EAT_CUISINES.map(x=>({label:x[0],key:x[1],rows:all.filter(r=>whereEatMatchesCuisine(r,x[1]))})).filter(x=>x.rows.length);
+      if(available.length){
+        const chosen=available[Math.floor(Math.random()*available.length)];
+        pool=chosen.rows;
+        cuisineLabel=chosen.label;
+      }
+    }
+    if(!pool.length)throw new Error("No matches for that cuisine in this radius. Try a larger radius or another cuisine.");
+
+    whereEatPool=pool;
+    whereEatPick=pool[Math.floor(Math.random()*pool.length)];
+    status.textContent=`Picked from ${pool.length} eligible restaurant${pool.length===1?"":"s"} within ${whereEatRadius} miles.`;
+    renderWhereEatPick(whereEatPick,cuisineLabel);
+  }catch(err){
+    console.error("Where to Eat:",err);
+    whereEatPick=null;
+    document.getElementById("whereEatResult").innerHTML="";
+    status.textContent=err?.message||"TableRec could not pick a restaurant.";
+  }finally{
+    btn.disabled=false;
+  }
+}
+function chooseWhereEatRestaurant(){
+  if(!whereEatPick)return;
+  selectedRestaurantId=null;
+  selectedGoogleRestaurant={...whereEatPick};
+  selectedRestaurantName=whereEatPick.name||"Restaurant";
+  syncRateRestaurantPicker();
+  closeWhereToEat();
+  showScreen("rate");
+}
+function openWhereEatDirections(){
+  if(!whereEatPick)return;
+  const q=encodeURIComponent(whereEatPick.address||whereEatPick.name||"");
+  window.open(`https://www.google.com/maps/search/?api=1&query=${q}`,"_blank");
+}
+
 async function init(){
   updateArea();
   calculate();
@@ -8147,8 +8323,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.48.2";
-const TABLESCORE_BUILD_LABEL="Notifications Modal Scroll Fix";
+const TABLESCORE_VERSION="5.49.0";
+const TABLESCORE_BUILD_LABEL="Where to Eat";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -8404,6 +8580,45 @@ document.addEventListener("DOMContentLoaded", () => {
   </div>
 </div>
 
+
+<div id="whereToEatModal" class="modal hidden" onclick="if(event.target===this)closeWhereToEat()">
+  <button class="secondary where-eat-close" onclick="closeWhereToEat()">Close</button>
+  <div class="sheet where-eat-sheet">
+    <div class="section-title" style="font-size:25px">Where to Eat?</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">Choose how much control you want, then let TableRec handle the decision.</div>
+
+    <div class="where-mode-grid">
+      <button id="whereModeSurprise" class="where-mode active" onclick="setWhereEatMode('surprise')">
+        <b>Surprise Me</b><span>Anything nearby</span>
+      </button>
+      <button id="whereModeCuisine" class="where-mode" onclick="setWhereEatMode('cuisine')">
+        <b>Pick a Cuisine</b><span>You choose the genre</span>
+      </button>
+      <button id="whereModeDealer" class="where-mode" onclick="setWhereEatMode('dealer')">
+        <b>Dealer's Choice</b><span>Random cuisine + restaurant</span>
+      </button>
+    </div>
+
+    <div class="field">
+      <label>Search radius</label>
+      <div class="where-radius">
+        <button data-miles="5" onclick="setWhereEatRadius(5)">5 mi</button>
+        <button data-miles="10" class="active" onclick="setWhereEatRadius(10)">10 mi</button>
+        <button data-miles="15" onclick="setWhereEatRadius(15)">15 mi</button>
+        <button data-miles="25" onclick="setWhereEatRadius(25)">25 mi</button>
+      </div>
+    </div>
+
+    <div id="whereCuisineWrap" class="field hidden">
+      <label>Cuisine</label>
+      <div id="whereCuisineGrid" class="where-cuisines"></div>
+    </div>
+
+    <div id="whereEatStatus" class="muted" style="font-size:11px;line-height:1.4;margin:10px 0"></div>
+    <div id="whereEatResult"></div>
+    <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">Pick a Restaurant</button>
+  </div>
+</div>
 
 <div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
   <button class="secondary notifications-floating-close" onclick="closeNotifications()">Close</button>
