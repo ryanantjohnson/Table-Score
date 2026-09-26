@@ -618,38 +618,36 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   .brand-table{font-weight:950}
   .brand-rec{font-weight:650;letter-spacing:-.35px;margin-left:1px}
 
-  /* Keep modal controls reachable while modal content scrolls. */
-  .modal>.sheet>.section-head:first-child,
-  .modal>.modal-card>.modal-head:first-child{
-    position:sticky;
-    top:0;
-    z-index:30;
-    background:var(--bg);
-    padding-top:10px;
-    padding-bottom:10px;
-    margin-top:-10px;
+
+
+  /* V5.45.1: persistent exit controls without a sticky header bar */
+  .modal .section-head:first-child{
+    position:static;
   }
-  .modal>.sheet>.section-head:first-child::after,
-  .modal>.modal-card>.modal-head:first-child::after{
-    content:"";
-    position:absolute;
-    left:0;right:0;bottom:-1px;
-    height:1px;
-    background:var(--line);
-    opacity:.8;
+  .modal .modal-head{
+    position:static;
+  }
+  .modal .section-head:first-child > .close,
+  .modal .section-head:first-child > button:last-child,
+  .modal .modal-head > .close,
+  .modal .modal-head > button:last-child{
+    position:sticky;
+    top:12px;
+    z-index:45;
+    margin-left:auto;
   }
 
-  .modal .modal-head{
+  #settingsModal>.sheet{position:relative}
+  #settingsModal .persistent-modal-close{
     position:sticky;
-    top:0;
-    z-index:30;
-    background:var(--bg);
+    top:12px;
+    z-index:60;
+    float:right;
+    margin-top:-2px;
+    margin-right:0;
   }
-  .modal .section-head:first-child{
-    position:sticky;
-    top:0;
-    z-index:30;
-    background:var(--bg);
+  #settingsModal .section-head:first-of-type{
+    position:static;
   }
 </style>
 </head>
@@ -7490,8 +7488,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.45.0";
-const TABLESCORE_BUILD_LABEL="TableRec Brand and Persistent Modal Controls";
+const TABLESCORE_VERSION="5.45.1";
+const TABLESCORE_BUILD_LABEL="Floating Modal Close Controls";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
