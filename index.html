@@ -1094,6 +1094,18 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .home-run-dice{width:44px;height:44px;border:1px solid var(--gold);border-radius:14px;display:grid;place-items:center;color:var(--gold);font-size:22px;flex:0 0 auto}
 .home-run-copy{min-width:0;flex:1}.home-run-btn{width:auto!important;padding:9px 13px!important;font-size:11px!important}
 
+
+/* V5.52.0 Suggested Diners */
+.home-diner-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.home-diner-top{display:flex;align-items:center;gap:10px;margin-top:9px}
+.home-diner-copy{min-width:0;flex:1}
+.home-diner-name{font-size:14px;font-weight:950;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.home-diner-user{font-size:10px;color:var(--muted);font-weight:800;margin-top:2px}
+.home-diner-match{font-size:20px;font-weight:1000;color:var(--gold);line-height:1}
+.home-diner-match-label{font-size:8px;color:var(--muted);font-weight:900;text-transform:uppercase;letter-spacing:.08em;text-align:right;margin-top:2px}
+.home-diner-actions{display:flex;gap:8px;margin-top:12px}
+.home-diner-actions button{flex:1;padding:10px!important;font-size:10px!important}
+
 </style>
 </head>
 <body class="booting">
@@ -4546,24 +4558,68 @@ function homeEngagementInserts(){
 }
 function buildMixedHomeFeed(ratingCards){
  if(!ratingCards?.length)return "";
- const inserts=homeEngagementInserts();
+ const engagement=homeEngagementInserts();
  const out=[];
- // Ratings stay dominant. First interruption comes only after two real ratings.
- const slots=[2,5,9];
- let insertIndex=0;
  ratingCards.forEach((card,i)=>{
    out.push(card);
-   if(insertIndex<inserts.length && (i+1)===slots[insertIndex]){
-     out.push(`<div class="home-feed-break">${inserts[insertIndex]}</div>`);
-     insertIndex++;
-   }
+   const n=i+1;
+   if(n===2)out.push(`<div class="home-feed-break">${engagement[0]}</div>`);
+   if(n===4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
+   if(n===6)out.push(`<div class="home-feed-break">${engagement[1]}</div>`);
+   if(n===9)out.push(`<div class="home-feed-break">${engagement[2]}</div>`);
  });
- // With a short feed, allow one engagement card after the available ratings,
- // but never stack the entire engagement section at the bottom.
- if(insertIndex===0 && ratingCards.length>0){
-   out.push(`<div class="home-feed-break">${inserts[0]}</div>`);
- }
+ if(ratingCards.length<2)out.push(`<div class="home-feed-break">${engagement[0]}</div>`);
+ if(ratingCards.length<4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
  return out.join("");
+}
+
+function suggestedDinerMarkup(u,pct,shared){
+ const display=u.display_name||u.username||"TableRec Diner";
+ const isFollowing=followingIds.has(u.id), isPending=pendingFollowingIds.has(u.id);
+ return `<div class="home-diner-card">
+   <div class="home-play-kicker">YOU MIGHT EAT ALIKE</div>
+   <div class="home-diner-top">
+     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,44)}</button>
+     <div class="home-diner-copy">
+       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
+         <div class="home-diner-name">${esc(display)}</div>
+         <div class="home-diner-user">@${esc(u.username||"")}${u.home_city?" - "+esc(u.home_city):""}</div>
+       </button>
+     </div>
+     <div><div class="home-diner-match">${Math.round(pct)}%</div><div class="home-diner-match-label">Taste Match</div></div>
+   </div>
+   <div class="muted" style="font-size:10px;margin-top:9px">Based on ${shared} restaurant${shared===1?"":"s"} you have both rated.</div>
+   <div class="home-diner-actions">
+     <button class="secondary" onclick="openPublicProfile('${u.id}')">View Profile</button>
+     <button class="${isFollowing||isPending?"secondary":"primary"}" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
+   </div>
+ </div>`;
+}
+
+async function loadHomeSuggestedDiner(){
+ const slot=document.getElementById("homeSuggestedDinerSlot");
+ if(!slot||!currentUser)return;
+ try{
+   const {data,error}=await db.rpc("get_people_suggestions",{p_limit:8});
+   if(error||!data?.length){slot.remove();return;}
+   const candidates=data.filter(u=>u.id!==currentUser.id&&!followingIds.has(u.id)&&!pendingFollowingIds.has(u.id));
+   if(!candidates.length){slot.remove();return;}
+
+   let best=null;
+   // Existing Taste Match RPC is the source of truth; require meaningful overlap.
+   for(const u of candidates.slice(0,6)){
+     const tm=await db.rpc("get_taste_match",{p_other_user_id:u.id});
+     if(tm.error)continue;
+     const row=Array.isArray(tm.data)?tm.data[0]:tm.data;
+     const pct=Number(row?.match_percent), shared=Number(row?.shared_restaurants||0);
+     if(Number.isFinite(pct)&&shared>=3&&(!best||pct>best.pct))best={u,pct,shared};
+   }
+   if(!best){slot.remove();return;}
+   slot.innerHTML=suggestedDinerMarkup(best.u,best.pct,best.shared);
+ }catch(err){
+   console.warn("Home suggested diner unavailable:",err?.message||err);
+   slot.remove();
+ }
 }
 function renderHomeEngagement(){
  // V5.51.1: engagement is rendered inside the rating stream by buildMixedHomeFeed().
@@ -4611,6 +4667,7 @@ async function loadFollowingFeed(){
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
   const ratingCards=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id)));
   el.innerHTML=buildMixedHomeFeed(ratingCards);
+  void loadHomeSuggestedDiner();
   await hydrateRatingEngagement(ratings.map(r=>r.id));
 }
 
@@ -8552,8 +8609,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.51.1";
-const TABLESCORE_BUILD_LABEL="Mixed Home Feed Integration";
+const TABLESCORE_VERSION="5.52.0";
+const TABLESCORE_BUILD_LABEL="Suggested Diners";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
