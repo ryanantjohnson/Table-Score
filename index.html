@@ -1303,6 +1303,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   z-index:500!important;
   background:var(--sheetBg)!important;
 }
+
+/* V5.55.5 edit modal background scroll lock */
+#editRatingModal{
+  overscroll-behavior:contain;
+  touch-action:none;
+}
+#editRatingModal .edit-rating-sheet{
+  overscroll-behavior:contain;
+  touch-action:pan-y;
+  -webkit-overflow-scrolling:touch;
+}
 </style>
 </head>
 <body class="booting">
@@ -8241,6 +8252,7 @@ async function openEditRating(id){
   if(error)console.error(error);
   editExistingPhotos=data||[];
   renderEditPhotos();
+  lockBackgroundScroll();
   document.getElementById("editRatingModal").classList.remove("hidden");
 }
 
@@ -8249,6 +8261,7 @@ function closeEditRating(){
   editNewPhotos=[];
   editingRatingId=null;
   document.getElementById("editRatingModal").classList.add("hidden");
+  unlockBackgroundScroll();
 }
 
 function renderEditPhotos(){
@@ -9422,7 +9435,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.4";
+const TABLESCORE_VERSION="5.55.5";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
