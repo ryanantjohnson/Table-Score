@@ -1364,6 +1364,28 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   right:20px!important;
   box-shadow:0 5px 14px rgba(0,0,0,.55)!important;
 }
+
+/* V5.56.1 universal fluid forward transitions */
+:root{--tr-enter-ms:210ms;--tr-enter-ease:cubic-bezier(.2,.78,.24,1)}
+.screen.tr-enter,
+.modal.tr-enter{
+  animation:trEnter var(--tr-enter-ms) var(--tr-enter-ease) both!important;
+  will-change:transform,opacity;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  transform:translateZ(0);
+}
+@keyframes trEnter{
+  from{transform:translate3d(18px,0,0);opacity:.985}
+  to{transform:translate3d(0,0,0);opacity:1}
+}
+.modal.tr-enter>.sheet{
+  animation:none!important;
+  transform:none!important;
+}
+@media (prefers-reduced-motion:reduce){
+  .screen.tr-enter,.modal.tr-enter{animation:none!important}
+}
 </style>
 </head>
 <body class="booting">
@@ -2549,6 +2571,22 @@ function tableRecInstallUniversalSwipe(){
     tableRecCancelSwipe(target,true);
   },{passive:true});
 }
+function tableRecAnimateEnter(el){
+  if(!el||window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches)return;
+  el.classList.remove("tr-enter");
+  // Force one layout read so repeated opens reliably restart as one uninterrupted frame sequence.
+  void el.offsetWidth;
+  el.classList.add("tr-enter");
+  const done=()=>el.classList.remove("tr-enter");
+  el.addEventListener("animationend",done,{once:true});
+  setTimeout(done,260);
+}
+function tableRecOpenModalFluid(modal){
+  if(!modal)return;
+  modal.classList.remove("hidden");
+  requestAnimationFrame(()=>tableRecAnimateEnter(modal));
+}
+
 function showScreen(id,options={}){
   const screen=document.getElementById(id);
   if(!screen)return;
@@ -2558,6 +2596,7 @@ function showScreen(id,options={}){
   }
   document.querySelectorAll(".screen").forEach(x=>x.classList.remove("active"));
   screen.classList.add("active");
+  if(!options.restore&&tableRecIsDrillScreen(id))requestAnimationFrame(()=>tableRecAnimateEnter(screen));
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s===id));
 
   // Remember the user's main page so a browser refresh returns here.
@@ -2575,7 +2614,7 @@ function showScreen(id,options={}){
     setTimeout(()=>initExploreDiscoveryMap(),80);
   }
   if(id==="home"){ loadFollowingFeed(); renderHomeEngagement(); }
-  if(!options.restore)window.scrollTo({top:0,behavior:"smooth"});
+  if(!options.restore)window.scrollTo(0,0);
 }
 
 function openSavedFromProfile(){
@@ -4857,7 +4896,7 @@ async function openRatingDetail(ratingId){
   activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
   lockBackgroundScroll();
-  modal.classList.remove("hidden");
+  tableRecOpenModalFluid(modal);
     initProfileCropGestures();
   const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
   loadingRestaurantTitle.textContent="Loading rating...";
@@ -9694,7 +9733,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.0";
+const TABLESCORE_VERSION="5.56.1";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
