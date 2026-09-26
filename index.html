@@ -1027,6 +1027,28 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .where-spin{animation:wherePulse .16s ease-in-out alternate 5}
 @keyframes wherePulse{from{transform:scale(.985);opacity:.7}to{transform:scale(1);opacity:1}}
 
+
+/* V5.49.1 Where to Eat theatrics + price */
+.where-price{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.where-price button{border:1px solid var(--line);background:var(--card2);color:var(--ink);border-radius:11px;padding:10px 5px;font-weight:950;font-size:14px}
+.where-price button.active{background:var(--gold);border-color:var(--gold);color:#111}
+.where-stage{
+  position:relative;overflow:hidden;border:1px solid var(--line);border-radius:18px;
+  min-height:170px;margin:12px 0;padding:18px;background:#0d1114;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;text-align:center
+}
+.where-stage-label{font-size:11px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:950}
+.where-stage-name{font-size:26px;line-height:1.05;font-weight:1000;margin-top:10px}
+.where-stage-sub{font-size:11px;color:var(--muted);margin-top:7px}
+.where-stage.running{box-shadow:inset 0 0 35px rgba(255,190,70,.08)}
+.where-stage.running .where-stage-name{animation:whereFlicker .12s linear infinite alternate}
+.where-winner{animation:whereWinner .55s cubic-bezier(.2,.9,.25,1.2)}
+.where-burst{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.where-burst span{position:absolute;font-size:21px;animation:whereBurst .85s ease-out forwards}
+@keyframes whereFlicker{from{opacity:.48;transform:scale(.985)}to{opacity:1;transform:scale(1.015)}}
+@keyframes whereWinner{0%{transform:scale(.78);opacity:.2}70%{transform:scale(1.06);opacity:1}100%{transform:scale(1)}}
+@keyframes whereBurst{0%{transform:translate(0,0) scale(.3);opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(160deg) scale(1.25);opacity:0}}
+
 </style>
 </head>
 <body class="booting">
@@ -1093,7 +1115,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-head" style="margin-bottom:7px">
         <div>
           <div class="section-title">Where to Eat?</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Can't decide? Let TableRec pick.</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Can't decide? Let us help!</div>
         </div>
         <span style="font-size:24px">&#127922;</span>
       </div>
@@ -7890,6 +7912,7 @@ const WHERE_EAT_CUISINES=[
 let whereEatMode="surprise";
 let whereEatRadius=10;
 let whereEatCuisine="mexican";
+let whereEatPrices=new Set([1,2,3,4]);
 let whereEatPool=[];
 let whereEatPick=null;
 
@@ -7900,7 +7923,7 @@ function openWhereToEat(){
   }
   document.getElementById("whereEatResult").innerHTML="";
   document.getElementById("whereEatStatus").textContent="Choose your options, then let TableRec decide.";
-  document.getElementById("whereEatSpinBtn").textContent="Pick a Restaurant";
+  document.getElementById("whereEatSpinBtn").textContent="RUN IT";
   lockBackgroundScroll();
   document.getElementById("whereToEatModal").classList.remove("hidden");
 }
@@ -7921,6 +7944,38 @@ function setWhereEatRadius(miles){
 function setWhereEatCuisine(key){
   whereEatCuisine=key;
   document.querySelectorAll(".where-cuisines button").forEach(b=>b.classList.toggle("active",b.dataset.cuisine===key));
+}
+function toggleWhereEatPrice(level){
+  if(whereEatPrices.has(level)){
+    if(whereEatPrices.size===1)return;
+    whereEatPrices.delete(level);
+  }else{
+    whereEatPrices.add(level);
+  }
+  document.querySelectorAll(".where-price button").forEach(b=>b.classList.toggle("active",whereEatPrices.has(Number(b.dataset.price))));
+}
+function whereEatPriceLevel(r){
+  const raw=r?.price_level ?? r?.priceLevel ?? r?.price;
+  if(raw===null||raw===undefined||raw==="")return null;
+  if(typeof raw==="number"){
+    // Google legacy values commonly use 0-4; TableRec displays four user-facing levels.
+    if(raw<=0)return 1;
+    return Math.max(1,Math.min(4,Math.round(raw)));
+  }
+  const s=String(raw).toUpperCase();
+  const map={
+    "PRICE_LEVEL_INEXPENSIVE":1,"INEXPENSIVE":1,
+    "PRICE_LEVEL_MODERATE":2,"MODERATE":2,
+    "PRICE_LEVEL_EXPENSIVE":3,"EXPENSIVE":3,
+    "PRICE_LEVEL_VERY_EXPENSIVE":4,"VERY_EXPENSIVE":4
+  };
+  if(map[s])return map[s];
+  if(/^\$+$/.test(s))return Math.min(4,s.length);
+  return null;
+}
+function whereEatPriceText(r){
+  const n=whereEatPriceLevel(r);
+  return n?"$".repeat(n):"";
 }
 function whereEatRestaurantType(r){
   return String(r?.primary_type||r?.type||r?.cuisine||"").toLowerCase();
@@ -7960,43 +8015,101 @@ function renderWhereEatPick(r,cuisineLabel){
   const result=document.getElementById("whereEatResult");
   const address=r.address||[r.city,r.state_region].filter(Boolean).join(", ");
   const cuisine=cuisineLabel||restaurantTypeLabel(r)||"Restaurant";
+  const price=whereEatPriceText(r);
   result.innerHTML=`<div class="where-result-card where-spin">
     <div class="kicker">${whereEatMode==="dealer"?"Dealer's Choice":whereEatMode==="cuisine"?"Cuisine Pick":"Surprise Pick"}</div>
     <div class="where-result-name">${esc(r.name||"Restaurant")}</div>
-    <div class="where-result-meta">${esc(cuisine)}${address?`<br>${esc(address)}`:""}</div>
+    <div class="where-result-meta">${esc(cuisine)}${price?` &nbsp;·&nbsp; ${price}`:""}${address?`<br>${esc(address)}`:""}</div>
     <div class="where-result-actions">
       <button class="secondary" onclick="chooseWhereEatRestaurant()">View / Rate</button>
       <button class="secondary" onclick="openWhereEatDirections()">Directions</button>
     </div>
   </div>`;
-  document.getElementById("whereEatSpinBtn").textContent="Spin Again";
+  
+}
+function sleepWhere(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
+function whereBurstMarkup(){
+  const bits=["&#127860;","&#127922;","&#10024;","&#127828;","&#127860;"];
+  return `<div class="where-burst">${Array.from({length:10},(_,i)=>{
+    const a=(Math.PI*2*i)/10,dist=55+(i%3)*22;
+    return `<span style="left:50%;top:50%;--x:${Math.cos(a)*dist}px;--y:${Math.sin(a)*dist}px">${i%2?"&#10024;":"&#127860;"}</span>`;
+  }).join("")}</div>`;
+}
+async function animateWhereRestaurant(pool,finalPick,labelText){
+  const result=document.getElementById("whereEatResult");
+  result.innerHTML=`<div id="whereStage" class="where-stage running">
+    <div class="where-stage-label">${esc(labelText||"HERE WE GO...")}</div>
+    <div id="whereStageName" class="where-stage-name">RUNNING IT...</div>
+    <div id="whereStageSub" class="where-stage-sub">TableRec is shuffling the table.</div>
+  </div>`;
+  const name=document.getElementById("whereStageName");
+  const delays=[85,90,95,105,115,130,150,175,205,245,300,380];
+  for(let i=0;i<delays.length;i++){
+    const fake=pool[Math.floor(Math.random()*pool.length)];
+    name.textContent=fake?.name||"Restaurant";
+    await sleepWhere(delays[i]);
+  }
+  name.textContent="...";
+  await sleepWhere(480);
+  const stage=document.getElementById("whereStage");
+  stage.classList.remove("running");
+  stage.classList.add("where-winner");
+  stage.innerHTML=`${whereBurstMarkup()}
+    <div class="where-stage-label">AND YOU'RE EATING AT...</div>
+    <div class="where-stage-name">${esc(finalPick.name||"Restaurant")}</div>
+    <div class="where-stage-sub">Tonight's random pick</div>`;
+  await sleepWhere(650);
+}
+async function animateWhereCuisine(label){
+  const result=document.getElementById("whereEatResult");
+  const labels=WHERE_EAT_CUISINES.map(x=>x[0]);
+  result.innerHTML=`<div id="whereStage" class="where-stage running"><div class="where-stage-label">WHAT ARE WE EATING?</div><div id="whereStageName" class="where-stage-name">...</div></div>`;
+  const name=document.getElementById("whereStageName");
+  for(const delay of [90,100,115,135,160,200,250,330]){
+    name.textContent=labels[Math.floor(Math.random()*labels.length)];
+    await sleepWhere(delay);
+  }
+  name.textContent=label;
+  document.getElementById("whereStage").classList.remove("running");
+  document.getElementById("whereStage").classList.add("where-winner");
+  await sleepWhere(700);
 }
 async function spinWhereToEat(){
   const btn=document.getElementById("whereEatSpinBtn");
   const status=document.getElementById("whereEatStatus");
   btn.disabled=true;
+  btn.textContent="RUNNING...";
   try{
     const all=await loadWhereEatPool();
     if(!all.length)throw new Error("No restaurants found in that radius.");
 
-    let pool=all;
+    // If Google provides a price level, honor the user's selected levels.
+    // Restaurants with no provider price data stay eligible rather than silently disappearing.
+    let pool=all.filter(r=>{
+      const p=whereEatPriceLevel(r);
+      return p===null || whereEatPrices.has(p);
+    });
+    if(!pool.length)throw new Error("No restaurants matched those price points in this radius.");
+
     let cuisineLabel="";
     if(whereEatMode==="cuisine"){
-      pool=all.filter(r=>whereEatMatchesCuisine(r,whereEatCuisine));
+      pool=pool.filter(r=>whereEatMatchesCuisine(r,whereEatCuisine));
       cuisineLabel=WHERE_EAT_CUISINES.find(x=>x[1]===whereEatCuisine)?.[0]||whereEatCuisine;
     }else if(whereEatMode==="dealer"){
-      const available=WHERE_EAT_CUISINES.map(x=>({label:x[0],key:x[1],rows:all.filter(r=>whereEatMatchesCuisine(r,x[1]))})).filter(x=>x.rows.length);
+      const available=WHERE_EAT_CUISINES.map(x=>({label:x[0],key:x[1],rows:pool.filter(r=>whereEatMatchesCuisine(r,x[1]))})).filter(x=>x.rows.length);
       if(available.length){
         const chosen=available[Math.floor(Math.random()*available.length)];
-        pool=chosen.rows;
         cuisineLabel=chosen.label;
+        await animateWhereCuisine(cuisineLabel);
+        pool=chosen.rows;
       }
     }
-    if(!pool.length)throw new Error("No matches for that cuisine in this radius. Try a larger radius or another cuisine.");
+    if(!pool.length)throw new Error("No matches for those choices. Try a larger radius, another cuisine, or more price points.");
 
     whereEatPool=pool;
     whereEatPick=pool[Math.floor(Math.random()*pool.length)];
-    status.textContent=`Picked from ${pool.length} eligible restaurant${pool.length===1?"":"s"} within ${whereEatRadius} miles.`;
+    status.textContent="";
+    await animateWhereRestaurant(pool,whereEatPick,whereEatMode==="cuisine"?`${cuisineLabel.toUpperCase()} IS LOCKED IN`:"HERE WE GO...");
     renderWhereEatPick(whereEatPick,cuisineLabel);
   }catch(err){
     console.error("Where to Eat:",err);
@@ -8005,6 +8118,7 @@ async function spinWhereToEat(){
     status.textContent=err?.message||"TableRec could not pick a restaurant.";
   }finally{
     btn.disabled=false;
+    btn.textContent=whereEatPick?"RUN IT AGAIN":"RUN IT";
   }
 }
 function chooseWhereEatRestaurant(){
@@ -8323,8 +8437,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.49.0";
-const TABLESCORE_BUILD_LABEL="Where to Eat";
+const TABLESCORE_VERSION="5.49.1";
+const TABLESCORE_BUILD_LABEL="Where to Eat Run It";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -8609,6 +8723,17 @@ document.addEventListener("DOMContentLoaded", () => {
       </div>
     </div>
 
+    <div class="field">
+      <label>Price point <span class="muted" style="font-size:10px">(choose one or more)</span></label>
+      <div class="where-price">
+        <button data-price="1" class="active" onclick="toggleWhereEatPrice(1)">$</button>
+        <button data-price="2" class="active" onclick="toggleWhereEatPrice(2)">$$</button>
+        <button data-price="3" class="active" onclick="toggleWhereEatPrice(3)">$$$</button>
+        <button data-price="4" class="active" onclick="toggleWhereEatPrice(4)">$$$$</button>
+      </div>
+      <div class="muted" style="font-size:10px;margin-top:6px">$ inexpensive &nbsp;·&nbsp; $$ everyday &nbsp;·&nbsp; $$$ upscale &nbsp;·&nbsp; $$$$ fine dining</div>
+    </div>
+
     <div id="whereCuisineWrap" class="field hidden">
       <label>Cuisine</label>
       <div id="whereCuisineGrid" class="where-cuisines"></div>
@@ -8616,7 +8741,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     <div id="whereEatStatus" class="muted" style="font-size:11px;line-height:1.4;margin:10px 0"></div>
     <div id="whereEatResult"></div>
-    <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">Pick a Restaurant</button>
+    <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">RUN IT</button>
   </div>
 </div>
 
