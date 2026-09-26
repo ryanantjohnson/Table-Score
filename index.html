@@ -1191,32 +1191,66 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .own-rating-actions .secondary{width:auto;min-height:34px;padding:7px 12px;border-radius:999px;font-size:10px;font-weight:900}
 .delete-rating-inline{border-color:rgba(255,90,90,.45)!important;color:#ff8b8b!important}
 
-/* V5.55.1 horizontal overflow hotfix */
-html,body{
+
+/* V5.55.2 edit-rating modal containment */
+#editRatingModal{
+  box-sizing:border-box;
+  overflow:hidden;
+  overscroll-behavior:contain;
+}
+#editRatingModal .edit-rating-sheet{
+  width:min(calc(100vw - 28px),720px);
+  max-width:min(calc(100vw - 28px),720px);
+  max-height:88vh;
+  padding:20px;
+  margin:0 auto env(safe-area-inset-bottom);
+  overflow-y:auto;
+  overflow-x:hidden;
+  overscroll-behavior-x:none;
+  -webkit-overflow-scrolling:touch;
+  box-sizing:border-box;
+}
+#editRatingModal .edit-rating-sheet *,
+#editRatingModal .edit-rating-sheet *::before,
+#editRatingModal .edit-rating-sheet *::after{
+  box-sizing:border-box;
+  min-width:0;
+}
+#editRatingModal .edit-rating-grid{
   width:100%;
   max-width:100%;
-  overflow-x:hidden!important;
-  overscroll-behavior-x:none;
-}
-.screen,.modal,.sheet{
-  max-width:100%;
-  overflow-x:hidden!important;
-}
-#editRatingModal,
-#editRatingModal>.sheet{
-  width:100%;
-  max-width:100%;
-  overflow-x:hidden!important;
-  overscroll-behavior-x:none;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr);
 }
 #editRatingModal input,
 #editRatingModal textarea,
-#editRatingModal select,
-#editRatingModal button,
+#editRatingModal select{
+  width:100%;
+  max-width:100%;
+}
+#editRatingModal textarea{
+  resize:vertical;
+}
 #editRatingModal .edit-photo-current,
 #editRatingModal .photo-preview-grid{
+  width:100%;
   max-width:100%;
-  box-sizing:border-box;
+}
+#editRatingModal .edit-rating-header{
+  margin:-20px -20px 12px;
+  padding:15px 20px;
+}
+#editRatingModal .edit-rating-actions{
+  margin:14px -20px -20px;
+  padding:12px 20px calc(12px + env(safe-area-inset-bottom));
+}
+#editRatingModal .edit-rating-close{
+  width:auto!important;
+  min-height:42px;
+  padding:9px 18px!important;
+  border-radius:14px!important;
+  font-size:13px!important;
+  font-weight:900!important;
+  flex:0 0 auto;
 }
 </style>
 </head>
@@ -9337,7 +9371,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.1";
+const TABLESCORE_VERSION="5.55.2";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
@@ -9490,10 +9524,10 @@ if(document.readyState==="loading"){
 </script>
 
   <div id="editRatingModal" class="modal hidden" onclick="if(event.target===this)closeEditRating()">
-    <div class="modal-sheet" style="max-height:92vh;overflow:auto">
+    <div class="sheet edit-rating-sheet">
       <div class="edit-rating-header">
         <div class="section-title">Edit Rating</div>
-        <button class="linkbtn" onclick="closeEditRating()">Close</button>
+        <button class="secondary edit-rating-close" onclick="closeEditRating()">Close</button>
       </div>
       <div id="editRatingRestaurant" style="font-family:Georgia,serif;font-size:22px;font-weight:800;margin-bottom:12px"></div>
 
