@@ -790,6 +790,54 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     overflow:visible !important;
   }
 
+
+  /* V5.47.2 FINAL rating close placement */
+  #ratingDetailModal .rating-detail-floating-close{
+    position:fixed !important;
+    top:calc(env(safe-area-inset-top) + 58px) !important;
+    right:28px !important;
+    z-index:1000 !important;
+    width:auto !important;
+    height:auto !important;
+    margin:0 !important;
+    padding:8px 14px !important;
+    transform:none !important;
+  }
+
+  /* V5.47.2 mentions use a modal-level portal instead of living inside Comments */
+  #mentionPortal{
+    position:fixed !important;
+    z-index:1400 !important;
+    display:none;
+    overflow:hidden !important;
+    max-height:250px !important;
+    background:var(--panel) !important;
+    border:1px solid var(--line) !important;
+    border-radius:16px !important;
+    box-shadow:0 18px 44px rgba(0,0,0,.82) !important;
+  }
+  #mentionPortal.show{display:block !important}
+  #mentionPortal .mention-portal-option{
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    width:100% !important;
+    min-height:60px !important;
+    padding:10px 12px !important;
+    margin:0 !important;
+    border:0 !important;
+    border-bottom:1px solid var(--line) !important;
+    border-radius:0 !important;
+    background:var(--panel) !important;
+    color:var(--ink) !important;
+    text-align:left !important;
+  }
+  #mentionPortal .mention-portal-option:last-child{border-bottom:0 !important}
+  #mentionPortal .mention-portal-option:active{background:var(--soft) !important}
+
+  /* Disable the old nested result box completely. */
+  #ratingDetailModal #mentionResults{display:none !important}
+
 </style>
 </head>
 <body class="booting">
@@ -1408,8 +1456,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 </div>
 
 
+<div id="mentionPortal" aria-label="Mention suggestions"></div>
 <div id="ratingDetailModal" class="modal hidden" onclick="if(event.target===this)closeRatingDetail()">
-  <button class="secondary rating-detail-external-close" onclick="closeRatingDetail()">Close</button>
+  <button class="secondary rating-detail-floating-close" onclick="closeRatingDetail()">Close</button>
   <div class="sheet" style="max-height:90vh;overflow:auto">
     <div class="section-head" style="position:static;padding-bottom:9px">
       <div>
@@ -3826,6 +3875,7 @@ async function openRatingDetail(ratingId){
 }
 
 function closeRatingDetail(){
+  hideMentionPortal();
   document.getElementById("ratingDetailModal").classList.add("hidden");
   activeRatingDetailId=null;
   activeRatingRestaurantId=null;
@@ -3909,36 +3959,59 @@ function activeMentionQuery(){
 function queueMentionSuggestions(){
   clearTimeout(mentionSearchTimer);
   const hit=activeMentionQuery();
-  const box=document.getElementById("mentionResults");
-  if(!box)return;
   if(!hit||hit.query.length<1){
     mentionSearchSequence++;
     mentionCandidates=[];
-    box.classList.add("hidden");
-    box.innerHTML="";
+    hideMentionPortal();
     return;
   }
   mentionSearchTimer=setTimeout(()=>loadMentionSuggestions(hit.query),180);
 }
 
+function hideMentionPortal(){
+  const portal=document.getElementById("mentionPortal");
+  if(portal){
+    portal.classList.remove("show");
+    portal.innerHTML="";
+  }
+}
+
+function positionMentionPortal(){
+  const input=document.getElementById("ratingCommentInput");
+  const portal=document.getElementById("mentionPortal");
+  if(!input||!portal)return;
+  const r=input.getBoundingClientRect();
+  const side=12;
+  const width=Math.min(r.width,window.innerWidth-(side*2));
+  portal.style.width=width+"px";
+  portal.style.left=Math.max(side,Math.min(r.left,window.innerWidth-width-side))+"px";
+
+  // Prefer directly above the composer. If there is not enough room,
+  // use the space immediately below it.
+  const portalHeight=Math.min(portal.scrollHeight||220,250);
+  const above=r.top-portalHeight-8;
+  const top=above>80 ? above : Math.min(window.innerHeight-portalHeight-12,r.bottom+8);
+  portal.style.top=Math.max(80,top)+"px";
+}
+
 async function loadMentionSuggestions(q){
-  const box=document.getElementById("mentionResults");
-  if(!box||!currentUser)return;
+  const portal=document.getElementById("mentionPortal");
+  if(!portal||!currentUser)return;
   const seq=++mentionSearchSequence;
   const {data,error}=await db.rpc("search_people_predictive",{p_query:q,p_limit:8});
   if(seq!==mentionSearchSequence)return;
   if(error||!data?.length){
     mentionCandidates=[];
-    box.classList.add("hidden");
-    box.innerHTML="";
+    hideMentionPortal();
     return;
   }
   mentionCandidates=data;
-  box.innerHTML=data.map((u,i)=>`<button type="button" class="mention-option" onclick="insertMention(${i})">
-    ${avatarMarkup(u,30)}
+  portal.innerHTML=data.map((u,i)=>`<button type="button" class="mention-portal-option" onclick="insertMention(${i})">
+    ${avatarMarkup(u,32)}
     <span style="min-width:0"><b>${esc(u.display_name||u.username||"TableRec User")}</b><br><span class="row-meta">@${esc(u.username||"")}</span></span>
   </button>`).join("");
-  box.classList.remove("hidden");
+  portal.classList.add("show");
+  requestAnimationFrame(positionMentionPortal);
 }
 
 function insertMention(i){
@@ -3950,15 +4023,20 @@ function insertMention(i){
   const pos=hit.start+u.username.length+2;
   input.focus();
   input.setSelectionRange(pos,pos);
-  const box=document.getElementById("mentionResults");
-  if(box){box.classList.add("hidden");box.innerHTML="";}
+  hideMentionPortal();
   mentionCandidates=[];
 }
 
+window.visualViewport?.addEventListener("resize",()=>{
+  if(document.getElementById("mentionPortal")?.classList.contains("show"))positionMentionPortal();
+});
+window.visualViewport?.addEventListener("scroll",()=>{
+  if(document.getElementById("mentionPortal")?.classList.contains("show"))positionMentionPortal();
+});
+
 function handleMentionKeydown(e){
   if(e.key==="Escape"){
-    const box=document.getElementById("mentionResults");
-    if(box){box.classList.add("hidden");box.innerHTML="";}
+    hideMentionPortal();
   }
 }
 
@@ -7784,8 +7862,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.47.1";
-const TABLESCORE_BUILD_LABEL="Comment Mention UI Polish";
+const TABLESCORE_VERSION="5.47.2";
+const TABLESCORE_BUILD_LABEL="Mention Portal and Rating Close Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
