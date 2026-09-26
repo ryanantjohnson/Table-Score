@@ -1386,6 +1386,25 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 @media (prefers-reduced-motion:reduce){
   .screen.tr-enter,.modal.tr-enter{animation:none!important}
 }
+
+/* V5.56.2 rating-detail no-stutter entrance */
+#ratingDetailModal.rating-detail-entering{
+  contain:layout paint style;
+  overflow:hidden!important;
+  pointer-events:none;
+}
+#ratingDetailModal.rating-detail-entering>.sheet{
+  contain:layout paint style;
+  transform:translateZ(0)!important;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
+#ratingDetailModal.rating-detail-entering .rating-detail-floating-close{
+  pointer-events:none;
+}
+.rating-detail-skeleton-row{
+  min-height:40px;
+}
 </style>
 </head>
 <body class="booting">
@@ -4889,24 +4908,62 @@ async function renderRatingDetailEngagement(ratingId){
   await hydrateRatingEngagement([ratingId]);
 }
 
+function ratingDetailSkeletonBreakdown(){
+  return cats.map(c=>`<div class="breakrow rating-detail-skeleton-row"><span>${esc(c)}</span><div class="bar"><i style="width:0%"></i></div><b>--</b></div>`).join("");
+}
+
+function tableRecAfterEntrance(el){
+  return new Promise(resolve=>{
+    let done=false;
+    const finish=()=>{
+      if(done)return;
+      done=true;
+      el?.removeEventListener("animationend",onEnd);
+      resolve();
+    };
+    const onEnd=e=>{
+      if(e.target===el)finish();
+    };
+    el?.addEventListener("animationend",onEnd);
+    // Fallback slightly beyond the 210ms animation.
+    setTimeout(finish,235);
+  });
+}
+
 async function openRatingDetail(ratingId){
   if(!ratingId)return;
   tableRecPushOrigin();
   activeRatingDetailId=ratingId;
   activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
-  lockBackgroundScroll();
-  tableRecOpenModalFluid(modal);
-    initProfileCropGestures();
+
+  // Build the lightweight shell BEFORE it becomes visible. No DOM geometry changes
+  // are allowed during the entrance animation.
   const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
   loadingRestaurantTitle.textContent="Loading rating...";
   loadingRestaurantTitle.onclick=null;
   loadingRestaurantTitle.style.cursor="default";
+  document.getElementById("ratingDetailMeta").textContent="";
   document.getElementById("ratingDetailAuthor").innerHTML="";
+  document.getElementById("ratingDetailScore").textContent="--";
+  document.getElementById("ratingDetailLabel").textContent="";
   document.getElementById("ratingDetailMapAction")?.classList.add("hidden");
-  document.getElementById("ratingDetailBreakdown").innerHTML="";
+  document.getElementById("ratingDetailBreakdown").innerHTML=ratingDetailSkeletonBreakdown();
+  document.getElementById("ratingDetailBestDish").innerHTML="";
+  document.getElementById("ratingDetailQuickTake").textContent="";
+  document.getElementById("ratingDetailReturn").innerHTML="";
   document.getElementById("ratingDetailPhotos").innerHTML="";
   document.getElementById("ratingDetailComments").innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">Loading comments...</div>';
+
+  lockBackgroundScroll();
+  modal.classList.add("rating-detail-entering");
+  tableRecOpenModalFluid(modal);
+
+  // Let Safari finish the full transform on a stable layer before database/profile/
+  // photo/comment work can trigger layout and paint.
+  await tableRecAfterEntrance(modal);
+  if(activeRatingDetailId!==ratingId)return;
+  modal.classList.remove("rating-detail-entering");
 
   const {data:r,error:rErr}=await db.from("ratings")
     .select("id,user_id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(id,name,city,state_region)")
@@ -4996,7 +5053,9 @@ async function openRatingDetail(ratingId){
 
 function closeRatingDetail(){
   hideMentionPortal();
-  document.getElementById("ratingDetailModal").classList.add("hidden");
+  const modal=document.getElementById("ratingDetailModal");
+  modal.classList.add("hidden");
+  modal.classList.remove("tr-enter","rating-detail-entering");
   activeRatingDetailId=null;
   activeRatingRestaurantId=null;
   unlockBackgroundScroll();
@@ -9733,7 +9792,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.1";
+const TABLESCORE_VERSION="5.56.2";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
