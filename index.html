@@ -1125,6 +1125,55 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 /* V5.54.2 mention links */
 .comment-mention{border:0;background:transparent;padding:0;margin:0;font:inherit;color:var(--gold);font-weight:900;cursor:pointer;text-decoration:none;display:inline}
+
+/* V5.54.4 restaurant finder workspace + public-profile navigation */
+@media(max-width:760px){
+  .restaurant-finder-modal{
+    place-items:start center !important;
+    padding:calc(env(safe-area-inset-top) + 10px) 10px calc(82px + env(safe-area-inset-bottom)) !important;
+  }
+  .restaurant-finder-sheet{
+    width:100% !important;
+    max-width:720px !important;
+    height:min(82vh,760px) !important;
+    max-height:calc(100dvh - 105px - env(safe-area-inset-top)) !important;
+    margin:0 !important;
+    padding:0 !important;
+    border-radius:22px !important;
+    overflow:hidden !important;
+    display:flex !important;
+    flex-direction:column !important;
+  }
+  .restaurant-finder-head{
+    position:sticky !important;
+    top:0 !important;
+    z-index:20 !important;
+    flex:0 0 auto !important;
+    padding:18px 18px 10px !important;
+    margin:0 !important;
+    background:#101418 !important;
+    border-bottom:1px solid var(--line) !important;
+  }
+  .restaurant-finder-body{
+    flex:1 1 auto !important;
+    min-height:0 !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    overscroll-behavior:contain !important;
+    padding:10px 18px 22px !important;
+  }
+  .restaurant-finder-body .restaurant-predictions{
+    max-height:42vh !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+  }
+}
+.comment-mention{
+  position:relative !important;
+  z-index:2 !important;
+  pointer-events:auto !important;
+  touch-action:manipulation !important;
+}
 </style>
 </head>
 <body class="booting">
@@ -1923,16 +1972,17 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </div>
 </div>
 
-<div id="nearbyRestaurantModal" class="modal hidden">
-  <div class="sheet">
-    <div class="section-head" style="margin-bottom:8px">
+<div id="nearbyRestaurantModal" class="modal restaurant-finder-modal hidden">
+  <div class="sheet restaurant-finder-sheet">
+    <div class="section-head restaurant-finder-head" style="margin-bottom:8px">
       <div>
         <div class="kicker">Real restaurants</div>
         <h2 style="margin-top:3px">Find a Restaurant</h2>
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNearbyRestaurantPicker()">Close</button>
     </div>
-    <div class="muted" style="font-size:11px;line-height:1.45;margin-bottom:10px">Search by restaurant name, city, or address anywhere - or browse what's near you right now.</div>
+    <div class="restaurant-finder-body">
+    <div class="muted restaurant-finder-help" style="font-size:11px;line-height:1.45;margin-bottom:10px">Search by restaurant name, city, or address anywhere - or browse what's near you right now.</div>
 
     <div class="place-finder-tabs three">
       <button id="placeSearchTab" class="active" onclick="setRestaurantFinderMode('search')">Search Anywhere</button>
@@ -1965,6 +2015,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div id="nearbyRestaurantStatus" class="place-picker-status">Search for a restaurant or switch to Nearby.</div>
     <div id="nearbyRestaurantList" class="place-picker-list"></div>
     <button id="nearbyRestaurantRetryBtn" class="secondary hidden" onclick="loadNearbyRestaurants(true)">Refresh Nearby</button>
+  </div><!-- restaurant-finder-body -->
   </div>
 </div>
 
@@ -4559,7 +4610,7 @@ function renderCommentBody(body){
 async function openMentionedProfile(username){
   const clean=String(username||"").trim().replace(/^@/,"");
   if(!clean||!currentUser)return;
-  const myUsername=String(currentProfile?.username||"").trim();
+  const myUsername=String(currentProfile?.username||document.getElementById("profileUsername")?.textContent||"").trim().replace(/^@/,"");
   if(myUsername && myUsername.toLowerCase()===clean.toLowerCase()){
     closeRatingDetail();
     showScreen("profile");
@@ -4574,13 +4625,14 @@ async function openMentionedProfile(username){
   else await openPublicProfile(p.id);
 }
 
-document.addEventListener("click",(event)=>{
+function handleCommentMentionActivation(event){
   const mention=event.target?.closest?.("[data-mention-username]");
   if(!mention)return;
   event.preventDefault();
   event.stopPropagation();
   void openMentionedProfile(mention.dataset.mentionUsername||"");
-});
+}
+document.addEventListener("click",handleCommentMentionActivation,true);
 
 async function submitRatingComment(ratingId){
   if(!currentUser)return openAccount(()=>openRatingDetail(ratingId));
@@ -5225,7 +5277,13 @@ async function openPublicProfile(userId){
   }
 
   const activeId=document.querySelector(".screen.active")?.id;
-  if(activeId&&activeId!=="publicProfile")publicProfileReturnScreen=activeId;
+  if(activeId&&activeId!=="publicProfile"){
+    publicProfileReturnScreen=activeId;
+    window.__tableRecPublicProfileReturn={
+      screen:activeId,
+      scrollY:window.scrollY||document.documentElement.scrollTop||0
+    };
+  }
 
   showScreen("publicProfile");
   document.getElementById("publicProfileName").textContent="Loading...";
@@ -5343,8 +5401,32 @@ function closePublicProfile(){
     :"home";
   viewedProfile=null;
   viewedProfileRatings=[];
+  const returnState=window.__tableRecPublicProfileReturn;
   showScreen(returnTo);
+  if(returnState&&returnState.screen===returnTo){
+    requestAnimationFrame(()=>requestAnimationFrame(()=>window.scrollTo(0,returnState.scrollY||0)));
+  }
+  window.__tableRecPublicProfileReturn=null;
 }
+
+let publicProfileEdgeStart=null;
+document.addEventListener("touchstart",(event)=>{
+  const active=document.getElementById("publicProfile")?.classList.contains("active");
+  const t=event.touches?.[0];
+  if(!active||!t||t.clientX>28){publicProfileEdgeStart=null;return;}
+  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:Date.now()};
+},{passive:true});
+document.addEventListener("touchend",(event)=>{
+  if(!publicProfileEdgeStart)return;
+  const t=event.changedTouches?.[0];
+  const start=publicProfileEdgeStart;
+  publicProfileEdgeStart=null;
+  if(!t)return;
+  const dx=t.clientX-start.x;
+  const dy=Math.abs(t.clientY-start.y);
+  const elapsed=Date.now()-start.time;
+  if(dx>=70&&dy<=90&&elapsed<=900)closePublicProfile();
+},{passive:true});
 
 async function togglePublicProfileFollow(){
   if(!viewedProfile)return;
@@ -8911,7 +8993,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.3";
+const TABLESCORE_VERSION="5.54.4";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
