@@ -971,6 +971,37 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .restaurant-prediction-name{font-weight:950;font-size:13px;line-height:1.25}
 .restaurant-prediction-meta{font-size:10px;color:var(--muted);line-height:1.35;margin-top:3px}
 
+
+/* V5.48.2 Notifications modal behavior */
+#notificationsModal{
+  overscroll-behavior:none !important;
+}
+#notificationsModal .notifications-sheet{
+  max-height:88vh !important;
+  overflow-y:auto !important;
+  overscroll-behavior:contain !important;
+  -webkit-overflow-scrolling:touch !important;
+}
+#notificationsModal .notifications-floating-close{
+  position:fixed !important;
+  top:calc(env(safe-area-inset-top) + 58px) !important;
+  right:24px !important;
+  left:auto !important;
+  z-index:5000 !important;
+  width:auto !important;
+  min-width:96px !important;
+  margin:0 !important;
+  padding:9px 15px !important;
+  opacity:1 !important;
+  background:#11161a !important;
+  background-image:none !important;
+  border:2px solid var(--gold) !important;
+  border-radius:16px !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.75) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -7696,6 +7727,7 @@ function renderNotifications(){
 
 async function openNotifications(){
   if(!currentUser)return openAccount();
+  lockBackgroundScroll();
   document.getElementById("notificationsModal").classList.remove("hidden");
 
   // Load the current notification list first so tapping the bell means
@@ -7721,6 +7753,7 @@ async function openNotifications(){
 
 function closeNotifications(){
   document.getElementById("notificationsModal").classList.add("hidden");
+  unlockBackgroundScroll();
 }
 
 async function openNotification(id){
@@ -8114,8 +8147,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.48.1";
-const TABLESCORE_BUILD_LABEL="Predictive Restaurant Direct Select";
+const TABLESCORE_VERSION="5.48.2";
+const TABLESCORE_BUILD_LABEL="Notifications Modal Scroll Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -8373,13 +8406,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
 <div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
-  <div class="sheet" style="max-height:88vh;overflow:auto">
+  <button class="secondary notifications-floating-close" onclick="closeNotifications()">Close</button>
+  <div class="sheet notifications-sheet">
     <div class="section-head">
       <div>
         <div class="section-title">Notifications</div>
         <div class="muted" style="font-size:10px;margin-top:2px">Your TableRec activity and account distinctions.</div>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNotifications()">Close</button>
     </div>
     <div id="notificationsList" class="notification-list"></div>
   </div>
