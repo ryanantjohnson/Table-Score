@@ -4437,15 +4437,9 @@ async function loadRatingComments(ratingId){
     return found.map(x=>x.trim().replace(/^@/,"").toLowerCase());
   }).filter(Boolean))];
   const mentionIdMap=new Map();
-  await Promise.all(mentionNames.map(async name=>{
-    if(currentProfile?.username&&String(currentProfile.username).toLowerCase()===name&&currentUser?.id){
-      mentionIdMap.set(name,currentUser.id);
-      return;
-    }
-    const {data}=await db.rpc("search_people_predictive",{p_query:name,p_limit:20});
-    const hit=(data||[]).find(u=>String(u.username||"").toLowerCase()===name);
-    if(hit?.id)mentionIdMap.set(name,hit.id);
-  }));
+  if(currentProfile?.username&&currentUser?.id){
+    mentionIdMap.set(String(currentProfile.username).toLowerCase(),currentUser.id);
+  }
 
   if(!comments?.length){
     list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">No comments yet. Start the table talk.</div>';
@@ -4468,6 +4462,10 @@ async function loadRatingComments(ratingId){
     }).join("");
   }
 
+  // Resolve mention IDs after comments are already visible. A slow/failed people
+  // lookup can no longer hold the entire comment thread on "Loading comments...".
+  void hydrateRenderedCommentMentions(mentionNames);
+
   if(currentUser){
     composer.innerHTML=`<div class="comment-compose">
       <div class="mention-wrap">
@@ -4484,6 +4482,31 @@ async function loadRatingComments(ratingId){
 
   await hydrateRatingEngagement([ratingId]);
   await hydrateCommentDigs((comments||[]).map(c=>c.id));
+}
+
+async function hydrateRenderedCommentMentions(names=[]){
+  const unique=[...new Set((names||[]).map(n=>String(n||"").toLowerCase()).filter(Boolean))];
+  await Promise.all(unique.map(async name=>{
+    try{
+      let userId="";
+      if(currentProfile?.username&&String(currentProfile.username).toLowerCase()===name&&currentUser?.id){
+        userId=currentUser.id;
+      }else{
+        const {data,error}=await db.rpc("search_people_predictive",{p_query:name,p_limit:20});
+        if(error)return;
+        const hit=(data||[]).find(u=>String(u.username||"").toLowerCase()===name);
+        userId=hit?.id||"";
+      }
+      if(!userId)return;
+      document.querySelectorAll(".comment-mention[data-mention-username]").forEach(el=>{
+        if(String(el.dataset.mentionUsername||"").toLowerCase()===name){
+          el.dataset.mentionUserId=userId;
+        }
+      });
+    }catch(err){
+      console.warn("mention id hydration:",err);
+    }
+  }));
 }
 
 async function hydrateCommentDigs(commentIds=[]){
@@ -9113,7 +9136,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.5";
+const TABLESCORE_VERSION="5.54.6";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
