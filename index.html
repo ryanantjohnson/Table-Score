@@ -1062,15 +1062,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 }
 .v550-nav .run-it-nav{
   position:relative!important;overflow:visible!important;transform:none!important;
-  color:var(--gold)!important;
 }
 .v550-nav .run-it-nav .run-dice{
   width:29px;height:29px;
   filter:drop-shadow(0 0 5px rgba(231,184,92,.16));
 }
 .v550-nav .run-it-nav:active .run-dice{transform:rotate(8deg) scale(.94)}
+.v550-nav .run-it-nav.active{color:var(--accent)!important}
+.v550-nav .run-it-nav:not(.active){color:var(--muted)!important}
 .v550-nav .run-it-label{
-  font-size:9px;font-weight:1000;letter-spacing:.06em;color:var(--gold);
+  font-size:9px;font-weight:1000;letter-spacing:.06em;color:currentColor;
 }
 .profile-saved-card .badge-folder-icon{font-size:23px;font-weight:900}
 
@@ -1453,7 +1454,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <button data-s="discover" onclick="showScreen('discover')" aria-label="Discover">
       <span class="nav-svg"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></span><span>Discover</span>
     </button>
-    <button class="run-it-nav" onclick="openWhereToEat()" aria-label="Run It">
+    <button data-s="runit" class="run-it-nav" onclick="openWhereToEat()" aria-label="Run It">
       <span class="nav-svg run-dice"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="8.5" cy="15.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/></svg></span><span class="run-it-label">RUN IT</span>
     </button>
     <button data-s="rate" onclick="startRating()" aria-label="Rate">
@@ -7947,6 +7948,7 @@ let whereEatPool=[];
 let whereEatPick=null;
 
 function openWhereToEat(){
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s==="runit"));
   const grid=document.getElementById("whereCuisineGrid");
   if(grid&&!grid.innerHTML){
     grid.innerHTML=WHERE_EAT_CUISINES.map(([label,key],i)=>`<button class="${i===0?"active":""}" data-cuisine="${key}" onclick="setWhereEatCuisine('${key}')">${label}</button>`).join("");
@@ -7960,6 +7962,8 @@ function openWhereToEat(){
 function closeWhereToEat(){
   document.getElementById("whereToEatModal").classList.add("hidden");
   unlockBackgroundScroll();
+  const currentScreen=document.querySelector(".screen.active")?.id||"home";
+  document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s===currentScreen));
 }
 function setWhereEatMode(mode){
   whereEatMode=mode;
@@ -8477,8 +8481,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.50.1";
-const TABLESCORE_BUILD_LABEL="Unified Bottom Navigation Icons";
+const TABLESCORE_VERSION="5.50.2";
+const TABLESCORE_BUILD_LABEL="Single Active Bottom Navigation State";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
