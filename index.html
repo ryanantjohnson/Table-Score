@@ -2169,6 +2169,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div style="display:grid;gap:8px;margin-top:14px">
       <button class="primary" onclick="openRestaurantActionDirections()">Directions</button>
       <button class="secondary" onclick="openRestaurantActionGoogle()">View Restaurant</button>
+      <button id="restaurantActionSaveBtn" class="secondary save-restaurant-btn" onclick="toggleSaveRestaurantAction()">&#9825; Save Restaurant</button>
       <button class="secondary" onclick="rateRestaurantAction()">Rate on TableRec</button>
     </div>
   </div>
@@ -3721,6 +3722,7 @@ function openRestaurantAction(r){
   // The finder stays mounted underneath so its query and result list are preserved.
   lockBackgroundScroll();
   document.getElementById("restaurantActionModal").classList.remove("hidden");
+  void refreshRestaurantActionSaveButton();
 }
 function closeRestaurantAction(){
   document.getElementById("restaurantActionModal")?.classList.add("hidden");
@@ -3731,6 +3733,102 @@ function closeRestaurantAction(){
     unlockBackgroundScroll();
   }
 }
+async function restaurantActionTableRecRestaurant(createIfMissing=false){
+  const r=restaurantActionPlace;
+  if(!r)return null;
+  const placeId=r.google_place_id||r.place_id||null;
+
+  if(placeId){
+    const {data,error}=await db.from("restaurants")
+      .select("id,name,google_place_id")
+      .eq("google_place_id",placeId)
+      .maybeSingle();
+    if(error)throw error;
+    if(data)return data;
+  }
+
+  if(!createIfMissing)return null;
+
+  // Reuse the hardened Google-place restaurant creation path already used by Rate.
+  const previousId=selectedRestaurantId;
+  const previousGoogle=selectedGoogleRestaurant;
+  const previousName=selectedRestaurantName;
+  try{
+    selectedRestaurantId=null;
+    selectedGoogleRestaurant={
+      ...r,
+      google_place_id:placeId,
+      city:r.city||null,
+      state_region:r.state_region||null,
+      postal_code:r.postal_code||null
+    };
+    selectedRestaurantName=r.name||"Restaurant";
+    return await findOrCreateRestaurant(selectedRestaurantName);
+  }finally{
+    selectedRestaurantId=previousId;
+    selectedGoogleRestaurant=previousGoogle;
+    selectedRestaurantName=previousName;
+  }
+}
+
+async function refreshRestaurantActionSaveButton(){
+  const btn=document.getElementById("restaurantActionSaveBtn");
+  if(!btn)return;
+  btn.disabled=false;
+  if(!currentUser){
+    btn.innerHTML="&#9825; Save Restaurant";
+    btn.className="secondary save-restaurant-btn";
+    return;
+  }
+  try{
+    const restaurant=await restaurantActionTableRecRestaurant(false);
+    const saved=!!restaurant?.id&&savedRestaurantIds.has(restaurant.id);
+    btn.dataset.restaurantId=restaurant?.id||"";
+    btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save Restaurant";
+    btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+  }catch(err){
+    console.warn("restaurant action save state:",err);
+    btn.innerHTML="&#9825; Save Restaurant";
+    btn.className="secondary save-restaurant-btn";
+  }
+}
+
+async function toggleSaveRestaurantAction(){
+  if(!restaurantActionPlace)return;
+  if(!currentUser){
+    openAccount(()=>toggleSaveRestaurantAction());
+    return;
+  }
+  const btn=document.getElementById("restaurantActionSaveBtn");
+  if(btn)btn.disabled=true;
+  try{
+    const restaurant=await restaurantActionTableRecRestaurant(true);
+    if(!restaurant?.id)throw new Error("Could not identify this restaurant.");
+
+    if(savedRestaurantIds.has(restaurant.id)){
+      const {error}=await db.from("saved_restaurants").delete()
+        .eq("user_id",currentUser.id)
+        .eq("restaurant_id",restaurant.id);
+      if(error)throw error;
+    }else{
+      const {error}=await db.from("saved_restaurants").insert({
+        user_id:currentUser.id,
+        restaurant_id:restaurant.id
+      });
+      if(error)throw error;
+    }
+
+    await loadSavedRestaurants();
+    await refreshRestaurantActionSaveButton();
+    if(document.getElementById("saved")?.classList.contains("active"))renderSaved();
+  }catch(err){
+    console.error("restaurant action save:",err);
+    alert("Could not update Saved Restaurants: "+(err.message||"Unknown error"));
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
 function restaurantActionMapsUrl(){
   if(!restaurantActionPlace)return "";
   if(restaurantActionPlace.google_maps_url)return restaurantActionPlace.google_maps_url;
@@ -9435,7 +9533,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.5";
+const TABLESCORE_VERSION="5.55.6";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
