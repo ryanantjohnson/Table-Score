@@ -717,6 +717,79 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   }
   .mention-option:last-child{border-bottom:0}
   .comment-mention{color:var(--gold);font-weight:900;cursor:pointer}
+
+  /* V5.47.1: clean iPhone @mention suggestion panel */
+  .comment-compose .mention-wrap{
+    position:relative !important;
+    flex:1 !important;
+    min-width:0 !important;
+    z-index:120 !important;
+  }
+
+  .comment-compose .mention-results{
+    position:absolute !important;
+    left:0 !important;
+    right:0 !important;
+    bottom:calc(100% + 10px) !important;
+    z-index:500 !important;
+    max-height:210px !important;
+    overflow-y:auto !important;
+    -webkit-overflow-scrolling:touch !important;
+    margin:0 !important;
+    padding:6px !important;
+    background:var(--panel) !important;
+    border:1px solid var(--line) !important;
+    border-radius:16px !important;
+    box-shadow:0 16px 38px rgba(0,0,0,.72) !important;
+    isolation:isolate !important;
+  }
+
+  .comment-compose .mention-results.hidden{
+    display:none !important;
+  }
+
+  .comment-compose .mention-option{
+    position:relative !important;
+    display:flex !important;
+    align-items:center !important;
+    gap:10px !important;
+    width:100% !important;
+    min-height:58px !important;
+    margin:0 !important;
+    padding:9px 10px !important;
+    border:0 !important;
+    border-radius:11px !important;
+    background:var(--panel) !important;
+    color:var(--ink) !important;
+    text-align:left !important;
+    box-shadow:none !important;
+  }
+
+  .comment-compose .mention-option + .mention-option{
+    border-top:1px solid var(--line) !important;
+    border-top-left-radius:0 !important;
+    border-top-right-radius:0 !important;
+  }
+
+  .comment-compose .mention-option:active{
+    background:var(--soft) !important;
+  }
+
+  .comment-compose .mention-option img,
+  .comment-compose .mention-option .avatar{
+    flex:0 0 auto !important;
+  }
+
+  .comment-compose{
+    position:relative !important;
+    overflow:visible !important;
+  }
+
+  #ratingDetailComments,
+  #ratingDetailComments .comments-box{
+    overflow:visible !important;
+  }
+
 </style>
 </head>
 <body class="booting">
@@ -7711,8 +7784,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.47.0";
-const TABLESCORE_BUILD_LABEL="Rating Modal and Comment Mentions";
+const TABLESCORE_VERSION="5.47.1";
+const TABLESCORE_BUILD_LABEL="Comment Mention UI Polish";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
