@@ -1,4 +1,4 @@
-<!doctype html>
+!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -609,6 +609,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     .taste-match-score{font-family:Georgia,serif;font-size:29px;font-weight:900;line-height:1;color:var(--gold);min-width:72px}
     .taste-match-label{font-size:13px;font-weight:950}
     .taste-match-copy{font-size:11px;line-height:1.4;margin-top:3px;color:var(--muted)}
+  body.modal-scroll-locked{overflow:hidden;position:fixed;width:100%;left:0;right:0}
+  #settingsModal{overscroll-behavior:contain}
+  #settingsModal>.sheet{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
 </style>
 </head>
 <body class="booting">
@@ -5511,6 +5514,22 @@ async function linkCleanupRestaurant(index){
   }
 }
 
+let modalScrollLockY=0;
+
+function lockBackgroundScroll(){
+  if(document.body.classList.contains("modal-scroll-locked"))return;
+  modalScrollLockY=window.scrollY||document.documentElement.scrollTop||0;
+  document.body.style.top=`-${modalScrollLockY}px`;
+  document.body.classList.add("modal-scroll-locked");
+}
+
+function unlockBackgroundScroll(){
+  if(!document.body.classList.contains("modal-scroll-locked"))return;
+  document.body.classList.remove("modal-scroll-locked");
+  document.body.style.top="";
+  window.scrollTo(0,modalScrollLockY);
+}
+
 function openSettings(){
   const versionEl=document.getElementById("settingsAppVersion");
   const buildEl=document.getElementById("settingsBuildLabel");
@@ -5534,9 +5553,13 @@ function openSettings(){
   if(settingsUsernameInput)settingsUsernameInput.value="";
   updateSettingsBadges();
   updateBrowserNotificationUI();
+  lockBackgroundScroll();
   document.getElementById("settingsModal").classList.remove("hidden");
 }
-function closeSettings(){document.getElementById("settingsModal").classList.add("hidden");}
+function closeSettings(){
+  document.getElementById("settingsModal").classList.add("hidden");
+  unlockBackgroundScroll();
+}
 
 async function setPrivacyMode(enabled){
   if(!currentUser)return;
@@ -7021,7 +7044,26 @@ function renderNotifications(){
 async function openNotifications(){
   if(!currentUser)return openAccount();
   document.getElementById("notificationsModal").classList.remove("hidden");
+
+  // Load the current notification list first so tapping the bell means
+  // "I've opened my notifications" and clears the unread bell/count.
   await loadNotifications();
+
+  const hasUnread=tableScoreNotifications.some(n=>!n.is_read);
+  if(hasUnread){
+    const {error}=await db.from("notifications")
+      .update({is_read:true})
+      .eq("user_id",currentUser.id)
+      .eq("is_read",false);
+
+    if(error){
+      console.warn("mark notifications read on bell open:",error);
+    }else{
+      tableScoreNotifications.forEach(n=>n.is_read=true);
+      updateNotificationBadge();
+      renderNotifications();
+    }
+  }
 }
 
 function closeNotifications(){
@@ -7409,8 +7451,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.9";
-const TABLESCORE_BUILD_LABEL="Map Rating and Directions Fix";
+const TABLESCORE_VERSION="5.44.0";
+const TABLESCORE_BUILD_LABEL="Settings Scroll and Notification Read Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -7675,9 +7717,6 @@ document.addEventListener("DOMContentLoaded", () => {
         <div class="muted" style="font-size:10px;margin-top:2px">Your TableRec activity and account distinctions.</div>
       </div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNotifications()">Close</button>
-    </div>
-    <div style="display:flex;justify-content:flex-end">
-      <button class="linkbtn" onclick="markAllNotificationsRead()">Mark all read</button>
     </div>
     <div id="notificationsList" class="notification-list"></div>
   </div>
