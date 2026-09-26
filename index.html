@@ -664,6 +664,30 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   #settingsModal>.sheet>.section-head:first-child{
     position:static;
   }
+
+  /* V5.46.0: external Settings close sits above the sheet */
+  #settingsModal .settings-external-close{
+    top:max(58px,calc(6vh - 2px)) !important;
+    right:26px !important;
+    transform:translateY(-100%);
+  }
+
+  /* V5.46.1: Settings close lives in the black band above the panel */
+  #settingsModal .settings-external-close{
+    position:fixed !important;
+    top:118px !important;
+    right:28px !important;
+    transform:none !important;
+    z-index:250 !important;
+    width:auto !important;
+    padding:8px 14px !important;
+    margin:0 !important;
+  }
+  @supports (top: env(safe-area-inset-top)){
+    #settingsModal .settings-external-close{
+      top:calc(env(safe-area-inset-top) + 58px) !important;
+    }
+  }
 </style>
 </head>
 <body class="booting">
@@ -698,12 +722,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-head">
         <div>
           <div class="section-title">Find People</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by username</div>
+          <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by name or username</div>
         </div>
         <span class="muted" style="font-size:11px">TableRec Social</span>
       </div>
       <div class="search">
-        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search @username" onkeydown="if(event.key==='Enter')searchPeople()">
+        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search name or @username" oninput="queuePeopleSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPeople(true)}">
         <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
       </div>
       <div id="peopleResults" class="list" style="margin-top:10px"></div>
@@ -6294,29 +6318,73 @@ function peopleRowMarkup(u,{showMutual=false}={}){
   </div>`;
 }
 
-async function searchPeople(){
-  if(!currentUser||!profile?.username)return;
-  let q=document.getElementById("peopleSearch").value.trim().toLowerCase();
+let peopleSearchTimer=null;
+let peopleSearchSequence=0;
+
+function queuePeopleSearch(){
+  clearTimeout(peopleSearchTimer);
+  const raw=document.getElementById("peopleSearch")?.value||"";
+  const q=raw.trim();
   const out=document.getElementById("peopleResults");
-  if(q.startsWith("@"))q=q.slice(1);
+  if(!out)return;
+
   if(q.length<2){
-    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Type at least 2 characters of a username.</div>';
+    peopleSearchSequence++;
+    out.innerHTML=q.length
+      ? '<div class="muted" style="font-size:12px;padding:8px 2px">Keep typing...</div>'
+      : "";
     return;
   }
-  out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Searching usernames...</div>';
 
-  const {data,error}=await db.rpc("search_people_by_username",{p_query:q});
+  // Short debounce keeps results predictive without firing on every keystroke.
+  peopleSearchTimer=setTimeout(()=>searchPeople(false),220);
+}
+
+async function searchPeople(explicit=false){
+  if(!currentUser||!profile?.username)return;
+
+  let q=(document.getElementById("peopleSearch")?.value||"").trim();
+  const out=document.getElementById("peopleResults");
+  if(!out)return;
+  if(q.startsWith("@"))q=q.slice(1);
+  q=q.trim();
+
+  if(q.length<2){
+    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Type at least 2 characters of a name or username.</div>';
+    return;
+  }
+
+  const seq=++peopleSearchSequence;
+  out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Finding people...</div>';
+
+  // New safe RPC searches both display_name and username and returns only
+  // fields already intended for TableRec public people discovery.
+  let {data,error}=await db.rpc("search_people_predictive",{p_query:q,p_limit:20});
+
+  // Compatibility fallback while the SQL migration is being installed.
+  if(error){
+    console.warn("predictive people search unavailable, using username fallback:",error);
+    const fallback=await db.rpc("search_people_by_username",{p_query:q.toLowerCase()});
+    data=fallback.data;
+    error=fallback.error;
+  }
+
+  if(seq!==peopleSearchSequence)return;
+
   if(error){
     console.error(error);
     out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">Search could not load. Try again.</div>';
     return;
   }
+
   if(!data||!data.length){
-    out.innerHTML='<div class="muted" style="font-size:12px;padding:8px 2px">No matching @username found.</div>';
+    out.innerHTML=`<div class="muted" style="font-size:12px;padding:8px 2px">No people found for "${esc(q)}".</div>`;
     return;
   }
+
   out.innerHTML=data.map(u=>peopleRowMarkup(u)).join("");
 }
+
 
 async function loadPeopleSuggestions(){
   const wrap=document.getElementById("peopleSuggestionsWrap");
@@ -7503,8 +7571,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.45.2";
-const TABLESCORE_BUILD_LABEL="External Settings Close Control";
+const TABLESCORE_VERSION="5.46.1";
+const TABLESCORE_BUILD_LABEL="People Search 2.0 Correction";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
