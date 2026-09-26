@@ -1120,8 +1120,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 /* V5.54.0 Final QA Corrections */
 .comment-mention{color:var(--gold);font-weight:900;cursor:pointer;text-decoration:none}
-.comment-dig-btn{margin-top:7px;border:0;background:transparent;color:var(--muted);padding:2px 0;font-size:10px;font-weight:900}
-.comment-dig-btn.dug{color:var(--gold)}
+.comment-dig-btn{margin-top:8px!important;width:auto!important;min-height:30px!important;padding:6px 10px!important;border-radius:999px!important;font-size:10px!important;font-weight:900!important}
+.comment-dig-btn.dug{color:var(--gold)!important;border-color:var(--gold)!important;background:rgba(227,181,95,.08)!important}
 
 /* V5.54.2 mention links */
 .comment-mention{border:0;background:transparent;padding:0;margin:0;font:inherit;color:var(--gold);font-weight:900;cursor:pointer;text-decoration:none;display:inline}
@@ -4460,7 +4460,7 @@ async function loadRatingComments(ratingId){
             <span class="row-meta">${timeAgo(c.created_at)}</span>
           </div>
           <div class="comment-text">${renderCommentBody(c.body,mentionIdMap)}</div>
-          <button id="commentDigBtn-${c.id}" class="comment-dig-btn" onclick="toggleCommentDig('${c.id}','${ratingId}')">Dig It <span id="commentDigCount-${c.id}">0</span></button>
+          <button id="commentDigBtn-${c.id}" class="secondary engagement-btn comment-dig-btn" onclick="toggleCommentDig('${c.id}','${ratingId}')">&#127860; Dig It <span id="commentDigCount-${c.id}">0</span></button>
         </div>
         ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
       </div>`;
@@ -8551,6 +8551,7 @@ let whereEatPrices=new Set([1,2,3,4]);
 let whereEatPool=[];
 let whereEatPick=null;
 const WHERE_RECENT_KEY="ts_where_recent_v1";
+const WHERE_RECENT_CONCEPT_KEY="ts_where_recent_concepts_v1";
 
 function openWhereToEat(){
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s==="runit"));
@@ -8772,18 +8773,61 @@ async function animateWhereCuisine(label){
   await sleepWhere(700);
 }
 function whereRestaurantKey(r){return String(r?.google_place_id||r?.place_id||r?.id||`${r?.name||""}|${r?.address||""}`)}
+function whereConceptKey(r){
+  let name=String(r?.name||"").toLowerCase()
+    .replace(/[’']/g,"")
+    .replace(/\b(restaurants?|restaurant|grill|bar & grill|kitchen|cafe|café|eatery)\b/g," ")
+    .replace(/\s+/g," ").trim();
+  // Remove common store/location suffixes so multiple branches count as one concept.
+  name=name.replace(/\s+#?\d+\b/g,"").replace(/\s+-\s+.*$/,"").trim();
+  return name||whereRestaurantKey(r);
+}
 function whereRecentKeys(){try{return JSON.parse(localStorage.getItem(WHERE_RECENT_KEY)||"[]")}catch(_){return []}}
+function whereRecentConcepts(){try{return JSON.parse(localStorage.getItem(WHERE_RECENT_CONCEPT_KEY)||"[]")}catch(_){return []}}
 function rememberWherePick(r){
-  const key=whereRestaurantKey(r);if(!key)return;
-  const next=[key,...whereRecentKeys().filter(x=>x!==key)].slice(0,365);
-  try{localStorage.setItem(WHERE_RECENT_KEY,JSON.stringify(next))}catch(_){}
+  const key=whereRestaurantKey(r);
+  const concept=whereConceptKey(r);
+  if(key){
+    const next=[key,...whereRecentKeys().filter(x=>x!==key)].slice(0,365);
+    try{localStorage.setItem(WHERE_RECENT_KEY,JSON.stringify(next))}catch(_){}
+  }
+  if(concept){
+    const nextConcepts=[concept,...whereRecentConcepts().filter(x=>x!==concept)].slice(0,365);
+    try{localStorage.setItem(WHERE_RECENT_CONCEPT_KEY,JSON.stringify(nextConcepts))}catch(_){}
+  }
+}
+function diverseWherePool(pool){
+  // Keep the best representative for each restaurant concept first. This prevents
+  // a chain with many nearby branches from dominating the randomizer.
+  const byConcept=new Map();
+  for(const r of pool){
+    const key=whereConceptKey(r);
+    const current=byConcept.get(key);
+    if(!current||Number(r.distance_miles||999)<Number(current.distance_miles||999)){
+      byConcept.set(key,r);
+    }
+  }
+  return [...byConcept.values()];
 }
 function chooseFreshWherePick(pool){
-  const recent=new Set(whereRecentKeys());
-  const fresh=pool.filter(r=>!recent.has(whereRestaurantKey(r)));
-  const source=fresh.length?fresh:pool;
+  const recentPlaces=new Set(whereRecentKeys());
+  const recentConcepts=new Set(whereRecentConcepts());
+  const concepts=diverseWherePool(pool);
+
+  // Tier 1: a concept and exact location the user has not recently seen.
+  let source=concepts.filter(r=>
+    !recentPlaces.has(whereRestaurantKey(r)) &&
+    !recentConcepts.has(whereConceptKey(r))
+  );
+  // Tier 2: unseen exact locations among unique concepts.
+  if(!source.length)source=concepts.filter(r=>!recentPlaces.has(whereRestaurantKey(r)));
+  // Tier 3: recycle a concept only after the diverse pool is exhausted.
+  if(!source.length)source=concepts;
+  // Final fallback preserves functionality in extremely small markets.
+  if(!source.length)source=pool;
   return source[Math.floor(Math.random()*source.length)];
 }
+
 async function spinWhereToEat(){
   const btn=document.getElementById("whereEatSpinBtn");
   const status=document.getElementById("whereEatStatus");
@@ -8819,7 +8863,8 @@ async function spinWhereToEat(){
     whereEatPool=pool;
     whereEatPick=chooseFreshWherePick(pool);
     rememberWherePick(whereEatPick);
-    status.textContent=`${pool.length} matching restaurant${pool.length===1?"":"s"} in the pool`;
+    const conceptCount=diverseWherePool(pool).length;
+    status.textContent=`${conceptCount} different restaurant option${conceptCount===1?"":"s"} ready${pool.length>conceptCount?` (${pool.length} locations searched)`:""}`;
     await animateWhereRestaurant(pool,whereEatPick,whereEatMode==="cuisine"?`${cuisineLabel.toUpperCase()} IS LOCKED IN`:"HERE WE GO...");
     renderWhereEatPick(whereEatPick,cuisineLabel);
   }catch(err){
@@ -9147,7 +9192,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.7";
+const TABLESCORE_VERSION="5.54.8";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
