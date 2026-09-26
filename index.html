@@ -1349,6 +1349,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   border-radius:18px!important;
   flex:0 0 auto!important;
 }
+
+/* V5.56.0 compact the ACTUAL rating-detail floating Close control */
+#ratingDetailModal > .rating-detail-floating-close{
+  width:auto!important;
+  min-width:0!important;
+  height:38px!important;
+  min-height:38px!important;
+  padding:0 13px!important;
+  font-size:12px!important;
+  line-height:1!important;
+  border-radius:14px!important;
+  border-width:1.5px!important;
+  right:20px!important;
+  box-shadow:0 5px 14px rgba(0,0,0,.55)!important;
+}
 </style>
 </head>
 <body class="booting">
@@ -9679,7 +9694,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.9";
+const TABLESCORE_VERSION="5.56.0";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
