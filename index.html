@@ -1,4 +1,4 @@
-!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -612,12 +612,51 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   body.modal-scroll-locked{overflow:hidden;position:fixed;width:100%;left:0;right:0}
   #settingsModal{overscroll-behavior:contain}
   #settingsModal>.sheet{-webkit-overflow-scrolling:touch;overscroll-behavior:contain}
+
+  /* V5.45.0 brand treatment */
+  .brand{letter-spacing:-.7px;text-transform:none}
+  .brand-table{font-weight:950}
+  .brand-rec{font-weight:650;letter-spacing:-.35px;margin-left:1px}
+
+  /* Keep modal controls reachable while modal content scrolls. */
+  .modal>.sheet>.section-head:first-child,
+  .modal>.modal-card>.modal-head:first-child{
+    position:sticky;
+    top:0;
+    z-index:30;
+    background:var(--bg);
+    padding-top:10px;
+    padding-bottom:10px;
+    margin-top:-10px;
+  }
+  .modal>.sheet>.section-head:first-child::after,
+  .modal>.modal-card>.modal-head:first-child::after{
+    content:"";
+    position:absolute;
+    left:0;right:0;bottom:-1px;
+    height:1px;
+    background:var(--line);
+    opacity:.8;
+  }
+
+  .modal .modal-head{
+    position:sticky;
+    top:0;
+    z-index:30;
+    background:var(--bg);
+  }
+  .modal .section-head:first-child{
+    position:sticky;
+    top:0;
+    z-index:30;
+    background:var(--bg);
+  }
 </style>
 </head>
 <body class="booting">
 <div class="app">
   <div class="topbar">
-    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none">TABLEREC</div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
+    <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none"><span class="brand-table">Table</span><span class="brand-rec">Rec</span></div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
     <div class="top-actions">
       <button id="topNotificationsBtn" class="top-notifications hidden" onclick="openNotifications()" aria-label="Notifications">
         <svg viewBox="0 0 24 24" width="19" height="19" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span id="notificationCount" class="notification-count hidden">0</span>
@@ -7451,8 +7490,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.44.0";
-const TABLESCORE_BUILD_LABEL="Settings Scroll and Notification Read Fix";
+const TABLESCORE_VERSION="5.45.0";
+const TABLESCORE_BUILD_LABEL="TableRec Brand and Persistent Modal Controls";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
