@@ -1080,7 +1080,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .home-social-head{display:flex;align-items:flex-end;justify-content:space-between;gap:12px;padding:12px 2px 2px}
 .home-social-title{font-family:Georgia,serif;font-size:25px;font-weight:850;line-height:1.05;margin-top:3px}
 .home-people-btn{width:auto;border:0;background:transparent;color:var(--gold);font-size:11px;font-weight:950;padding:7px 2px}
-.home-engagement-stream{display:grid;gap:10px;margin-top:10px}
+.home-engagement-stream{display:grid;gap:10px;margin-top:10px}.home-feed-break{margin:12px 0}
 .home-play-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
 .home-play-kicker{font-size:9px;font-weight:1000;letter-spacing:.13em;text-transform:uppercase;color:var(--gold)}
 .home-play-question{font-family:Georgia,serif;font-size:20px;font-weight:850;line-height:1.12;margin-top:5px}
@@ -1186,7 +1186,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <div id="followingFeed" style="margin-top:8px"></div>
     </div>
-    <div id="homeEngagementStream" class="home-engagement-stream"></div>
   </section>
 
   <section id="explore" class="screen">
@@ -4536,13 +4535,40 @@ function homePollCard(p){
  <div class="home-poll-options"><button class="home-poll-option ${choice==="a"?"selected":""}" onclick="voteHomePoll('${p.id}','a')">${esc(p.a)}</button><button class="home-poll-option ${choice==="b"?"selected":""}" onclick="voteHomePoll('${p.id}','b')">${esc(p.b)}</button></div>
  ${choice?`<div class="muted" style="font-size:10px;margin-top:8px">Your pick: <b>${esc(choice==="a"?p.a:p.b)}</b></div>`:""}</div>`;
 }
-function renderHomeEngagement(){
- const el=document.getElementById("homeEngagementStream");if(!el)return;
- const day=Math.floor(Date.now()/86400000), first=HOME_POLL_DECK[day%HOME_POLL_DECK.length], second=HOME_POLL_DECK[(day+3)%HOME_POLL_DECK.length];
- el.innerHTML=`${homePollCard(first)}
- <div class="home-play-card home-run-card"><div class="home-run-dice">&#9856;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>
- ${homePollCard(second)}`;
+function homeRunInsert(){
+ return `<div class="home-play-card home-run-card"><div class="home-run-dice">&#9856;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>`;
 }
+function homeEngagementInserts(){
+ const day=Math.floor(Date.now()/86400000);
+ const first=HOME_POLL_DECK[day%HOME_POLL_DECK.length];
+ const second=HOME_POLL_DECK[(day+3)%HOME_POLL_DECK.length];
+ return [homePollCard(first),homeRunInsert(),homePollCard(second)];
+}
+function buildMixedHomeFeed(ratingCards){
+ if(!ratingCards?.length)return "";
+ const inserts=homeEngagementInserts();
+ const out=[];
+ // Ratings stay dominant. First interruption comes only after two real ratings.
+ const slots=[2,5,9];
+ let insertIndex=0;
+ ratingCards.forEach((card,i)=>{
+   out.push(card);
+   if(insertIndex<inserts.length && (i+1)===slots[insertIndex]){
+     out.push(`<div class="home-feed-break">${inserts[insertIndex]}</div>`);
+     insertIndex++;
+   }
+ });
+ // With a short feed, allow one engagement card after the available ratings,
+ // but never stack the entire engagement section at the bottom.
+ if(insertIndex===0 && ratingCards.length>0){
+   out.push(`<div class="home-feed-break">${inserts[0]}</div>`);
+ }
+ return out.join("");
+}
+function renderHomeEngagement(){
+ // V5.51.1: engagement is rendered inside the rating stream by buildMixedHomeFeed().
+}
+
 
 async function loadFollowingFeed(){
   const el=document.getElementById("followingFeed");
@@ -4583,7 +4609,8 @@ async function loadFollowingFeed(){
   const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
   const photoMap=await getPhotosForRatings((ratings||[]).map(r=>r.id));
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
-  el.innerHTML=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id))).join("");
+  const ratingCards=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id)));
+  el.innerHTML=buildMixedHomeFeed(ratingCards);
   await hydrateRatingEngagement(ratings.map(r=>r.id));
 }
 
@@ -8525,8 +8552,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.51.0";
-const TABLESCORE_BUILD_LABEL="Home Engagement Foundation";
+const TABLESCORE_VERSION="5.51.1";
+const TABLESCORE_BUILD_LABEL="Mixed Home Feed Integration";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
