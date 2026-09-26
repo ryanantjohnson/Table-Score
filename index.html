@@ -1050,18 +1050,28 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 @keyframes whereBurst{0%{transform:translate(0,0) scale(.3);opacity:1}100%{transform:translate(var(--x),var(--y)) rotate(160deg) scale(1.25);opacity:0}}
 
 
-/* V5.50.0 App Flow */
+/* V5.50.1 Navigation Visual Cleanup */
 .v550-nav{overflow:visible!important}
+.v550-nav button{gap:3px}
+.v550-nav .nav-svg{
+  display:block;width:25px;height:25px;margin:0 auto;color:currentColor;
+}
+.v550-nav .nav-svg svg{
+  width:100%;height:100%;display:block;fill:none;stroke:currentColor;
+  stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round;
+}
 .v550-nav .run-it-nav{
-  position:relative!important;overflow:visible!important;transform:translateY(-13px);
-  color:var(--ink)!important
+  position:relative!important;overflow:visible!important;transform:none!important;
+  color:var(--gold)!important;
 }
-.run-it-orb{
-  display:flex;width:52px;height:52px;margin:0 auto 2px;align-items:center;justify-content:center;
-  border-radius:50%;background:var(--gold);color:#111;font-size:25px;
-  border:4px solid var(--bg);box-shadow:0 7px 18px rgba(0,0,0,.48)
+.v550-nav .run-it-nav .run-dice{
+  width:29px;height:29px;
+  filter:drop-shadow(0 0 5px rgba(231,184,92,.16));
 }
-.run-it-label{font-size:9px;font-weight:1000;letter-spacing:.06em;color:var(--gold)}
+.v550-nav .run-it-nav:active .run-dice{transform:rotate(8deg) scale(.94)}
+.v550-nav .run-it-label{
+  font-size:9px;font-weight:1000;letter-spacing:.06em;color:var(--gold);
+}
 .profile-saved-card .badge-folder-icon{font-size:23px;font-weight:900}
 
 </style>
@@ -1437,11 +1447,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 <div class="nav">
   <div class="nav-inner v550-nav">
-    <button data-s="home" class="active" onclick="showScreen('home')"><span class="ico">&#8962;</span>Home</button>
-    <button data-s="discover" onclick="showScreen('discover')"><span class="ico">&#128269;</span>Discover</button>
-    <button class="run-it-nav" onclick="openWhereToEat()" aria-label="Run It"><span class="run-it-orb">&#127922;</span><span class="run-it-label">RUN IT</span></button>
-    <button data-s="rate" onclick="startRating()"><span class="ico">&#9734;</span>Rate</button>
-    <button data-s="profile" onclick="showScreen('profile')"><span class="ico">&#9673;</span>Profile</button>
+    <button data-s="home" class="active" onclick="showScreen('home')" aria-label="Home">
+      <span class="nav-svg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10.5 12 4l8 6.5V20h-6v-5h-4v5H4z"/></svg></span><span>Home</span>
+    </button>
+    <button data-s="discover" onclick="showScreen('discover')" aria-label="Discover">
+      <span class="nav-svg"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg></span><span>Discover</span>
+    </button>
+    <button class="run-it-nav" onclick="openWhereToEat()" aria-label="Run It">
+      <span class="nav-svg run-dice"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="8.5" cy="8.5" r="1"/><circle cx="15.5" cy="8.5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="8.5" cy="15.5" r="1"/><circle cx="15.5" cy="15.5" r="1"/></svg></span><span class="run-it-label">RUN IT</span>
+    </button>
+    <button data-s="rate" onclick="startRating()" aria-label="Rate">
+      <span class="nav-svg"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 2.7 5.5 6.1.9-4.4 4.3 1 6.1-5.4-2.9-5.4 2.9 1-6.1-4.4-4.3 6.1-.9z"/></svg></span><span>Rate</span>
+    </button>
+    <button data-s="profile" onclick="showScreen('profile')" aria-label="Profile">
+      <span class="nav-svg"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="3.5"/><path d="M5.5 20c.7-4 3-6 6.5-6s5.8 2 6.5 6"/></svg></span><span>Profile</span>
+    </button>
   </div>
 </div>
 
@@ -8457,8 +8477,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.50.0";
-const TABLESCORE_BUILD_LABEL="Home Discover Run It Navigation";
+const TABLESCORE_VERSION="5.50.1";
+const TABLESCORE_BUILD_LABEL="Unified Bottom Navigation Icons";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
