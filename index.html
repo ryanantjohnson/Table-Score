@@ -2570,15 +2570,64 @@ function showExploreMapRestaurant(i,marker){
   const el=document.getElementById("exploreMapSelection");
   if(el)el.innerHTML=`<div class="map-selection">
     <div class="map-selection-name">${esc(r.name||"Restaurant")}</div>
-    <div class="map-selection-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div>
+    <div class="map-selection-meta">${esc(restaurantTypeLabel(r))}</div>
+    ${r.address?`<button type="button" class="rating-location-link" style="margin-top:5px;text-align:left" onclick="openExploreMapDirections()"><span>${esc(r.address)}</span><span aria-hidden="true">&#8599;</span></button>`:""}
     <button class="primary" style="margin-top:9px" onclick="chooseExploreMapRestaurant()">Rate This Restaurant</button>
   </div>`;
 }
 
-function chooseExploreMapRestaurant(){
-  if(!exploreMapSelectedRestaurant)return;
-  nearbyGoogleRestaurants=[exploreMapSelectedRestaurant];
-  chooseNearbyRestaurant(0);
+function openExploreMapDirections(){
+  const r=exploreMapSelectedRestaurant;
+  if(!r)return;
+
+  if(r.google_maps_url){
+    window.open(r.google_maps_url,"_blank","noopener");
+    return;
+  }
+
+  if(r.google_place_id){
+    const query=encodeURIComponent(r.name||r.address||"Restaurant");
+    const placeId=encodeURIComponent(r.google_place_id);
+    window.open(`https://www.google.com/maps/search/?api=1&query=${query}&query_place_id=${placeId}`,"_blank","noopener");
+    return;
+  }
+
+  const lat=Number(r.latitude),lng=Number(r.longitude);
+  if(Number.isFinite(lat)&&Number.isFinite(lng)){
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(`${lat},${lng}`)}`,"_blank","noopener");
+    return;
+  }
+
+  const destination=[r.name,r.address].filter(Boolean).join(" ");
+  if(destination){
+    window.open(`https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(destination)}`,"_blank","noopener");
+  }
+}
+
+async function chooseExploreMapRestaurant(){
+  const r=exploreMapSelectedRestaurant;
+  if(!r)return;
+
+  // Preserve the exact Google place selected from the map and go directly
+  // into the rating flow. The previous path only populated the picker and
+  // then closed a modal that was not open, leaving the user on Explore.
+  selectedRestaurantId=null;
+  selectedRestaurantName=r.name||"Restaurant";
+  selectedGoogleRestaurant={
+    ...r,
+    city:r.city||null,
+    state_region:r.state_region||null,
+    postal_code:r.postal_code||null
+  };
+
+  if(!currentUser){
+    openAccount(()=>chooseExploreMapRestaurant());
+    return;
+  }
+
+  syncRateRestaurantPicker();
+  resetScores();
+  showScreen("rate");
 }
 
 let restaurantMap=null;
@@ -7360,8 +7409,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.43.8";
-const TABLESCORE_BUILD_LABEL="Freeform Profile Crop Gestures";
+const TABLESCORE_VERSION="5.43.9";
+const TABLESCORE_BUILD_LABEL="Map Rating and Directions Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
