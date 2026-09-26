@@ -1314,6 +1314,29 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   touch-action:pan-y;
   -webkit-overflow-scrolling:touch;
 }
+
+/* V5.55.8 rating-card save action */
+.rating-action-row{
+  display:flex!important;
+  align-items:center;
+  justify-content:space-between;
+  gap:14px;
+  width:100%;
+}
+.rating-social-actions{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  min-width:0;
+}
+.rating-save-btn{
+  margin-left:auto!important;
+  flex:0 0 auto;
+}
+.rating-save-btn.saved{
+  color:var(--gold)!important;
+  border-color:var(--gold)!important;
+}
 </style>
 </head>
 <body class="booting">
@@ -1442,6 +1465,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
         <button id="rMapBtn" class="secondary hidden"
                 style="width:auto;padding:7px 11px;margin-top:9px;font-size:11px"
                 onclick="openRestaurantPageLocation()">View Restaurant Map</button>
+        <button id="saveRestaurantHeroBtn" class="secondary save-restaurant-btn"
+                style="width:auto;padding:7px 11px;margin-top:9px;font-size:11px"
+                onclick="toggleSaveRestaurant()">&#9825; Save</button>
       </div>
     </div>
     <div class="stats2" style="margin-top:10px">
@@ -2954,7 +2980,7 @@ async function loadRestaurantCommunityRatings(restaurantId){
       ${r.quick_take?`<div style="font-size:13px;line-height:1.5;margin-top:8px">${esc(r.quick_take)}</div>`:""}
       ${r.would_return?`<div class="row-meta" style="margin-top:8px"><b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}</div>`:""}
       ${photoGridMarkup(photos)}
-      ${engagementMarkup(r.id)}
+      ${engagementMarkup(r.id,r.restaurant_id)}
       ${own?`<button class="secondary" style="margin-top:10px" onclick="event.stopPropagation();openEditRating('${r.id}')">Edit Your Rating</button>`:""}
     </div>`;
   }).join("");
@@ -3478,8 +3504,12 @@ function showExploreMapRestaurant(i,marker){
     <div class="map-selection-name">${esc(r.name||"Restaurant")}</div>
     <div class="map-selection-meta">${esc(restaurantTypeLabel(r))}</div>
     ${r.address?`<button type="button" class="rating-location-link" style="margin-top:5px;text-align:left" onclick="openExploreMapDirections()"><span>${esc(r.address)}</span><span aria-hidden="true">&#8599;</span></button>`:""}
-    <button class="primary" style="margin-top:9px" onclick="chooseExploreMapRestaurant()">Rate This Restaurant</button>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px">
+      <button id="exploreMapSaveBtn" class="secondary save-restaurant-btn" onclick="toggleSavePlace(exploreMapSelectedRestaurant,'exploreMapSaveBtn')">&#9825; Save</button>
+      <button class="primary" onclick="chooseExploreMapRestaurant()">Rate This Restaurant</button>
+    </div>
   </div>`;
+  void hydrateSavePlaceButton(r,"exploreMapSaveBtn");
 }
 
 function openExploreMapDirections(){
@@ -3733,11 +3763,9 @@ function closeRestaurantAction(){
     unlockBackgroundScroll();
   }
 }
-async function restaurantActionTableRecRestaurant(createIfMissing=false){
-  const r=restaurantActionPlace;
-  if(!r)return null;
-  const placeId=r.google_place_id||r.place_id||null;
-
+async function tableRecRestaurantForPlace(place,createIfMissing=false){
+  if(!place)return null;
+  const placeId=place.google_place_id||place.place_id||null;
   if(placeId){
     const {data,error}=await db.from("restaurants")
       .select("id,name,google_place_id")
@@ -3746,29 +3774,78 @@ async function restaurantActionTableRecRestaurant(createIfMissing=false){
     if(error)throw error;
     if(data)return data;
   }
-
   if(!createIfMissing)return null;
 
-  // Reuse the hardened Google-place restaurant creation path already used by Rate.
   const previousId=selectedRestaurantId;
   const previousGoogle=selectedGoogleRestaurant;
   const previousName=selectedRestaurantName;
   try{
     selectedRestaurantId=null;
     selectedGoogleRestaurant={
-      ...r,
+      ...place,
       google_place_id:placeId,
-      city:r.city||null,
-      state_region:r.state_region||null,
-      postal_code:r.postal_code||null
+      city:place.city||null,
+      state_region:place.state_region||null,
+      postal_code:place.postal_code||null
     };
-    selectedRestaurantName=r.name||"Restaurant";
+    selectedRestaurantName=place.name||"Restaurant";
     return await findOrCreateRestaurant(selectedRestaurantName);
   }finally{
     selectedRestaurantId=previousId;
     selectedGoogleRestaurant=previousGoogle;
     selectedRestaurantName=previousName;
   }
+}
+
+async function toggleSavePlace(place,buttonId){
+  if(!place)return;
+  if(!currentUser){
+    openAccount(()=>toggleSavePlace(place,buttonId));
+    return;
+  }
+  const btn=document.getElementById(buttonId);
+  if(btn)btn.disabled=true;
+  try{
+    const restaurant=await tableRecRestaurantForPlace(place,true);
+    if(!restaurant?.id)throw new Error("Could not identify this restaurant.");
+    if(savedRestaurantIds.has(restaurant.id)){
+      const {error}=await db.from("saved_restaurants").delete()
+        .eq("user_id",currentUser.id).eq("restaurant_id",restaurant.id);
+      if(error)throw error;
+    }else{
+      const {error}=await db.from("saved_restaurants").insert({
+        user_id:currentUser.id,restaurant_id:restaurant.id
+      });
+      if(error)throw error;
+    }
+    await loadSavedRestaurants();
+    const saved=savedRestaurantIds.has(restaurant.id);
+    if(btn){
+      btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save";
+      btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+    }
+    if(document.getElementById("saved")?.classList.contains("active"))renderSaved();
+  }catch(err){
+    console.error("save place:",err);
+    alert("Could not update Saved Restaurants: "+(err.message||"Unknown error"));
+  }finally{
+    if(btn)btn.disabled=false;
+  }
+}
+
+async function hydrateSavePlaceButton(place,buttonId){
+  const btn=document.getElementById(buttonId);
+  if(!btn)return;
+  try{
+    const restaurant=await tableRecRestaurantForPlace(place,false);
+    const saved=!!restaurant?.id&&savedRestaurantIds.has(restaurant.id);
+    btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save";
+    btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+  }catch(_){}
+}
+
+async function restaurantActionTableRecRestaurant(createIfMissing=false){
+  return tableRecRestaurantForPlace(restaurantActionPlace,createIfMissing);
 }
 
 async function refreshRestaurantActionSaveButton(){
@@ -4609,22 +4686,76 @@ async function loadSavedRestaurants(){
 }
 
 function updateSaveRestaurantButton(){
-  const btn=document.getElementById("saveRestaurantBtn");
-  if(!btn)return;
   const saved=!!selectedRestaurantId&&savedRestaurantIds.has(selectedRestaurantId);
-  btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save Restaurant";
-  btn.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+  const bottom=document.getElementById("saveRestaurantBtn");
+  const hero=document.getElementById("saveRestaurantHeroBtn");
+  if(bottom){
+    bottom.innerHTML=saved?"&#9829; Saved":"&#9825; Save Restaurant";
+    bottom.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+  }
+  if(hero){
+    hero.innerHTML=saved?"&#9829; Saved":"&#9825; Save";
+    hero.className=(saved?"primary":"secondary")+" save-restaurant-btn";
+  }
 }
 
 
 let activeRatingDetailId=null;
 let activeRatingRestaurantId=null;
 
-function engagementMarkup(ratingId){
-  return `<div class="engagement-row" onclick="event.stopPropagation()">
-    <button id="digBtn-${ratingId}" class="secondary engagement-btn" onclick="toggleDig('${ratingId}')">&#127860; Dig It <span id="digCount-${ratingId}">0</span></button>
-    <button class="secondary engagement-btn" onclick="openRatingDetail('${ratingId}')">&#128172; <span id="commentCount-${ratingId}">0</span></button>
+function engagementMarkup(ratingId,restaurantId=null){
+  const save=restaurantId?`<button id="ratingSaveBtn-${ratingId}" data-restaurant-id="${restaurantId||""}" class="secondary engagement-btn rating-save-btn" onclick="event.stopPropagation();toggleSaveRatingRestaurant('${ratingId}','${restaurantId}')">&#9825; Save</button>`:"";
+  return `<div class="engagement-row rating-action-row" onclick="event.stopPropagation()">
+    <div class="rating-social-actions">
+      <button id="digBtn-${ratingId}" class="secondary engagement-btn" onclick="toggleDig('${ratingId}')">&#127860; Dig It <span id="digCount-${ratingId}">0</span></button>
+      <button class="secondary engagement-btn" onclick="openRatingDetail('${ratingId}')">&#128172; <span id="commentCount-${ratingId}">0</span></button>
+    </div>
+    ${save}
   </div>`;
+}
+
+function updateRatingSaveButtons(){
+  document.querySelectorAll(".rating-save-btn").forEach(btn=>{
+    const restaurantId=btn.dataset.restaurantId;
+    if(!restaurantId)return;
+    const saved=savedRestaurantIds.has(restaurantId);
+    btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save";
+    btn.classList.toggle("saved",saved);
+  });
+}
+
+async function toggleSaveRatingRestaurant(ratingId,restaurantId){
+  if(!restaurantId)return;
+  if(!currentUser){
+    openAccount(()=>toggleSaveRatingRestaurant(ratingId,restaurantId));
+    return;
+  }
+  const buttons=[...document.querySelectorAll(`[id="ratingSaveBtn-${ratingId}"]`)];
+  buttons.forEach(btn=>{btn.disabled=true;btn.dataset.restaurantId=restaurantId;});
+  try{
+    if(savedRestaurantIds.has(restaurantId)){
+      const {error}=await db.from("saved_restaurants").delete()
+        .eq("user_id",currentUser.id).eq("restaurant_id",restaurantId);
+      if(error)throw error;
+    }else{
+      const {error}=await db.from("saved_restaurants").insert({
+        user_id:currentUser.id,restaurant_id:restaurantId
+      });
+      if(error)throw error;
+    }
+    await loadSavedRestaurants();
+    document.querySelectorAll(`[id="ratingSaveBtn-${ratingId}"]`).forEach(btn=>{
+      btn.dataset.restaurantId=restaurantId;
+      const saved=savedRestaurantIds.has(restaurantId);
+      btn.innerHTML=saved?"&#9829; Saved":"&#9825; Save";
+      btn.classList.toggle("saved",saved);
+    });
+  }catch(err){
+    console.error("rating card save:",err);
+    alert("Could not update Saved Restaurants: "+(err.message||"Unknown error"));
+  }finally{
+    buttons.forEach(btn=>btn.disabled=false);
+  }
 }
 
 async function hydrateRatingEngagement(ratingIds){
@@ -4654,6 +4785,7 @@ async function hydrateRatingEngagement(ratingIds){
     document.querySelectorAll(`[id="commentCount-${id}"]`).forEach(el=>el.textContent=commentCounts.get(id)||0);
     document.querySelectorAll(`[id="digBtn-${id}"]`).forEach(btn=>btn.classList.toggle("dug",myDigs.has(id)));
   });
+  updateRatingSaveButtons();
 }
 
 async function toggleDig(ratingId){
@@ -4687,7 +4819,7 @@ async function toggleDig(ratingId){
 async function renderRatingDetailEngagement(ratingId){
   const el=document.getElementById("ratingDetailEngagement");
   if(!el)return;
-  el.innerHTML=engagementMarkup(ratingId);
+  el.innerHTML=engagementMarkup(ratingId,activeRatingRestaurantId);
   await hydrateRatingEngagement([ratingId]);
 }
 
@@ -5465,7 +5597,7 @@ function feedRatingCard(r,person){
     ${photoGridMarkup(r._photos)}
       ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:9px">&ldquo;${esc(r.quick_take)}&rdquo;</div>`:""}
     ${r.best_dish?`<div class="row-meta" style="margin-top:6px">Best dish: ${esc(r.best_dish)}</div>`:""}
-    ${engagementMarkup(r.id)}
+    ${engagementMarkup(r.id,r.restaurant_id)}
   </div>`;
 }
 
@@ -6224,7 +6356,7 @@ async function renderMyProfileRatings(){
       ${r.best_dish?`<div class="row-meta" style="margin-top:9px"><b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}</div>`:""}
       ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:8px">${esc(r.quick_take)}</div>`:""}
       ${photoGridMarkup(r._photos)}
-      ${engagementMarkup(r.id)}
+      ${engagementMarkup(r.id,r.restaurant_id)}
       <div class="own-rating-actions" onclick="event.stopPropagation()">
         <button class="secondary" onclick="event.stopPropagation();openEditRating('${r.id}')">Edit Rating</button>
         <button class="secondary delete-rating-inline" onclick="event.stopPropagation();deleteRatingFromCard('${r.id}')">Delete Rating</button>
@@ -9013,11 +9145,13 @@ function renderWhereEatPick(r,cuisineLabel){
     <div id="whereTableRecHistory" class="muted" style="font-size:11px;margin-top:10px">Checking this exact location on TableRec...</div>
     <div class="where-result-actions">
       <button id="whereViewRatingsBtn" class="secondary hidden" onclick="openWhereEatRatings()">View Ratings</button>
+      <button id="whereSaveBtn" class="secondary save-restaurant-btn" onclick="toggleSavePlace(whereEatPick,'whereSaveBtn')">&#9825; Save</button>
       <button class="secondary" onclick="chooseWhereEatRestaurant()">Rate It</button>
       <button class="secondary" onclick="openWhereEatDirections()">Directions</button>
     </div>
   </div>`;
   void hydrateWhereEatTableRecHistory(r);
+  void hydrateSavePlaceButton(r,"whereSaveBtn");
 }
 
 let whereEatTableRecRestaurantId=null;
@@ -9533,7 +9667,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.6";
+const TABLESCORE_VERSION="5.55.8";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
