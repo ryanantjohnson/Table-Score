@@ -1405,6 +1405,14 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .rating-detail-skeleton-row{
   min-height:40px;
 }
+
+/* V5.56.3 fast first paint for rating detail / Verified Visit */
+#ratingDetailMeta{
+  contain:layout paint style;
+}
+#ratingDetailPhotos{
+  contain:layout paint style;
+}
 </style>
 </head>
 <body class="booting">
@@ -4985,8 +4993,6 @@ async function openRatingDetail(ratingId){
     return;
   }
 
-  const photoMap=await getPhotosForRatings([ratingId]);
-  const photos=photoMap.get(ratingId)||[];
   const restaurant=r.restaurants||{};
   activeRatingRestaurantId=r.restaurant_id||null;
   const mapAction=document.getElementById("ratingDetailMapAction");
@@ -5033,7 +5039,8 @@ async function openRatingDetail(ratingId){
   document.getElementById("ratingDetailBestDish").innerHTML=r.best_dish?`<b style="color:var(--ink)">Best Dish:</b> ${esc(r.best_dish)}`:"";
   document.getElementById("ratingDetailQuickTake").textContent=r.quick_take?r.quick_take:"";
   document.getElementById("ratingDetailReturn").innerHTML=r.would_return?`<b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}`:"";
-  document.getElementById("ratingDetailPhotos").innerHTML=photoGridMarkup(photos);
+  // Core rating is now fully painted. Photos/comments/engagement hydrate afterward.
+  document.getElementById("ratingDetailPhotos").innerHTML="";
   let ownerActions=document.getElementById("ratingDetailOwnerActions");
   if(!ownerActions){
     ownerActions=document.createElement("div");
@@ -5045,10 +5052,26 @@ async function openRatingDetail(ratingId){
     ?`<button class="secondary" onclick="closeRatingDetail();openEditRating('${ratingId}')">Edit Rating</button><button class="secondary delete-rating-inline" onclick="closeRatingDetail();deleteRatingFromCard('${ratingId}')">Delete Rating</button>`
     :"";
 
-  await Promise.all([
-    renderRatingDetailEngagement(ratingId),
-    loadRatingComments(ratingId)
-  ]);
+  // Yield one frame so Safari commits the complete core rating before any
+  // secondary network/DOM work. Verified Visit is already part of r and does
+  // not need a separate blocking request.
+  await new Promise(resolve=>requestAnimationFrame(()=>resolve()));
+  if(activeRatingDetailId!==ratingId)return;
+
+  void (async()=>{
+    try{
+      const [photoMap]=await Promise.all([
+        getPhotosForRatings([ratingId]),
+        renderRatingDetailEngagement(ratingId),
+        loadRatingComments(ratingId)
+      ]);
+      if(activeRatingDetailId!==ratingId)return;
+      const photos=photoMap.get(ratingId)||[];
+      document.getElementById("ratingDetailPhotos").innerHTML=photoGridMarkup(photos);
+    }catch(err){
+      console.warn("rating detail secondary hydration:",err);
+    }
+  })();
 }
 
 function closeRatingDetail(){
@@ -9792,7 +9815,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.2";
+const TABLESCORE_VERSION="5.56.3";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
