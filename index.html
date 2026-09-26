@@ -688,6 +688,35 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       top:calc(env(safe-area-inset-top) + 58px) !important;
     }
   }
+
+  /* V5.47.0 rating detail: only Close persists; content scrolls freely */
+  #ratingDetailModal .rating-detail-external-close{
+    position:fixed !important;
+    top:calc(env(safe-area-inset-top) + 58px) !important;
+    right:28px !important;
+    z-index:260 !important;
+    width:auto !important;
+    padding:8px 14px !important;
+    margin:0 !important;
+  }
+  #ratingDetailModal>.sheet{overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+  #ratingDetailModal>.sheet>.section-head:first-child{position:static !important}
+
+  /* Mention autocomplete */
+  .mention-wrap{position:relative;flex:1;min-width:0}
+  .mention-results{
+    position:absolute;left:0;right:0;bottom:100%;z-index:90;
+    max-height:220px;overflow:auto;margin-bottom:6px;
+    border:1px solid var(--line);border-radius:14px;background:var(--panel);
+    box-shadow:0 12px 30px rgba(0,0,0,.35)
+  }
+  .mention-option{
+    display:flex;width:100%;align-items:center;gap:9px;
+    border:0;border-bottom:1px solid var(--line);background:none;color:var(--ink);
+    padding:9px 10px;text-align:left
+  }
+  .mention-option:last-child{border-bottom:0}
+  .comment-mention{color:var(--gold);font-weight:900;cursor:pointer}
 </style>
 </head>
 <body class="booting">
@@ -1307,8 +1336,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 
 <div id="ratingDetailModal" class="modal hidden" onclick="if(event.target===this)closeRatingDetail()">
+  <button class="secondary rating-detail-external-close" onclick="closeRatingDetail()">Close</button>
   <div class="sheet" style="max-height:90vh;overflow:auto">
-    <div class="section-head" style="position:sticky;top:0;background:var(--bg);z-index:3;padding-bottom:9px">
+    <div class="section-head" style="position:static;padding-bottom:9px">
       <div>
         <div id="ratingDetailRestaurant" class="section-title">Rating</div>
         <div id="ratingDetailMeta" class="muted" style="font-size:11px;margin-top:3px"></div>
@@ -1316,7 +1346,6 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
                 style="width:auto;padding:7px 11px;margin-top:7px;font-size:11px"
                 onclick="openActiveRatingRestaurantLocation()">View Restaurant Map</button>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRatingDetail()">Close</button>
     </div>
 
     <div id="ratingDetailAuthor" style="margin-top:8px"></div>
@@ -3634,6 +3663,7 @@ async function openRatingDetail(ratingId){
   activeRatingDetailId=ratingId;
   activeRatingRestaurantId=null;
   const modal=document.getElementById("ratingDetailModal");
+  lockBackgroundScroll();
   modal.classList.remove("hidden");
     initProfileCropGestures();
   const loadingRestaurantTitle=document.getElementById("ratingDetailRestaurant");
@@ -3726,6 +3756,7 @@ function closeRatingDetail(){
   document.getElementById("ratingDetailModal").classList.add("hidden");
   activeRatingDetailId=null;
   activeRatingRestaurantId=null;
+  unlockBackgroundScroll();
 }
 
 async function loadRatingComments(ratingId){
@@ -3764,7 +3795,7 @@ async function loadRatingComments(ratingId){
             <span style="font-size:11px;font-weight:900">${esc(p?.display_name||p?.username||"TableRec User")}</span>
             <span class="row-meta">${timeAgo(c.created_at)}</span>
           </div>
-          <div class="comment-text">${esc(c.body)}</div>
+          <div class="comment-text">${renderCommentBody(c.body)}</div>
         </div>
         ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
       </div>`;
@@ -3773,7 +3804,12 @@ async function loadRatingComments(ratingId){
 
   if(currentUser){
     composer.innerHTML=`<div class="comment-compose">
-      <textarea id="ratingCommentInput" maxlength="500" placeholder="Add a comment..."></textarea>
+      <div class="mention-wrap">
+        <textarea id="ratingCommentInput" maxlength="500" placeholder="Add a comment... Use @ to mention someone"
+          oninput="queueMentionSuggestions('${ratingId}')"
+          onkeydown="handleMentionKeydown(event)"></textarea>
+        <div id="mentionResults" class="mention-results hidden"></div>
+      </div>
       <button class="primary" onclick="submitRatingComment('${ratingId}')">Post</button>
     </div>`;
   }else{
@@ -3783,6 +3819,93 @@ async function loadRatingComments(ratingId){
   await hydrateRatingEngagement([ratingId]);
 }
 
+let mentionSearchTimer=null;
+let mentionSearchSequence=0;
+let mentionCandidates=[];
+
+function activeMentionQuery(){
+  const input=document.getElementById("ratingCommentInput");
+  if(!input)return null;
+  const pos=input.selectionStart??input.value.length;
+  const before=input.value.slice(0,pos);
+  const m=before.match(/(?:^|\s)@([A-Za-z0-9._-]{1,30})$/);
+  if(!m)return null;
+  return {query:m[1],start:pos-m[1].length-1,end:pos};
+}
+
+function queueMentionSuggestions(){
+  clearTimeout(mentionSearchTimer);
+  const hit=activeMentionQuery();
+  const box=document.getElementById("mentionResults");
+  if(!box)return;
+  if(!hit||hit.query.length<1){
+    mentionSearchSequence++;
+    mentionCandidates=[];
+    box.classList.add("hidden");
+    box.innerHTML="";
+    return;
+  }
+  mentionSearchTimer=setTimeout(()=>loadMentionSuggestions(hit.query),180);
+}
+
+async function loadMentionSuggestions(q){
+  const box=document.getElementById("mentionResults");
+  if(!box||!currentUser)return;
+  const seq=++mentionSearchSequence;
+  const {data,error}=await db.rpc("search_people_predictive",{p_query:q,p_limit:8});
+  if(seq!==mentionSearchSequence)return;
+  if(error||!data?.length){
+    mentionCandidates=[];
+    box.classList.add("hidden");
+    box.innerHTML="";
+    return;
+  }
+  mentionCandidates=data;
+  box.innerHTML=data.map((u,i)=>`<button type="button" class="mention-option" onclick="insertMention(${i})">
+    ${avatarMarkup(u,30)}
+    <span style="min-width:0"><b>${esc(u.display_name||u.username||"TableRec User")}</b><br><span class="row-meta">@${esc(u.username||"")}</span></span>
+  </button>`).join("");
+  box.classList.remove("hidden");
+}
+
+function insertMention(i){
+  const u=mentionCandidates[i];
+  const input=document.getElementById("ratingCommentInput");
+  const hit=activeMentionQuery();
+  if(!u?.username||!input||!hit)return;
+  input.value=input.value.slice(0,hit.start)+"@"+u.username+" "+input.value.slice(hit.end);
+  const pos=hit.start+u.username.length+2;
+  input.focus();
+  input.setSelectionRange(pos,pos);
+  const box=document.getElementById("mentionResults");
+  if(box){box.classList.add("hidden");box.innerHTML="";}
+  mentionCandidates=[];
+}
+
+function handleMentionKeydown(e){
+  if(e.key==="Escape"){
+    const box=document.getElementById("mentionResults");
+    if(box){box.classList.add("hidden");box.innerHTML="";}
+  }
+}
+
+function renderCommentBody(body){
+  const safe=esc(body||"");
+  return safe.replace(/(^|[\s(])@([A-Za-z0-9._-]{1,30})/g,
+    (all,prefix,username)=>`${prefix}<span class="comment-mention" onclick="event.stopPropagation();openMentionedProfile('${username.replace(/'/g,"")}')">@${username}</span>`);
+}
+
+async function openMentionedProfile(username){
+  if(!username)return;
+  const {data,error}=await db.rpc("get_profile_by_username_safe",{p_username:username});
+  if(error||!data)return;
+  const p=Array.isArray(data)?data[0]:data;
+  if(!p?.id)return;
+  closeRatingDetail();
+  if(currentUser&&p.id===currentUser.id)showScreen("profile");
+  else openPublicProfile(p.id);
+}
+
 async function submitRatingComment(ratingId){
   if(!currentUser)return openAccount(()=>openRatingDetail(ratingId));
   const input=document.getElementById("ratingCommentInput");
@@ -3790,12 +3913,19 @@ async function submitRatingComment(ratingId){
   if(!body)return;
   if(body.length>500)return alert("Comments can be up to 500 characters.");
 
-  const {error}=await db.from("rating_comments").insert({
+  const {data:newComment,error}=await db.from("rating_comments").insert({
     rating_id:ratingId,
     user_id:currentUser.id,
     body
-  });
+  }).select("id").single();
   if(error)return alert("Could not post comment: "+error.message);
+
+  // Server resolves valid @usernames and creates at most one notification per
+  // mentioned user for this comment. The client never chooses notification recipients.
+  const mentionResult=await db.rpc("notify_comment_mentions",{
+    p_comment_id:newComment.id
+  });
+  if(mentionResult.error)console.warn("mention notifications:",mentionResult.error);
 
   input.value="";
   await loadRatingComments(ratingId);
@@ -7202,6 +7332,16 @@ async function openNotification(id){
     }
   }
 
+  if(n.type==="comment_mention"&&n?.metadata?.rating_id){
+    const ratingId=n.metadata.rating_id;
+    closeNotifications();
+    await openRatingDetail(ratingId);
+    setTimeout(()=>{
+      document.getElementById("ratingDetailComments")?.scrollIntoView({behavior:"smooth",block:"center"});
+    },180);
+    return;
+  }
+
   const rewardSlug=n?.metadata?.reward_slug||null;
   if(n.type==="secret_reward"&&rewardSlug){
     closeNotifications();
@@ -7571,8 +7711,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.46.1";
-const TABLESCORE_BUILD_LABEL="People Search 2.0 Correction";
+const TABLESCORE_VERSION="5.47.0";
+const TABLESCORE_BUILD_LABEL="Rating Modal and Comment Mentions";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
