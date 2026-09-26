@@ -1123,6 +1123,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .comment-dig-btn{margin-top:7px;border:0;background:transparent;color:var(--muted);padding:2px 0;font-size:10px;font-weight:900}
 .comment-dig-btn.dug{color:var(--gold)}
 
+/* V5.54.2 mention links */
+.comment-mention{border:0;background:transparent;padding:0;margin:0;font:inherit;color:var(--gold);font-weight:900;cursor:pointer;text-decoration:none;display:inline}
 </style>
 </head>
 <body class="booting">
@@ -3223,6 +3225,9 @@ async function openNearbyRestaurantPicker(){
 function closeNearbyRestaurantPicker(){
   hideRestaurantPredictions();
   document.getElementById("nearbyRestaurantModal").classList.add("hidden");
+  if(document.getElementById("restaurantActionModal")?.classList.contains("hidden")){
+    unlockBackgroundScroll();
+  }
 }
 
 function setRestaurantFinderMode(mode){
@@ -4548,23 +4553,28 @@ function handleMentionKeydown(e){
 function renderCommentBody(body){
   const safe=esc(body||"");
   return safe.replace(/(^|[\s(])@([A-Za-z0-9._-]{1,30})/g,
-    (all,prefix,username)=>`${prefix}<span class="comment-mention" onclick="event.stopPropagation();openMentionedProfile('${username.replace(/'/g,"")}')">@${username}</span>`);
+    (all,prefix,username)=>`${prefix}<button type="button" class="comment-mention" data-mention-username="${username}" aria-label="Open @${username} profile">@${username}</button>`);
 }
 
 async function openMentionedProfile(username){
   const clean=String(username||"").trim().replace(/^@/,"");
-  if(!clean)return;
-  const {data,error}=await db.from("profiles")
-    .select("id,username")
-    .ilike("username",clean)
-    .limit(1);
+  if(!clean||!currentUser)return;
+  const {data,error}=await db.rpc("search_people_predictive",{p_query:clean,p_limit:20});
   if(error){console.warn("mention profile lookup:",error);return;}
-  const p=Array.isArray(data)?data[0]:data;
+  const p=(data||[]).find(u=>String(u.username||"").toLowerCase()===clean.toLowerCase());
   if(!p?.id)return;
   closeRatingDetail();
   if(currentUser&&p.id===currentUser.id)showScreen("profile");
-  else openPublicProfile(p.id);
+  else await openPublicProfile(p.id);
 }
+
+document.addEventListener("click",(event)=>{
+  const mention=event.target?.closest?.("[data-mention-username]");
+  if(!mention)return;
+  event.preventDefault();
+  event.stopPropagation();
+  void openMentionedProfile(mention.dataset.mentionUsername||"");
+});
 
 async function submitRatingComment(ratingId){
   if(!currentUser)return openAccount(()=>openRatingDetail(ratingId));
@@ -4683,11 +4693,25 @@ function homePollCard(p){
 function homeRunInsert(){
  return `<div class="home-play-card home-run-card"><div class="home-run-dice" aria-hidden="true">&#127922;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>`;
 }
+function unansweredHomePolls(){
+  const day=Math.floor(Date.now()/86400000);
+  const rotated=HOME_POLL_DECK.map((_,i)=>HOME_POLL_DECK[(day+i)%HOME_POLL_DECK.length]);
+  return rotated.filter(p=>!homePollChoice(p.id));
+}
+function noHomePollsCard(){
+  return `<div class="home-play-card"><div class="home-play-kicker">TABLE TALK</div><div class="home-play-question">No polls right now.</div><div class="muted" style="font-size:11px;margin-top:6px">Check back later for a new food question.</div></div>`;
+}
+function nextHomePollCard(offset=0){
+  const available=unansweredHomePolls();
+  return available[offset]?homePollCard(available[offset]):noHomePollsCard();
+}
 function homeEngagementInserts(){
- const day=Math.floor(Date.now()/86400000);
- const first=HOME_POLL_DECK[day%HOME_POLL_DECK.length];
- const second=HOME_POLL_DECK[(day+3)%HOME_POLL_DECK.length];
- return [homePollCard(first),homeRunInsert(),homePollCard(second)];
+ const available=unansweredHomePolls();
+ return [
+   available[0]?homePollCard(available[0]):noHomePollsCard(),
+   homeRunInsert(),
+   available[1]?homePollCard(available[1]):noHomePollsCard()
+ ];
 }
 function buildMixedHomeFeed(ratingCards){
  if(!ratingCards?.length)return "";
@@ -4806,8 +4830,8 @@ async function loadFollowingFeed(){
     return;
   }
   if(!followingIds.size){
-    const poll=HOME_POLL_DECK[Math.floor(Date.now()/86400000)%HOME_POLL_DECK.length];
-    el.innerHTML=`<div class="empty"><div class="section-title">Build your table</div><p class="muted" style="font-size:13px">Follow diners to fill Home with restaurant ratings that match your circle.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div><div class="home-quiet-grid">${homePollCard(poll)}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
+    const pollCard=nextHomePollCard();
+    el.innerHTML=`<div class="empty"><div class="section-title">Build your table</div><p class="muted" style="font-size:13px">Follow diners to fill Home with restaurant ratings that match your circle.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div><div class="home-quiet-grid">${pollCard}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
     loadHomeSuggestedRestaurant();
     return;
   }
@@ -4830,8 +4854,8 @@ async function loadFollowingFeed(){
     return;
   }
   if(!ratings?.length){
-    const poll=HOME_POLL_DECK[Math.floor(Date.now()/86400000)%HOME_POLL_DECK.length];
-    el.innerHTML=`<div class="empty"><div class="section-title">Quiet table for now</div><p class="muted" style="font-size:13px">Your circle has not posted a new rating yet. There's still plenty to explore.</p></div><div class="home-quiet-grid">${homePollCard(poll)}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
+    const pollCard=nextHomePollCard();
+    el.innerHTML=`<div class="empty"><div class="section-title">Quiet table for now</div><p class="muted" style="font-size:13px">Your circle has not posted a new rating yet. There's still plenty to explore.</p></div><div class="home-quiet-grid">${pollCard}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
     loadHomeSuggestedRestaurant();
     return;
   }
@@ -8369,12 +8393,61 @@ function renderWhereEatPick(r,cuisineLabel){
     <div class="kicker">${whereEatMode==="dealer"?"Dealer's Choice":whereEatMode==="cuisine"?"Cuisine Pick":"Surprise Pick"}</div>
     <div class="where-result-name">${esc(r.name||"Restaurant")}</div>
     <div class="where-result-meta">${esc(cuisine)}${price?` &nbsp;·&nbsp; ${price}`:""}${distance?` &nbsp;·&nbsp; ${distance}`:""}${address?`<br>${esc(address)}`:""}</div>
+    <div id="whereTableRecHistory" class="muted" style="font-size:11px;margin-top:10px">Checking this exact location on TableRec...</div>
     <div class="where-result-actions">
-      <button class="secondary" onclick="chooseWhereEatRestaurant()">View / Rate</button>
+      <button id="whereViewRatingsBtn" class="secondary hidden" onclick="openWhereEatRatings()">View Ratings</button>
+      <button class="secondary" onclick="chooseWhereEatRestaurant()">Rate It</button>
       <button class="secondary" onclick="openWhereEatDirections()">Directions</button>
     </div>
   </div>`;
-  
+  void hydrateWhereEatTableRecHistory(r);
+}
+
+let whereEatTableRecRestaurantId=null;
+async function hydrateWhereEatTableRecHistory(r){
+  whereEatTableRecRestaurantId=null;
+  const note=document.getElementById("whereTableRecHistory");
+  const btn=document.getElementById("whereViewRatingsBtn");
+  const placeId=r?.google_place_id||r?.place_id||"";
+  if(!placeId){
+    if(note)note.textContent="Not rated on TableRec yet.";
+    return;
+  }
+  try{
+    const {data:restaurant,error}=await db.from("restaurants")
+      .select("id,name,google_place_id")
+      .eq("google_place_id",placeId)
+      .maybeSingle();
+    if(error)throw error;
+    if(!restaurant?.id){
+      if(note)note.textContent="Not rated on TableRec yet - be the first to rate this location.";
+      return;
+    }
+    const {data:stats,error:statsError}=await db.from("restaurant_stats")
+      .select("id,tablescore,rating_count,unique_diners")
+      .eq("id",restaurant.id)
+      .maybeSingle();
+    if(statsError)throw statsError;
+    const count=Number(stats?.rating_count||0);
+    if(!count){
+      if(note)note.textContent="Not rated on TableRec yet - be the first to rate this location.";
+      return;
+    }
+    whereEatTableRecRestaurantId=restaurant.id;
+    const score=Number(stats?.tablescore);
+    const diners=Number(stats?.unique_diners||0);
+    if(note)note.innerHTML=`TableRec <b>${Number.isFinite(score)?score.toFixed(2):"--"}</b> &nbsp;·&nbsp; ${count} rating${count===1?"":"s"}${diners?` from ${diners} diner${diners===1?"":"s"}`:""}`;
+    btn?.classList.remove("hidden");
+  }catch(err){
+    console.warn("RUN IT TableRec history:",err);
+    if(note)note.textContent="TableRec rating history unavailable right now.";
+  }
+}
+async function openWhereEatRatings(){
+  if(!whereEatTableRecRestaurantId)return;
+  const id=whereEatTableRecRestaurantId;
+  closeWhereToEat();
+  await openRestaurantById(id);
 }
 function sleepWhere(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function whereBurstMarkup(){
@@ -8427,7 +8500,7 @@ function whereRestaurantKey(r){return String(r?.google_place_id||r?.place_id||r?
 function whereRecentKeys(){try{return JSON.parse(localStorage.getItem(WHERE_RECENT_KEY)||"[]")}catch(_){return []}}
 function rememberWherePick(r){
   const key=whereRestaurantKey(r);if(!key)return;
-  const next=[key,...whereRecentKeys().filter(x=>x!==key)].slice(0,30);
+  const next=[key,...whereRecentKeys().filter(x=>x!==key)].slice(0,365);
   try{localStorage.setItem(WHERE_RECENT_KEY,JSON.stringify(next))}catch(_){}
 }
 function chooseFreshWherePick(pool){
@@ -8471,7 +8544,7 @@ async function spinWhereToEat(){
     whereEatPool=pool;
     whereEatPick=chooseFreshWherePick(pool);
     rememberWherePick(whereEatPick);
-    status.textContent="";
+    status.textContent=`${pool.length} matching restaurant${pool.length===1?"":"s"} in the pool`;
     await animateWhereRestaurant(pool,whereEatPick,whereEatMode==="cuisine"?`${cuisineLabel.toUpperCase()} IS LOCKED IN`:"HERE WE GO...");
     renderWhereEatPick(whereEatPick,cuisineLabel);
   }catch(err){
@@ -8799,7 +8872,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.1";
+const TABLESCORE_VERSION="5.54.2";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
