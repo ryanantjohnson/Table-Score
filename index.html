@@ -1252,6 +1252,36 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   font-weight:900!important;
   flex:0 0 auto;
 }
+
+/* V5.55.3 edit-rating sticky-bar occlusion fix */
+#editRatingModal .edit-rating-sheet{
+  position:relative;
+  isolation:isolate;
+}
+#editRatingModal .edit-rating-header{
+  z-index:100!important;
+  background:var(--sheetBg)!important;
+  opacity:1!important;
+  overflow:hidden;
+  box-shadow:0 1px 0 var(--line);
+}
+#editRatingModal .edit-rating-actions{
+  z-index:100!important;
+  background:var(--sheetBg)!important;
+  opacity:1!important;
+  overflow:hidden;
+  box-shadow:0 -1px 0 var(--line);
+}
+#editRatingModal .edit-rating-grid,
+#editRatingModal .field,
+#editRatingModal .edit-photo-current,
+#editRatingModal .photo-preview-grid{
+  position:relative;
+  z-index:1;
+}
+#editRatingModal .edit-rating-sheet{
+  padding-bottom:calc(20px + env(safe-area-inset-bottom));
+}
 </style>
 </head>
 <body class="booting">
@@ -9371,7 +9401,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.2";
+const TABLESCORE_VERSION="5.55.3";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
