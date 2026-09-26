@@ -1282,6 +1282,27 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 #editRatingModal .edit-rating-sheet{
   padding-bottom:calc(20px + env(safe-area-inset-bottom));
 }
+
+/* V5.55.4 remove exposed strip above sticky edit header */
+#editRatingModal .edit-rating-sheet{
+  padding-top:0!important;
+  overflow-x:hidden!important;
+  overflow-y:auto!important;
+  border-radius:28px;
+}
+#editRatingModal .edit-rating-header{
+  top:0!important;
+  margin:0 -20px 12px!important;
+  padding:20px!important;
+  min-height:92px;
+  background:var(--sheetBg)!important;
+  position:sticky!important;
+  z-index:500!important;
+}
+#editRatingModal .edit-rating-actions{
+  z-index:500!important;
+  background:var(--sheetBg)!important;
+}
 </style>
 </head>
 <body class="booting">
@@ -9401,7 +9422,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.3";
+const TABLESCORE_VERSION="5.55.4";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
