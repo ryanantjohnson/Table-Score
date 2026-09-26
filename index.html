@@ -3169,13 +3169,11 @@ function chooseRestaurantPrediction(index){
   const r=restaurantPredictionRows[index];
   if(!r)return;
 
-  const input=document.getElementById("globalRestaurantSearch");
-  if(input)input.value=r.name||"";
-
+  // Preserve the exact Google Places result the user tapped and send it
+  // through the same proven selection path used by restaurant result cards.
+  nearbyGoogleRestaurants=[r];
   hideRestaurantPredictions();
-
-  // Use the exact Google Places result object and existing selection path.
-  selectNearbyRestaurant(r);
+  chooseNearbyRestaurant(0);
 }
 
 function handleRestaurantPredictionKeydown(event){
@@ -8116,8 +8114,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.48.0";
-const TABLESCORE_BUILD_LABEL="Predictive Restaurant Search";
+const TABLESCORE_VERSION="5.48.1";
+const TABLESCORE_BUILD_LABEL="Predictive Restaurant Direct Select";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
