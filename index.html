@@ -1190,6 +1190,34 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .own-rating-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
 .own-rating-actions .secondary{width:auto;min-height:34px;padding:7px 12px;border-radius:999px;font-size:10px;font-weight:900}
 .delete-rating-inline{border-color:rgba(255,90,90,.45)!important;color:#ff8b8b!important}
+
+/* V5.55.1 horizontal overflow hotfix */
+html,body{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden!important;
+  overscroll-behavior-x:none;
+}
+.screen,.modal,.sheet{
+  max-width:100%;
+  overflow-x:hidden!important;
+}
+#editRatingModal,
+#editRatingModal>.sheet{
+  width:100%;
+  max-width:100%;
+  overflow-x:hidden!important;
+  overscroll-behavior-x:none;
+}
+#editRatingModal input,
+#editRatingModal textarea,
+#editRatingModal select,
+#editRatingModal button,
+#editRatingModal .edit-photo-current,
+#editRatingModal .photo-preview-grid{
+  max-width:100%;
+  box-sizing:border-box;
+}
 </style>
 </head>
 <body class="booting">
@@ -9309,7 +9337,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.55.0";
+const TABLESCORE_VERSION="5.55.1";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
