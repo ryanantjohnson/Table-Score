@@ -4426,8 +4426,13 @@ async function loadRatingComments(ratingId){
   count.textContent=`${comments?.length||0} comment${comments?.length===1?"":"s"}`;
 
   const userIds=[...new Set((comments||[]).map(c=>c.user_id))];
-  const people=await getPublicProfilesSafe(userIds);
-  const peopleMap=new Map(people.map(p=>[p.id,p]));
+  let people=[];
+  try{
+    people=await getPublicProfilesSafe(userIds);
+  }catch(err){
+    console.warn("comment profile hydration:",err);
+  }
+  const peopleMap=new Map((people||[]).map(p=>[p.id,p]));
 
   // Resolve every visible @mention once while the comment thread loads.
   // Rendered mention buttons then carry a concrete TableRec user id and do
@@ -4437,8 +4442,8 @@ async function loadRatingComments(ratingId){
     return found.map(x=>x.trim().replace(/^@/,"").toLowerCase());
   }).filter(Boolean))];
   const mentionIdMap=new Map();
-  if(currentProfile?.username&&currentUser?.id){
-    mentionIdMap.set(String(currentProfile.username).toLowerCase(),currentUser.id);
+  if(profile?.username&&currentUser?.id){
+    mentionIdMap.set(String(profile.username).toLowerCase(),currentUser.id);
   }
 
   if(!comments?.length){
@@ -4480,8 +4485,9 @@ async function loadRatingComments(ratingId){
     composer.innerHTML='<button class="secondary" style="margin-top:10px" onclick="closeRatingDetail();openAccount()">Sign in to comment</button>';
   }
 
-  await hydrateRatingEngagement([ratingId]);
-  await hydrateCommentDigs((comments||[]).map(c=>c.id));
+  // Engagement is enhancement-only. Comments are already rendered above.
+  void hydrateRatingEngagement([ratingId]).catch(err=>console.warn("rating engagement hydration:",err));
+  void hydrateCommentDigs((comments||[]).map(c=>c.id)).catch(err=>console.warn("comment dig hydration:",err));
 }
 
 async function hydrateRenderedCommentMentions(names=[]){
@@ -4489,7 +4495,7 @@ async function hydrateRenderedCommentMentions(names=[]){
   await Promise.all(unique.map(async name=>{
     try{
       let userId="";
-      if(currentProfile?.username&&String(currentProfile.username).toLowerCase()===name&&currentUser?.id){
+      if(profile?.username&&String(profile.username).toLowerCase()===name&&currentUser?.id){
         userId=currentUser.id;
       }else{
         const {data,error}=await db.rpc("search_people_predictive",{p_query:name,p_limit:20});
@@ -4674,7 +4680,7 @@ async function openMentionedProfileById(userId,username=""){
 async function openMentionedProfile(username){
   const clean=String(username||"").trim().replace(/^@/,"");
   if(!clean||!currentUser)return;
-  const myUsername=String(currentProfile?.username||document.getElementById("profileUsername")?.textContent||"").trim().replace(/^@/,"");
+  const myUsername=String(profile?.username||document.getElementById("profileUsername")?.textContent||"").trim().replace(/^@/,"");
   if(myUsername && myUsername.toLowerCase()===clean.toLowerCase()){
     closeRatingDetail();
     showScreen("profile");
@@ -5479,21 +5485,37 @@ function closePublicProfile(){
 let publicProfileEdgeStart=null;
 let publicProfileEdgeDragging=false;
 
-function publicProfileSwipeElement(){
-  return document.getElementById("publicProfile");
+function publicProfileSwipeSurfaces(){
+  const page=document.getElementById("publicProfile");
+  const nav=document.querySelector(".nav");
+  // The app header is the visible top-level header immediately above screens.
+  const header=document.querySelector(".app-header,.topbar,header");
+  return [header,page,nav].filter(Boolean);
+}
+function setPublicProfileSwipeTransform(x,opacity=1,transition="none"){
+  publicProfileSwipeSurfaces().forEach(el=>{
+    el.style.transition=transition;
+    el.style.transform=`translate3d(${x}px,0,0)`;
+    el.style.opacity=String(opacity);
+    el.style.willChange="transform";
+  });
+}
+function clearPublicProfileSwipeStyles(){
+  publicProfileSwipeSurfaces().forEach(el=>{
+    el.style.transition="";
+    el.style.transform="";
+    el.style.opacity="";
+    el.style.willChange="";
+  });
 }
 function resetPublicProfileSwipe(animated=true){
-  const page=publicProfileSwipeElement();
-  if(!page)return;
-  page.style.transition=animated?"transform .22s cubic-bezier(.22,.8,.3,1)":"none";
-  page.style.transform="translate3d(0,0,0)";
-  page.style.opacity="1";
-  if(animated)setTimeout(()=>{
-    if(page.style.transform==="translate3d(0,0,0)")page.style.transition="";
-  },240);
+  const transition=animated?"transform .24s cubic-bezier(.22,.8,.3,1), opacity .24s ease":"none";
+  setPublicProfileSwipeTransform(0,1,transition);
+  if(animated)setTimeout(clearPublicProfileSwipeStyles,260);
 }
+
 document.addEventListener("touchstart",(event)=>{
-  const page=publicProfileSwipeElement();
+  const page=document.getElementById("publicProfile");
   const active=page?.classList.contains("active");
   const t=event.touches?.[0];
   if(!active||!t||t.clientX>30||event.touches.length!==1){
@@ -5501,16 +5523,15 @@ document.addEventListener("touchstart",(event)=>{
     publicProfileEdgeDragging=false;
     return;
   }
-  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:performance.now(),lastX:t.clientX,lastTime:performance.now()};
+  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:performance.now()};
   publicProfileEdgeDragging=false;
-  page.style.transition="none";
+  setPublicProfileSwipeTransform(0,1,"none");
 },{passive:true});
 
 document.addEventListener("touchmove",(event)=>{
   if(!publicProfileEdgeStart)return;
   const t=event.touches?.[0];
-  const page=publicProfileSwipeElement();
-  if(!t||!page)return;
+  if(!t)return;
   const dx=Math.max(0,t.clientX-publicProfileEdgeStart.x);
   const dy=Math.abs(t.clientY-publicProfileEdgeStart.y);
   if(!publicProfileEdgeDragging){
@@ -5519,48 +5540,38 @@ document.addEventListener("touchmove",(event)=>{
       resetPublicProfileSwipe(false);
       return;
     }
-    if(dx<6)return;
+    if(dx<5)return;
     publicProfileEdgeDragging=true;
   }
-  if(dx<=0)return;
   event.preventDefault();
   const width=Math.max(1,window.innerWidth);
   const progress=Math.min(1,dx/width);
-  page.style.transform=`translate3d(${dx}px,0,0)`;
-  page.style.opacity=String(1-(progress*.08));
-  publicProfileEdgeStart.lastX=t.clientX;
-  publicProfileEdgeStart.lastTime=performance.now();
+  setPublicProfileSwipeTransform(dx,1-(progress*.06),"none");
 },{passive:false});
 
 document.addEventListener("touchend",(event)=>{
   if(!publicProfileEdgeStart)return;
-  const page=publicProfileSwipeElement();
   const t=event.changedTouches?.[0];
   const start=publicProfileEdgeStart;
-  const wasDragging=publicProfileEdgeDragging;
+  const dragged=publicProfileEdgeDragging;
   publicProfileEdgeStart=null;
   publicProfileEdgeDragging=false;
-  if(!t||!page||!wasDragging){
+  if(!t||!dragged){
     resetPublicProfileSwipe(true);
     return;
   }
   const dx=Math.max(0,t.clientX-start.x);
-  const width=Math.max(1,window.innerWidth);
   const elapsed=Math.max(1,performance.now()-start.time);
   const velocity=dx/elapsed;
-  const shouldFinish=dx>width*.32||velocity>.55;
-  if(!shouldFinish){
+  const width=Math.max(1,window.innerWidth);
+  if(dx<=width*.30&&velocity<=.52){
     resetPublicProfileSwipe(true);
     return;
   }
-  page.style.transition="transform .18s cubic-bezier(.2,.75,.25,1), opacity .18s ease";
-  page.style.transform=`translate3d(${width}px,0,0)`;
-  page.style.opacity=".94";
+  setPublicProfileSwipeTransform(width,.94,"transform .18s cubic-bezier(.2,.75,.25,1), opacity .18s ease");
   setTimeout(()=>{
     closePublicProfile();
-    page.style.transition="";
-    page.style.transform="";
-    page.style.opacity="";
+    clearPublicProfileSwipeStyles();
   },180);
 },{passive:true});
 
@@ -9136,7 +9147,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.6";
+const TABLESCORE_VERSION="5.54.7";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
