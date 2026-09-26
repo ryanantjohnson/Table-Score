@@ -1174,6 +1174,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   pointer-events:auto !important;
   touch-action:manipulation !important;
 }
+
+#publicProfile{
+  will-change:transform;
+  backface-visibility:hidden;
+  transform:translate3d(0,0,0);
+}
 </style>
 </head>
 <body class="booting">
@@ -4423,6 +4429,24 @@ async function loadRatingComments(ratingId){
   const people=await getPublicProfilesSafe(userIds);
   const peopleMap=new Map(people.map(p=>[p.id,p]));
 
+  // Resolve every visible @mention once while the comment thread loads.
+  // Rendered mention buttons then carry a concrete TableRec user id and do
+  // not need another username search when tapped.
+  const mentionNames=[...new Set((comments||[]).flatMap(c=>{
+    const found=String(c.body||"").match(/(^|[\s(])@([A-Za-z0-9._-]{1,30})/g)||[];
+    return found.map(x=>x.trim().replace(/^@/,"").toLowerCase());
+  }).filter(Boolean))];
+  const mentionIdMap=new Map();
+  await Promise.all(mentionNames.map(async name=>{
+    if(currentProfile?.username&&String(currentProfile.username).toLowerCase()===name&&currentUser?.id){
+      mentionIdMap.set(name,currentUser.id);
+      return;
+    }
+    const {data}=await db.rpc("search_people_predictive",{p_query:name,p_limit:20});
+    const hit=(data||[]).find(u=>String(u.username||"").toLowerCase()===name);
+    if(hit?.id)mentionIdMap.set(name,hit.id);
+  }));
+
   if(!comments?.length){
     list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">No comments yet. Start the table talk.</div>';
   }else{
@@ -4436,7 +4460,7 @@ async function loadRatingComments(ratingId){
             <span style="font-size:11px;font-weight:900">${esc(p?.display_name||p?.username||"TableRec User")}</span>
             <span class="row-meta">${timeAgo(c.created_at)}</span>
           </div>
-          <div class="comment-text">${renderCommentBody(c.body)}</div>
+          <div class="comment-text">${renderCommentBody(c.body,mentionIdMap)}</div>
           <button id="commentDigBtn-${c.id}" class="comment-dig-btn" onclick="toggleCommentDig('${c.id}','${ratingId}')">Dig It <span id="commentDigCount-${c.id}">0</span></button>
         </div>
         ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
@@ -4601,12 +4625,29 @@ function handleMentionKeydown(e){
   }
 }
 
-function renderCommentBody(body){
+function renderCommentBody(body,mentionIdMap=new Map()){
   const safe=esc(body||"");
   return safe.replace(/(^|[\s(])@([A-Za-z0-9._-]{1,30})/g,
-    (all,prefix,username)=>`${prefix}<button type="button" class="comment-mention" data-mention-username="${username}" aria-label="Open @${username} profile">@${username}</button>`);
+    (all,prefix,username)=>{
+      const userId=mentionIdMap.get(String(username).toLowerCase())||"";
+      const attrs=userId
+        ?`data-mention-user-id="${esc(userId)}" data-mention-username="${esc(username)}"`
+        :`data-mention-username="${esc(username)}"`;
+      return `${prefix}<button type="button" class="comment-mention" ${attrs} aria-label="Open @${esc(username)} profile">@${esc(username)}</button>`;
+    });
 }
 
+async function openMentionedProfileById(userId,username=""){
+  if(!userId){
+    return openMentionedProfile(username);
+  }
+  closeRatingDetail();
+  if(currentUser&&userId===currentUser.id){
+    showScreen("profile");
+    return;
+  }
+  await openPublicProfile(userId);
+}
 async function openMentionedProfile(username){
   const clean=String(username||"").trim().replace(/^@/,"");
   if(!clean||!currentUser)return;
@@ -4630,7 +4671,10 @@ function handleCommentMentionActivation(event){
   if(!mention)return;
   event.preventDefault();
   event.stopPropagation();
-  void openMentionedProfile(mention.dataset.mentionUsername||"");
+  void openMentionedProfileById(
+    mention.dataset.mentionUserId||"",
+    mention.dataset.mentionUsername||""
+  );
 }
 document.addEventListener("click",handleCommentMentionActivation,true);
 
@@ -5410,22 +5454,98 @@ function closePublicProfile(){
 }
 
 let publicProfileEdgeStart=null;
+let publicProfileEdgeDragging=false;
+
+function publicProfileSwipeElement(){
+  return document.getElementById("publicProfile");
+}
+function resetPublicProfileSwipe(animated=true){
+  const page=publicProfileSwipeElement();
+  if(!page)return;
+  page.style.transition=animated?"transform .22s cubic-bezier(.22,.8,.3,1)":"none";
+  page.style.transform="translate3d(0,0,0)";
+  page.style.opacity="1";
+  if(animated)setTimeout(()=>{
+    if(page.style.transform==="translate3d(0,0,0)")page.style.transition="";
+  },240);
+}
 document.addEventListener("touchstart",(event)=>{
-  const active=document.getElementById("publicProfile")?.classList.contains("active");
+  const page=publicProfileSwipeElement();
+  const active=page?.classList.contains("active");
   const t=event.touches?.[0];
-  if(!active||!t||t.clientX>28){publicProfileEdgeStart=null;return;}
-  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:Date.now()};
+  if(!active||!t||t.clientX>30||event.touches.length!==1){
+    publicProfileEdgeStart=null;
+    publicProfileEdgeDragging=false;
+    return;
+  }
+  publicProfileEdgeStart={x:t.clientX,y:t.clientY,time:performance.now(),lastX:t.clientX,lastTime:performance.now()};
+  publicProfileEdgeDragging=false;
+  page.style.transition="none";
 },{passive:true});
+
+document.addEventListener("touchmove",(event)=>{
+  if(!publicProfileEdgeStart)return;
+  const t=event.touches?.[0];
+  const page=publicProfileSwipeElement();
+  if(!t||!page)return;
+  const dx=Math.max(0,t.clientX-publicProfileEdgeStart.x);
+  const dy=Math.abs(t.clientY-publicProfileEdgeStart.y);
+  if(!publicProfileEdgeDragging){
+    if(dy>18&&dy>dx){
+      publicProfileEdgeStart=null;
+      resetPublicProfileSwipe(false);
+      return;
+    }
+    if(dx<6)return;
+    publicProfileEdgeDragging=true;
+  }
+  if(dx<=0)return;
+  event.preventDefault();
+  const width=Math.max(1,window.innerWidth);
+  const progress=Math.min(1,dx/width);
+  page.style.transform=`translate3d(${dx}px,0,0)`;
+  page.style.opacity=String(1-(progress*.08));
+  publicProfileEdgeStart.lastX=t.clientX;
+  publicProfileEdgeStart.lastTime=performance.now();
+},{passive:false});
+
 document.addEventListener("touchend",(event)=>{
   if(!publicProfileEdgeStart)return;
+  const page=publicProfileSwipeElement();
   const t=event.changedTouches?.[0];
   const start=publicProfileEdgeStart;
+  const wasDragging=publicProfileEdgeDragging;
   publicProfileEdgeStart=null;
-  if(!t)return;
-  const dx=t.clientX-start.x;
-  const dy=Math.abs(t.clientY-start.y);
-  const elapsed=Date.now()-start.time;
-  if(dx>=70&&dy<=90&&elapsed<=900)closePublicProfile();
+  publicProfileEdgeDragging=false;
+  if(!t||!page||!wasDragging){
+    resetPublicProfileSwipe(true);
+    return;
+  }
+  const dx=Math.max(0,t.clientX-start.x);
+  const width=Math.max(1,window.innerWidth);
+  const elapsed=Math.max(1,performance.now()-start.time);
+  const velocity=dx/elapsed;
+  const shouldFinish=dx>width*.32||velocity>.55;
+  if(!shouldFinish){
+    resetPublicProfileSwipe(true);
+    return;
+  }
+  page.style.transition="transform .18s cubic-bezier(.2,.75,.25,1), opacity .18s ease";
+  page.style.transform=`translate3d(${width}px,0,0)`;
+  page.style.opacity=".94";
+  setTimeout(()=>{
+    closePublicProfile();
+    page.style.transition="";
+    page.style.transform="";
+    page.style.opacity="";
+  },180);
+},{passive:true});
+
+document.addEventListener("touchcancel",()=>{
+  if(!publicProfileEdgeStart)return;
+  publicProfileEdgeStart=null;
+  publicProfileEdgeDragging=false;
+  resetPublicProfileSwipe(true);
 },{passive:true});
 
 async function togglePublicProfileFollow(){
@@ -8993,7 +9113,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.4";
+const TABLESCORE_VERSION="5.54.5";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
