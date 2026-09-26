@@ -1,4 +1,4 @@
-!doctype html>
+<!doctype html>
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -944,10 +944,10 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 }
 
 
-/* V5.47.5 - mention dropdown hard anchored to comment composer */
-#mentionPortal{
-  transform:none !important;
-  margin:0 !important;
+/* V5.47.6 - safe mention placement patch.
+   Preserve V5.47.4 behavior; only visually pull the opaque menu down toward composer. */
+#mentionPortal.show{
+  transform:translateY(112px) !important;
 }
 
 </style>
@@ -4094,23 +4094,35 @@ function positionMentionPortal(){
   if(!input||!portal||!portal.classList.contains("show"))return;
 
   const r=input.getBoundingClientRect();
+  const vv=window.visualViewport;
+  const vTop=vv ? vv.offsetTop : 0;
+  const vBottom=vTop+(vv ? vv.height : window.innerHeight);
   const gap=6;
   const margin=12;
 
+  /* Match the comment field rather than floating across the rating. */
   const width=Math.min(r.width,window.innerWidth-(margin*2));
   const left=Math.max(margin,Math.min(r.left,window.innerWidth-width-margin));
 
-  /* Hard-anchor the dropdown to the composer.
-     Its bottom edge stays directly above the text box. */
-  const desiredHeight=Math.min(184,Math.max(62,portal.scrollHeight));
-  const top=r.top-gap-desiredHeight;
+  /* Size from actual results, capped at 3 rows. */
+  const desired=Math.min(184,Math.max(62,portal.scrollHeight));
+  const roomAbove=Math.max(0,r.top-vTop-gap-margin);
+  const roomBelow=Math.max(0,vBottom-r.bottom-gap-margin);
+
+  let height=Math.min(desired,Math.max(62,roomAbove));
+  let top=r.top-gap-height;
+
+  /* Only use below if above truly cannot fit one row. */
+  if(roomAbove<62 && roomBelow>=62){
+    height=Math.min(desired,roomBelow);
+    top=r.bottom+gap;
+  }
 
   portal.style.left=left+"px";
   portal.style.width=width+"px";
   portal.style.height="auto";
-  portal.style.maxHeight=desiredHeight+"px";
-  portal.style.top=top+"px";
-  portal.style.bottom="auto";
+  portal.style.maxHeight=height+"px";
+  portal.style.top=Math.max(vTop+margin,top)+"px";
 }
 
 async function loadMentionSuggestions(q){
@@ -7720,4 +7732,542 @@ async function init(){
   document.body.classList.remove("booting");
 
   // If Current Location is the browsing mode, get a truly fresh GPS fix on every refresh.
-  // This runs
+  // This runs after the UI is visible so GPS/reverse-geocoding never slows first paint.
+  refreshLiveBrowseLocation({reloadRestaurants:false}).then(()=>{
+    renderHomeRankings();
+    renderExplore();
+  });
+
+  // Core data can populate progressively.
+  Promise.allSettled([
+    loadRestaurantStats(),
+    refreshUserData(),
+    loadProfileTitles(),
+    loadFoodBadges()
+  ]).then(async ()=>{
+    try{ await loadSecretRewards(); }catch(e){ console.warn(e); }
+    try{ await loadProgressRewards(); }catch(e){ console.warn(e); }
+    startNotificationPolling();
+  });
+
+  db.auth.onAuthStateChange(async (_event,sessionNow)=>{
+    currentUser=sessionNow?.user||null;
+    if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
+
+    // Never block the visible app while account data refreshes.
+    Promise.allSettled([
+      refreshUserData(),
+      loadSecretRewards(),
+      loadProgressRewards()
+    ]).then(()=>{
+      notificationsInitialized=false;
+      startNotificationPolling();
+    });
+  });
+}
+init();
+
+
+// ===== V5.20 Account Marks =====
+// SECURITY NOTE:
+// OG is bound to the account through auth metadata flag `tablescore_og`.
+// In production set that flag ONLY server-side for Ryan's immutable auth user UUID.
+// Verified/First Round grants live in public.account_marks and are read-only to normal clients.
+const ACCOUNT_MARK_META = {
+  og: {
+    title: "OG",
+    copy: "Where the first table was set. Est. 2026."
+  },
+  chefs_table: {
+    title: "Verified",
+    copy: "TableRec has confirmed the identity of this notable account. Verification does not endorse or give extra weight to their ratings."
+  },
+  first_round: {
+    title: "First Round",
+    copy: "From the first table, to yours. Personally given by the OG."
+  }
+};
+
+function accountMarkSvg(kind){
+  if(kind === "og"){
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs>
+        <linearGradient id="ogGold" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0" stop-color="#FFE6A0"/>
+          <stop offset=".48" stop-color="#E4A43B"/>
+          <stop offset="1" stop-color="#A96318"/>
+        </linearGradient>
+      </defs>
+      <!-- compact symmetrical chef toque -->
+      <path d="M16 31
+               C10 29 7 24 7 19
+               C7 12.5 12.2 7.5 18.5 7.5
+               C22 7.5 25 9.1 27 11.7
+               C28.3 6.9 32.4 4 37 4
+               C41.6 4 45.7 6.9 47 11.7
+               C49 9.1 52 7.5 55.5 7.5
+               C61.8 7.5 67 12.5 67 19
+               C67 24 64 29 58 31
+               L58 45
+               L16 45 Z"
+            transform="translate(-5 1)"
+            fill="url(#ogGold)" stroke="#70400F" stroke-width="2.4" stroke-linejoin="round"/>
+      <!-- subtle inner folds -->
+      <path d="M23 14c-2 6-2 12 0 18M32 10c-1 7-1 14 0 21M41 14c2 6 2 12 0 18"
+            fill="none" stroke="#FFF0BE" stroke-width="1.5" stroke-linecap="round" opacity=".72"/>
+      <!-- hat band -->
+      <rect x="13" y="44" width="38" height="11" rx="3.2"
+            fill="url(#ogGold)" stroke="#70400F" stroke-width="2.4"/>
+      <path d="M17 49h30" stroke="#FFF0BE" stroke-width="1.4" opacity=".7"/>
+      <!-- tiny OG -->
+      <text x="32" y="40" text-anchor="middle"
+            font-family="Georgia,serif" font-size="13.5" font-weight="700"
+            fill="#4B290A">OG</text>
+    </svg>`;
+  }
+  if(kind === "chefs_table"){
+    return `<svg viewBox="0 0 64 64" aria-hidden="true">
+      <defs><linearGradient id="verifiedForkGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFE8A6"/><stop offset=".5" stop-color="#E6A83F"/><stop offset="1" stop-color="#A86218"/></linearGradient></defs>
+      <g fill="none" stroke="url(#verifiedForkGold)" stroke-width="5.2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M22 8v15M14 8v12c0 7 4 11 8 11s8-4 8-11V8M30 8v15M22 31v25"/>
+      </g>
+    </svg>`;
+  }
+  return `<svg viewBox="0 0 64 64" aria-hidden="true">
+    <defs><radialGradient id="frG"><stop stop-color="#ffe7a4"/><stop offset=".62" stop-color="#e0a23b"/><stop offset="1" stop-color="#a96018"/></radialGradient></defs>
+    <circle cx="32" cy="32" r="27" fill="url(#frG)" stroke="#75420f" stroke-width="2.5"/>
+    <circle cx="32" cy="32" r="20" fill="none" stroke="#fff1bd" stroke-width="2" opacity=".8"/>
+    <text x="32" y="42" text-anchor="middle" font-family="Georgia,serif" font-size="29" font-weight="700" fill="#5c340e">1</text>
+    <path d="M52 8l1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6 4-1.6L52 8z" fill="#ffe09a"/>
+  </svg>`;
+}
+
+function showAccountMarkInfo(kind){
+  const m = ACCOUNT_MARK_META[kind];
+  if(!m) return;
+  const wrap = document.createElement("div");
+  wrap.className = "account-mark-pop";
+  wrap.innerHTML = `<div class="account-mark-card" role="dialog" aria-modal="true">
+    <div class="account-mark-hero">${accountMarkSvg(kind)}</div>
+    <div class="account-mark-title">${m.title}</div>
+    <div class="account-mark-copy">${m.copy}</div>
+    <button class="account-mark-close" type="button">Close</button>
+  </div>`;
+  wrap.addEventListener("click", e => { if(e.target === wrap) wrap.remove(); });
+  wrap.querySelector(".account-mark-close").onclick = () => wrap.remove();
+  document.body.appendChild(wrap);
+}
+
+function accountMarkHtml(kind){
+  if(!ACCOUNT_MARK_META[kind]) return "";
+  return `<span class="account-mark mark-${kind}" title="${ACCOUNT_MARK_META[kind].title}" onclick="event.stopPropagation();showAccountMarkInfo('${kind}')">${accountMarkSvg(kind)}</span>`;
+}
+
+// Cache keeps rendering inexpensive in feed/comments/community cards.
+const accountMarkCache = new Map();
+
+async function loadAccountMarks(userIds=[]){
+  const ids = [...new Set((userIds||[]).filter(Boolean))];
+  if(!ids.length) return {};
+  const missing = ids.filter(id => !accountMarkCache.has(id));
+  if(missing.length){
+    try{
+      const { data, error } = await db
+        .from("account_marks")
+        .select("user_id,mark_type,is_active")
+        .in("user_id", missing)
+        .eq("is_active", true);
+      if(error) throw error;
+      missing.forEach(id => accountMarkCache.set(id, []));
+      (data||[]).forEach(r => {
+        const arr = accountMarkCache.get(r.user_id) || [];
+        if(!arr.includes(r.mark_type)) arr.push(r.mark_type);
+        accountMarkCache.set(r.user_id, arr);
+      });
+    }catch(err){
+      console.warn("Account marks unavailable:", err?.message || err);
+      missing.forEach(id => accountMarkCache.set(id, []));
+    }
+  }
+  const out = {};
+  ids.forEach(id => out[id] = accountMarkCache.get(id) || []);
+  return out;
+}
+
+function orderedAccountMarks(markTypes=[]){
+  const owned=new Set(markTypes||[]);
+  return ["og","chefs_table","first_round"].filter(kind=>owned.has(kind));
+}
+
+function decorateNameWithMark(nameEl, markTypes=[]){
+  if(!nameEl) return;
+
+  const desired=orderedAccountMarks(markTypes);
+  const existing=[...nameEl.querySelectorAll(":scope > .account-mark")];
+  const existingKinds=existing.map(el=>
+    [...el.classList].find(c=>c.startsWith("mark-"))?.slice(5) || ""
+  );
+
+  // Idempotent: only mutate when the complete mark set is actually different.
+  if(desired.length===existingKinds.length &&
+     desired.every((kind,i)=>existingKinds[i]===kind)){
+    return;
+  }
+
+  existing.forEach(x=>x.remove());
+  if(desired.length){
+    nameEl.insertAdjacentHTML("beforeend",desired.map(accountMarkHtml).join(""));
+  }
+}
+
+
+
+function closeChefsTableApplication(){document.getElementById("chefsTableModal")?.classList.add("hidden");}
+async function openChefsTableApplication(){
+  if(!currentUser)return alert("Sign in to apply.");
+  document.getElementById("chefsTableModal")?.classList.remove("hidden");
+}
+async function submitChefsTableApplication(){
+  if(!currentUser)return;
+  const creator_name=document.getElementById("ctCreatorName").value.trim();
+  const platform=document.getElementById("ctPlatform").value;
+  const profile_url=document.getElementById("ctProfileUrl").value.trim();
+  const market=document.getElementById("ctMarket").value.trim();
+  const followers=parseInt(document.getElementById("ctFollowers").value||"0",10);
+  const notes=document.getElementById("ctNotes").value.trim();
+  if(!creator_name||!profile_url)return alert("Add your creator name and public social profile.");
+  const {data,error}=await db.rpc("submit_chefs_table_application",{
+    p_creator_name:creator_name,p_platform:platform,p_profile_url:profile_url,
+    p_market:market,p_followers:followers,p_notes:notes
+  });
+  if(error){console.error(error);return alert("Could not submit application.");}
+  closeChefsTableApplication();
+  await loadChefsTableStatus();
+  alert("Verification request submitted. Your verification code is "+data+". Add it temporarily to the bio of the public profile you submitted so TableRec can confirm you control that account.");
+}
+async function loadChefsTableStatus(){
+  if(!currentUser)return;
+  const status=document.getElementById("chefsTableApplicationStatus");
+  const admin=document.getElementById("chefsTableAdminCard");
+  if(admin)admin.classList.toggle("hidden",!isOGAccount());
+  const {data}=await db.from("chefs_table_applications")
+    .select("status,verification_code,platform,profile_url,created_at")
+    .eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
+  if(!status)return;
+  if(!data){status.textContent="";return;}
+  if(data.status==="pending_verification"){
+    status.innerHTML=`Application received - <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
+  }else if(data.status==="pending_review"){
+    status.textContent="Identity confirmed - Verification request awaiting TableRec review.";
+  }else if(data.status==="approved"){
+    status.textContent="Verified. TableRec has confirmed your account identity.";
+  }else if(data.status==="denied"){
+    status.textContent="This verification request was not approved.";
+  }
+}
+async function openChefsTableAdmin(){
+  if(!isOGAccount())return;
+  const modal=document.getElementById("chefsTableAdminModal");
+  const list=document.getElementById("chefsTableAdminList");
+  modal.classList.remove("hidden");
+  list.innerHTML='<div class="muted">Loadingâ¦</div>';
+  const {data,error}=await db.rpc("get_chefs_table_applications");
+  if(error){console.error(error);list.innerHTML='<div class="muted">Could not load applications.</div>';return;}
+  if(!data?.length){list.innerHTML='<div class="muted">No applications waiting.</div>';return;}
+  list.innerHTML=data.map(a=>`<div class="card" style="margin-bottom:10px">
+    <strong>${escapeHtml(a.creator_name||"Creator")}</strong>
+    <div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(a.platform||"")} - ${escapeHtml(a.profile_url||"")}</div>
+    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.market||"")} - ${Number(a.followers||0).toLocaleString()} followers</div>
+    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.notes||"")}</div>
+    <div style="font-size:12px;margin-top:8px">Verification code: <strong>${escapeHtml(a.verification_code)}</strong></div>
+    <div class="muted" style="font-size:10px;margin-top:3px">Status: ${escapeHtml(a.status)}</div>
+    <div class="mark-admin-actions">
+      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','verify')">Confirm Identity</button>
+      <button class="mark-admin-btn active" onclick="reviewChefApplication('${a.id}','approve')">Grant Verified</button>
+      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','deny')">Deny</button>
+    </div>
+  </div>`).join("");
+}
+async function reviewChefApplication(id,action){
+  if(!isOGAccount())return;
+  if(action==="approve"&&!confirm("Approve this account as Verified and grant the golden fork?"))return;
+  const {data,error}=await db.rpc("review_chefs_table_application",{p_application_id:id,p_action:action});
+  if(error){console.error(error);return alert("Review action failed.");}
+  if(!data)return alert("Action was not authorized or the application is not ready.");
+  await openChefsTableAdmin();
+}
+
+const TABLESCORE_VERSION="5.47.6";
+const TABLESCORE_BUILD_LABEL="Safe Mention Placement Patch";
+const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
+let viewedManagedMarks=[];
+
+function isOGAccount(){
+  return !!currentUser && currentUser.id===TABLESCORE_OG_USER_ID;
+}
+
+function markLabel(kind){
+  return kind==="og"?"OG":kind==="chefs_table"?"Verified":"First Round";
+}
+
+function renderAccountMarkPicker(owned=[],selected=null){
+  const card=document.getElementById("accountMarksSettingsCard");
+  const picker=document.getElementById("accountMarkPicker");
+  if(!card||!picker)return;
+  if(!currentUser||!owned.length){
+    card.classList.add("hidden");
+    picker.innerHTML="";
+    return;
+  }
+  card.classList.remove("hidden");
+  const active=preferredAccountMark(owned,selected);
+  picker.innerHTML=owned.map(kind=>`<button class="account-mark-choice ${kind===active?"active":""}" onclick="setActiveAccountMark('${kind}')">
+    ${accountMarkHtml(kind)}
+    <span><strong>${markLabel(kind)}</strong><span class="muted" style="display:block;font-size:10px;margin-top:2px">${kind===active?"Showing beside your name":"Tap to display this mark"}</span></span>
+  </button>`).join("");
+}
+
+async function setActiveAccountMark(kind){
+  if(!currentUser)return;
+  const owned=accountMarkCache.get(currentUser.id)||[];
+  if(!owned.includes(kind))return alert("That mark is not assigned to your account.");
+  const {data,error}=await db.rpc("set_my_active_account_mark",{p_mark_type:kind});
+  if(error){
+    console.error(error);
+    return alert("Could not change your account mark.");
+  }
+  if(!data)return alert("That mark is not available to this account.");
+  profile.active_account_mark=kind;
+  renderProfile();
+}
+
+function renderMarkAdminControls(targetUserId,marks=[]){
+  viewedManagedMarks=[...marks];
+  const card=document.getElementById("markAdminCard");
+  if(!card)return;
+  const canManage=isOGAccount() && targetUserId!==TABLESCORE_OG_USER_ID;
+  card.classList.toggle("show",canManage);
+  if(!canManage)return;
+  const t=document.getElementById("grantChefsTableBtn");
+  const f=document.getElementById("grantFirstRoundBtn");
+  const hasT=marks.includes("chefs_table");
+  const hasF=marks.includes("first_round");
+  t.textContent=hasT?"Revoke Chef's Table":"Grant Verified";
+  f.textContent=hasF?"Revoke First Round":"Grant First Round";
+  t.classList.toggle("active",hasT);
+  f.classList.toggle("active",hasF);
+}
+
+async function toggleManagedMark(kind){
+  if(!isOGAccount()||!viewedProfile)return;
+  if(!["chefs_table","first_round"].includes(kind))return;
+  const has=viewedManagedMarks.includes(kind);
+  const action=has?"revoke":"grant";
+  const label=markLabel(kind);
+  if(!confirm(`${has?"Revoke":"Grant"} ${label} ${has?"from":"to"} @${viewedProfile.username||"this account"}?`))return;
+  const {data,error}=await db.rpc("manage_account_mark",{
+    p_target_user:viewedProfile.id,
+    p_mark_type:kind,
+    p_make_active:!has
+  });
+  if(error){
+    console.error(error);
+    return alert("Account mark update failed.");
+  }
+  if(!data)return alert("This action was not authorized.");
+  accountMarkCache.delete(viewedProfile.id);
+  const map=await loadAccountMarks([viewedProfile.id]);
+  viewedManagedMarks=map[viewedProfile.id]||[];
+  const nameEl=document.getElementById("publicProfileName");
+  decorateNameWithMark(nameEl,viewedManagedMarks,viewedProfile.active_account_mark||null);
+  renderMarkAdminControls(viewedProfile.id,viewedManagedMarks);
+  alert(`${label} ${has?"revoked":"granted"}.`);
+}
+
+// Call after any screen/feed/comment list is rendered.
+// It finds elements carrying data-user-id and decorates a likely name element.
+async function applyAccountMarks(root=document){
+  const holders = [...root.querySelectorAll("[data-user-id]")];
+  const ids = holders.map(x=>x.dataset.userId).filter(Boolean);
+  if(!ids.length) return;
+  const marks = await loadAccountMarks(ids);
+  holders.forEach(h => {
+    const target = h.matches("[data-account-name]") ? h :
+      h.querySelector("[data-account-name],.profile-name,.feed-name,.reviewer-name,.comment-name,.user-name,h2,h3,strong");
+    if(target) decorateNameWithMark(target, marks[h.dataset.userId] || []);
+  });
+}
+
+// Mutation observer makes marks follow genuinely new feed/comments/profile UI
+// without reacting to the account-mark nodes that this feature inserts itself.
+let accountMarkTimer;
+let accountMarkPassRunning=false;
+
+async function runAccountMarkPass(){
+  if(accountMarkPassRunning)return;
+  accountMarkPassRunning=true;
+  try{
+    await applyAccountMarks(document);
+  }finally{
+    accountMarkPassRunning=false;
+  }
+}
+
+const accountMarkObserver = new MutationObserver(mutations => {
+  if(accountMarkPassRunning)return;
+
+  const hasRelevantMutation=mutations.some(mutation => {
+    const nodes=[...mutation.addedNodes,...mutation.removedNodes];
+    return nodes.some(node => {
+      if(node.nodeType!==1)return false;
+      const el=node;
+      if(el.classList?.contains("account-mark"))return false;
+      if(el.closest?.(".account-mark"))return false;
+      return !!(
+        el.matches?.("[data-user-id]") ||
+        el.querySelector?.("[data-user-id]")
+      );
+    });
+  });
+
+  if(!hasRelevantMutation)return;
+
+  clearTimeout(accountMarkTimer);
+  accountMarkTimer=setTimeout(()=>runAccountMarkPass(),80);
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  accountMarkObserver.observe(document.body,{childList:true,subtree:true});
+  runAccountMarkPass();
+});
+
+</script>
+
+  <div id="editRatingModal" class="modal hidden" onclick="if(event.target===this)closeEditRating()">
+    <div class="modal-sheet" style="max-height:92vh;overflow:auto">
+      <div class="edit-rating-header">
+        <div class="section-title">Edit Rating</div>
+        <button class="linkbtn" onclick="closeEditRating()">Close</button>
+      </div>
+      <div id="editRatingRestaurant" style="font-family:Georgia,serif;font-size:22px;font-weight:800;margin-bottom:12px"></div>
+
+      <div class="edit-rating-grid">
+        <div class="field"><label>Atmosphere</label><input id="editAtmosphere" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Cleanliness</label><input id="editCleanliness" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Taste</label><input id="editTaste" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Quality</label><input id="editQuality" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Portions</label><input id="editPortions" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Price</label><input id="editPrice" type="number" min="0" max="10" step="0.1"></div>
+        <div class="field"><label>Service</label><input id="editService" type="number" min="0" max="10" step="0.1"></div>
+      </div>
+
+      <div class="field"><label>Best Dish</label><input id="editBestDish" placeholder="What stood out?"></div>
+      <div class="field"><label>Would You Return?</label>
+        <select id="editWouldReturn" style="width:100%;background:var(--card);border:1px solid var(--line);border-radius:13px;color:var(--ink);padding:12px 13px">
+          <option value="">Not answered</option><option>Yes</option><option>Maybe</option><option>No</option>
+        </select>
+      </div>
+      <div class="field"><label>Quick Take</label><textarea id="editQuickTake" rows="4" placeholder="A quick note about your experience"></textarea></div>
+
+      <div class="field">
+        <label>Dish Photos</label>
+        <input id="editRatingPhotoInput" type="file" accept="image/*" multiple class="hidden" onchange="handleEditRatingPhotos(event)">
+        <button type="button" class="photo-add-btn" onclick="document.getElementById('editRatingPhotoInput').click()">&#128247; Add More Photos</button>
+        <div class="row-meta" style="margin-top:7px">Up to 5 total photos. Tap a photo to view it full screen.</div>
+        <div id="editExistingPhotos" class="edit-photo-current"></div>
+        <div id="editNewPhotoPreviews" class="photo-preview-grid"></div>
+      </div>
+
+      <button id="deleteRatingBtn" class="secondary delete-rating-btn" onclick="deleteCurrentRating()">Delete Rating</button>
+
+      <div class="edit-rating-actions">
+        <button class="secondary" onclick="closeEditRating()">Cancel</button>
+        <button id="saveEditedRatingBtn" class="primary" onclick="saveEditedRating()">Save Changes</button>
+      </div>
+    </div>
+  </div>
+
+<div id="photoLightbox" class="photo-lightbox hidden" onclick="if(event.target===this)closePhotoLightbox()">
+    <button class="photo-lightbox-close" onclick="closePhotoLightbox()" aria-label="Close">&times;</button>
+    <button id="photoPrev" class="photo-lightbox-nav photo-lightbox-prev" onclick="changeLightboxPhoto(-1)" aria-label="Previous">&lsaquo;</button>
+    <img id="photoLightboxImage" alt="Dish photo">
+    <button id="photoNext" class="photo-lightbox-nav photo-lightbox-next" onclick="changeLightboxPhoto(1)" aria-label="Next">&rsaquo;</button>
+    <div id="photoLightboxCount" class="photo-lightbox-count"></div>
+  </div>
+
+<div id="secretRewardOverlay" class="secret-reward-overlay hidden">
+  <div id="secretRewardFlash" class="secret-flash"></div>
+  <div id="secretRewardConfetti" class="secret-confetti"></div>
+  <div class="secret-reward-card">
+    <div id="secretRewardBurst" class="secret-reward-burst"></div>
+    <div id="secretRewardIcon" class="secret-icon">ð½ï¸</div>
+    <div class="secret-kicker">SECRET FOUND</div>
+    <div id="secretRewardName" class="secret-name">Reward Unlocked</div>
+    <div id="secretRewardLine" class="secret-line"></div>
+    <div id="secretRewardRequirements" class="secret-requirements"></div>
+    <div class="secret-actions">
+      <button class="secondary" onclick="closeSecretReward()">Keep Current</button>
+      <button id="secretEquipBtn" class="primary" onclick="equipSecretReward()">Equip Now</button>
+    </div>
+  </div>
+</div>
+
+
+<div id="chefsTableModal" class="modal hidden">
+  <div class="modal-card" style="max-height:88vh;overflow:auto">
+    <div class="modal-head">
+      <div>
+        <div class="section-title">Request Verification</div>
+        <div class="muted" style="font-size:11px;margin-top:3px">Verification is required before approval.</div>
+      </div>
+      <button class="icon-btn" onclick="closeChefsTableApplication()">â</button>
+    </div>
+    <label>Creator / public name</label>
+    <input id="ctCreatorName" placeholder="Name people know you by">
+    <label>Primary platform</label>
+    <select id="ctPlatform">
+      <option value="Instagram">Instagram</option>
+      <option value="TikTok">TikTok</option>
+      <option value="YouTube">YouTube</option>
+      <option value="Other">Other</option>
+    </select>
+    <label>Public profile URL or handle</label>
+    <input id="ctProfileUrl" placeholder="@handle or profile link">
+    <label>Primary city / market</label>
+    <input id="ctMarket" placeholder="Austin, TX">
+    <label>Approximate followers</label>
+    <input id="ctFollowers" type="number" min="0" inputmode="numeric" placeholder="Optional">
+    <label>Tell us about your food content</label>
+    <textarea id="ctNotes" rows="4" placeholder="What do you cover and why should you have a seat at the Chef's Table?"></textarea>
+    <button class="primary" style="width:100%;margin-top:12px" onclick="submitChefsTableApplication()">Submit Application</button>
+  </div>
+</div>
+
+
+<div id="chefsTableAdminModal" class="modal hidden">
+  <div class="modal-card" style="max-height:88vh;overflow:auto">
+    <div class="modal-head">
+      <div class="section-title">Verification Requests</div>
+      <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+    </div>
+    <div id="chefsTableAdminList"></div>
+  </div>
+</div>
+
+
+<div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
+  <div class="sheet" style="max-height:88vh;overflow:auto">
+    <div class="section-head">
+      <div>
+        <div class="section-title">Notifications</div>
+        <div class="muted" style="font-size:10px;margin-top:2px">Your TableRec activity and account distinctions.</div>
+      </div>
+      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNotifications()">Close</button>
+    </div>
+    <div id="notificationsList" class="notification-list"></div>
+  </div>
+</div>
+
+<div id="rewardToast" class="reward-toast"></div>
+</body>
+</html
