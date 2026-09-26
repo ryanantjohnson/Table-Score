@@ -1185,6 +1185,11 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .screen,.modal,.app-header,.topbar,.nav,header{
   backface-visibility:hidden;
 }
+
+/* V5.55.0 owner rating controls */
+.own-rating-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.own-rating-actions .secondary{width:auto;min-height:34px;padding:7px 12px;border-radius:999px;font-size:10px;font-weight:900}
+.delete-rating-inline{border-color:rgba(255,90,90,.45)!important;color:#ff8b8b!important}
 </style>
 </head>
 <body class="booting">
@@ -4552,6 +4557,16 @@ async function openRatingDetail(ratingId){
   document.getElementById("ratingDetailQuickTake").textContent=r.quick_take?r.quick_take:"";
   document.getElementById("ratingDetailReturn").innerHTML=r.would_return?`<b style="color:var(--ink)">Would return:</b> ${esc(r.would_return)}`:"";
   document.getElementById("ratingDetailPhotos").innerHTML=photoGridMarkup(photos);
+  let ownerActions=document.getElementById("ratingDetailOwnerActions");
+  if(!ownerActions){
+    ownerActions=document.createElement("div");
+    ownerActions.id="ratingDetailOwnerActions";
+    ownerActions.className="own-rating-actions";
+    document.getElementById("ratingDetailPhotos").insertAdjacentElement("afterend",ownerActions);
+  }
+  ownerActions.innerHTML=own
+    ?`<button class="secondary" onclick="closeRatingDetail();openEditRating('${ratingId}')">Edit Rating</button><button class="secondary delete-rating-inline" onclick="closeRatingDetail();deleteRatingFromCard('${ratingId}')">Delete Rating</button>`
+    :"";
 
   await Promise.all([
     renderRatingDetailEngagement(ratingId),
@@ -5988,6 +6003,10 @@ async function renderMyProfileRatings(){
       ${r.quick_take?`<div style="font-size:13px;line-height:1.45;margin-top:8px">${esc(r.quick_take)}</div>`:""}
       ${photoGridMarkup(r._photos)}
       ${engagementMarkup(r.id)}
+      <div class="own-rating-actions" onclick="event.stopPropagation()">
+        <button class="secondary" onclick="event.stopPropagation();openEditRating('${r.id}')">Edit Rating</button>
+        <button class="secondary delete-rating-inline" onclick="event.stopPropagation();deleteRatingFromCard('${r.id}')">Delete Rating</button>
+      </div>
     </div>`;
   }).join("");
   await hydrateRatingEngagement(recent.map(r=>r.id));
@@ -8082,7 +8101,14 @@ let editDeletedPhotoIds=[];
 function getMyRatingById(id){return myRatings.find(r=>r.id===id);}
 
 async function openEditRating(id){
-  const r=getMyRatingById(id);
+  let r=getMyRatingById(id);
+  if(!r&&currentUser){
+    const {data,error}=await db.from("ratings")
+      .select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)")
+      .eq("id",id).eq("user_id",currentUser.id).maybeSingle();
+    if(error)return alert("Could not load that rating: "+error.message);
+    r=data;
+  }
   if(!r)return alert("Could not find that rating.");
   editingRatingId=id;
   editDeletedPhotoIds=[];
@@ -8166,6 +8192,34 @@ function storagePathFromRatingPhotoUrl(url){
     return decodeURIComponent(String(url).slice(i+marker.length).split("?")[0]);
   }catch(e){
     return null;
+  }
+}
+
+async function deleteRatingFromCard(ratingId){
+  if(!ratingId||!currentUser)return;
+  const rating=getMyRatingById(ratingId);
+  const restaurantName=rating?.restaurants?.name||"this restaurant";
+  const confirmed=window.confirm(`Delete your rating for ${restaurantName}?\n\nThis permanently deletes the rating and its dish photos. This cannot be undone.`);
+  if(!confirmed)return;
+  try{
+    const {data:photos,error:photoLoadError}=await db.from("rating_photos")
+      .select("id,photo_url").eq("rating_id",ratingId).eq("user_id",currentUser.id);
+    if(photoLoadError)throw photoLoadError;
+    const storagePaths=(photos||[]).map(p=>storagePathFromRatingPhotoUrl(p.photo_url)).filter(Boolean);
+    if(storagePaths.length){
+      const {error:storageError}=await db.storage.from("rating-photos").remove(storagePaths);
+      if(storageError)throw storageError;
+    }
+    const {error:deleteError}=await db.from("ratings").delete()
+      .eq("id",ratingId).eq("user_id",currentUser.id);
+    if(deleteError)throw deleteError;
+    await refreshUserData();
+    await loadRestaurantStats();
+    if(selectedRestaurantId)await loadRestaurantCommunityRatings(selectedRestaurantId);
+    alert("Rating deleted.");
+  }catch(err){
+    console.error("delete rating:",err);
+    alert("Could not delete this rating: "+(err.message||"Unknown error"));
   }
 }
 
@@ -9255,7 +9309,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.54.9";
+const TABLESCORE_VERSION="5.55.0";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
