@@ -892,6 +892,57 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 #mentionPortal .mention-portal-option:last-child{border-bottom:0 !important}
 #mentionPortal .mention-portal-option:active{background:#20262b !important}
 
+
+/* V5.47.4 - final mobile overlay geometry */
+
+/* Rating close: independent, fully opaque floating control in the top-right black band. */
+#ratingDetailModal .rating-detail-floating-close{
+  position:fixed !important;
+  top:calc(env(safe-area-inset-top) + 58px) !important;
+  right:24px !important;
+  left:auto !important;
+  bottom:auto !important;
+  z-index:5000 !important;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  width:auto !important;
+  min-width:104px !important;
+  height:48px !important;
+  margin:0 !important;
+  padding:0 18px !important;
+  transform:none !important;
+  opacity:1 !important;
+  background:#11161a !important;
+  background-image:none !important;
+  border:2px solid var(--gold) !important;
+  border-radius:18px !important;
+  box-shadow:0 8px 24px rgba(0,0,0,.75) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+  isolation:isolate !important;
+}
+
+/* Hide the redundant TableRec label beside/under the floating close control. */
+#ratingDetailModal .rating-detail-floating-close + .rating-brand,
+#ratingDetailModal .rating-detail-floating-close ~ .rating-brand{
+  display:none !important;
+}
+
+/* Mention menu is an opaque composer-attached dropdown. */
+#mentionPortal{
+  position:fixed !important;
+  z-index:6000 !important;
+  opacity:1 !important;
+  background:#11161a !important;
+  background-image:none !important;
+  border:2px solid var(--gold) !important;
+  border-radius:14px !important;
+  box-shadow:0 12px 28px rgba(0,0,0,.9) !important;
+  backdrop-filter:none !important;
+  -webkit-backdrop-filter:none !important;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -4037,25 +4088,34 @@ function positionMentionPortal(){
 
   const r=input.getBoundingClientRect();
   const vv=window.visualViewport;
-  const viewportTop=vv ? vv.offsetTop : 0;
-  const viewportHeight=vv ? vv.height : window.innerHeight;
-  const gap=8;
-  const side=12;
+  const vTop=vv ? vv.offsetTop : 0;
+  const vBottom=vTop+(vv ? vv.height : window.innerHeight);
+  const gap=6;
+  const margin=12;
 
-  const width=Math.min(r.width,window.innerWidth-(side*2));
-  const left=Math.max(side,Math.min(r.left,window.innerWidth-width-side));
+  /* Match the comment field rather than floating across the rating. */
+  const width=Math.min(r.width,window.innerWidth-(margin*2));
+  const left=Math.max(margin,Math.min(r.left,window.innerWidth-width-margin));
 
-  // Never jump the picker into the rating body. It belongs to the textarea.
-  // Use only the space directly above the textarea and make the list itself scroll.
-  const availableAbove=Math.max(72,r.top-viewportTop-gap-8);
-  const wanted=Math.min(190,Math.max(60,portal.scrollHeight));
-  const height=Math.min(wanted,availableAbove);
-  const top=Math.max(viewportTop+8,r.top-gap-height);
+  /* Size from actual results, capped at 3 rows. */
+  const desired=Math.min(184,Math.max(62,portal.scrollHeight));
+  const roomAbove=Math.max(0,r.top-vTop-gap-margin);
+  const roomBelow=Math.max(0,vBottom-r.bottom-gap-margin);
+
+  let height=Math.min(desired,Math.max(62,roomAbove));
+  let top=r.top-gap-height;
+
+  /* Only use below if above truly cannot fit one row. */
+  if(roomAbove<62 && roomBelow>=62){
+    height=Math.min(desired,roomBelow);
+    top=r.bottom+gap;
+  }
 
   portal.style.left=left+"px";
   portal.style.width=width+"px";
+  portal.style.height="auto";
   portal.style.maxHeight=height+"px";
-  portal.style.top=top+"px";
+  portal.style.top=Math.max(vTop+margin,top)+"px";
 }
 
 async function loadMentionSuggestions(q){
@@ -7930,8 +7990,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.47.3";
-const TABLESCORE_BUILD_LABEL="Opaque Mention Picker and Rating Close";
+const TABLESCORE_VERSION="5.47.4";
+const TABLESCORE_BUILD_LABEL="Mobile Overlay Geometry Fix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
