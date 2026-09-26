@@ -7981,45 +7981,54 @@ function whereEatRestaurantType(r){
   return String(r?.primary_type||r?.type||r?.cuisine||"").toLowerCase();
 }
 function whereEatMatchesCuisine(r,key){
-  const hay=[r?.name,r?.primary_type,r?.type,r?.cuisine,...(Array.isArray(r?.types)?r.types:[])].filter(Boolean).join(" ").toLowerCase();
-  const aliases={
-    mexican:["mexican","taco","tex-mex","tex mex"],
-    burger:["burger","hamburger"],
-    barbecue:["barbecue","bbq"],
-    italian:["italian","pizza","pasta"],
-    chinese:["chinese"],
-    thai:["thai"],
-    sushi:["sushi","japanese"],
-    breakfast:["breakfast","brunch"],
-    sandwich:["sandwich","deli","sub"],
-    indian:["indian"],
-    mediterranean:["mediterranean","greek"],
-    american:["american","steak","grill"]
+  const types=(Array.isArray(r?.types)?r.types:[]).map(x=>String(x).toLowerCase());
+  const primary=String(r?.primary_type||"").toLowerCase();
+  const structured=new Set([primary,...types]);
+
+  const allowed={
+    mexican:["mexican_restaurant","tex_mex_restaurant","taco_restaurant"],
+    burger:["hamburger_restaurant"],
+    barbecue:["barbecue_restaurant"],
+    italian:["italian_restaurant"],
+    chinese:["chinese_restaurant"],
+    thai:["thai_restaurant"],
+    sushi:["sushi_restaurant","japanese_restaurant"],
+    breakfast:["breakfast_restaurant","brunch_restaurant"],
+    sandwich:["sandwich_shop"],
+    indian:["indian_restaurant"],
+    mediterranean:["mediterranean_restaurant","greek_restaurant"],
+    american:["american_restaurant"]
   };
-  return (aliases[key]||[key]).some(x=>hay.includes(x));
+  return (allowed[key]||[]).some(t=>structured.has(t));
 }
 async function loadWhereEatPool(){
   const status=document.getElementById("whereEatStatus");
-  status.textContent="Finding restaurants nearby...";
+  status.textContent="Searching the full area...";
   let coords=currentTableScoreCoords();
   if(!coords)coords=await getFreshTableScoreCoords();
-  const radiusMeters=Math.round(whereEatRadius*1609.344);
-  const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{
-    mode:"nearby",latitude:coords.latitude,longitude:coords.longitude,radiusMeters
+
+  const {data,error}=await db.functions.invoke("where-to-eat",{body:{
+    latitude:coords.latitude,
+    longitude:coords.longitude,
+    radiusMiles:whereEatRadius
   }});
   if(error)throw error;
   if(data?.error)throw new Error(data.error);
-  return Array.isArray(data?.restaurants)?data.restaurants:[];
+
+  const rows=Array.isArray(data?.restaurants)?data.restaurants:[];
+  if(!rows.length)throw new Error("No restaurants found in that radius.");
+  return rows;
 }
 function renderWhereEatPick(r,cuisineLabel){
   const result=document.getElementById("whereEatResult");
   const address=r.address||[r.city,r.state_region].filter(Boolean).join(", ");
   const cuisine=cuisineLabel||restaurantTypeLabel(r)||"Restaurant";
   const price=whereEatPriceText(r);
+  const distance=Number.isFinite(Number(r?.distance_miles))?`${Number(r.distance_miles).toFixed(1)} mi`:"";
   result.innerHTML=`<div class="where-result-card where-spin">
     <div class="kicker">${whereEatMode==="dealer"?"Dealer's Choice":whereEatMode==="cuisine"?"Cuisine Pick":"Surprise Pick"}</div>
     <div class="where-result-name">${esc(r.name||"Restaurant")}</div>
-    <div class="where-result-meta">${esc(cuisine)}${price?` &nbsp;·&nbsp; ${price}`:""}${address?`<br>${esc(address)}`:""}</div>
+    <div class="where-result-meta">${esc(cuisine)}${price?` &nbsp;·&nbsp; ${price}`:""}${distance?` &nbsp;·&nbsp; ${distance}`:""}${address?`<br>${esc(address)}`:""}</div>
     <div class="where-result-actions">
       <button class="secondary" onclick="chooseWhereEatRestaurant()">View / Rate</button>
       <button class="secondary" onclick="openWhereEatDirections()">Directions</button>
@@ -8087,7 +8096,7 @@ async function spinWhereToEat(){
     // Restaurants with no provider price data stay eligible rather than silently disappearing.
     let pool=all.filter(r=>{
       const p=whereEatPriceLevel(r);
-      return p===null || whereEatPrices.has(p);
+      return p!==null && whereEatPrices.has(p);
     });
     if(!pool.length)throw new Error("No restaurants matched those price points in this radius.");
 
@@ -8437,8 +8446,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.49.1";
-const TABLESCORE_BUILD_LABEL="Where to Eat Run It";
+const TABLESCORE_VERSION="5.49.2";
+const TABLESCORE_BUILD_LABEL="Where to Eat Strict Matching";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
