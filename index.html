@@ -1106,6 +1106,16 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .home-diner-actions{display:flex;gap:8px;margin-top:12px}
 .home-diner-actions button{flex:1;padding:10px!important;font-size:10px!important}
 
+
+/* V5.53.0 Final Home Feed */
+.home-restaurant-card{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow)}
+.home-restaurant-main{display:flex;align-items:center;gap:12px;margin-top:8px}
+.home-restaurant-copy{min-width:0;flex:1}
+.home-restaurant-name{font-family:Georgia,serif;font-size:19px;font-weight:850;line-height:1.1}
+.home-restaurant-score{font-size:24px;font-weight:1000;color:var(--gold)}
+.home-restaurant-reason{font-size:10px;color:var(--muted);font-weight:800;margin-top:4px}
+.home-quiet-grid{display:grid;gap:10px;margin-top:10px}
+
 </style>
 </head>
 <body class="booting">
@@ -4536,7 +4546,17 @@ const HOME_POLL_DECK=[
 {id:"breakfast-dinner",kicker:"HOT TAKE",q:"Which meal wins?",a:"Breakfast",b:"Dinner"},
 {id:"sushi-steak",kicker:"THIS OR THAT",q:"Date night. What are you choosing?",a:"Sushi",b:"Steak"},
 {id:"bbq-italian",kicker:"PICK ONE",q:"One cuisine has to go.",a:"BBQ",b:"Italian"},
-{id:"sweet-savory",kicker:"HOT TAKE",q:"Which side are you on?",a:"Sweet",b:"Savory"}
+{id:"sweet-savory",kicker:"HOT TAKE",q:"Which side are you on?",a:"Sweet",b:"Savory"},
+{id:"wings-boneless",kicker:"HOT TAKE",q:"Game night order?",a:"Bone-in Wings",b:"Boneless Wings"},
+{id:"brunch-dinner",kicker:"THIS OR THAT",q:"Weekend reservation.",a:"Brunch",b:"Dinner"},
+{id:"chips-queso-guac",kicker:"PICK ONE",q:"Only one hits the table.",a:"Queso",b:"Guacamole"},
+{id:"ramen-pho",kicker:"THIS OR THAT",q:"You need a bowl of something good.",a:"Ramen",b:"Pho"},
+{id:"coffee-dessert",kicker:"PICK ONE",q:"After dinner, what's next?",a:"Coffee",b:"Dessert"},
+{id:"drive-thru-sitdown",kicker:"HOT TAKE",q:"Busy night. What wins?",a:"Drive-thru",b:"Sit-down"},
+{id:"pizza-tacos",kicker:"THIS OR THAT",q:"Friday night choice.",a:"Pizza",b:"Tacos"},
+{id:"spicy-mild",kicker:"HOT TAKE",q:"How are you ordering it?",a:"Spicy",b:"Mild"},
+{id:"fries-rings",kicker:"PICK ONE",q:"Best side with a burger?",a:"Fries",b:"Onion Rings"},
+{id:"patio-booth",kicker:"THIS OR THAT",q:"Perfect weather outside.",a:"Patio",b:"Booth"}
 ];
 function homePollKey(id){return `ts_home_poll_${id}`}
 function homePollChoice(id){try{return localStorage.getItem(homePollKey(id))||""}catch(_){return ""}}
@@ -4548,7 +4568,7 @@ function homePollCard(p){
  ${choice?`<div class="muted" style="font-size:10px;margin-top:8px">Your pick: <b>${esc(choice==="a"?p.a:p.b)}</b></div>`:""}</div>`;
 }
 function homeRunInsert(){
- return `<div class="home-play-card home-run-card"><div class="home-run-dice">&#127922;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>`;
+ return `<div class="home-play-card home-run-card"><div class="home-run-dice" aria-hidden="true">&#127922;</div><div class="home-run-copy"><div class="home-play-kicker">CAN'T DECIDE?</div><div style="font-weight:950;font-size:15px;margin-top:3px">Let RUN IT make the call.</div><div class="muted" style="font-size:10px;margin-top:3px">Distance, price, cuisine - or completely random.</div></div><button class="primary home-run-btn" onclick="openWhereToEat()">RUN IT</button></div>`;
 }
 function homeEngagementInserts(){
  const day=Math.floor(Date.now()/86400000);
@@ -4559,17 +4579,23 @@ function homeEngagementInserts(){
 function buildMixedHomeFeed(ratingCards){
  if(!ratingCards?.length)return "";
  const engagement=homeEngagementInserts();
+ const day=Math.floor(Date.now()/86400000);
+ // Rotate which engagement prompt leads each day without reshuffling on refresh.
+ const firstEngagement=engagement[day%engagement.length];
+ const laterEngagement=engagement[(day+1)%engagement.length];
  const out=[];
  ratingCards.forEach((card,i)=>{
    out.push(card);
    const n=i+1;
-   if(n===2)out.push(`<div class="home-feed-break">${engagement[0]}</div>`);
+   if(n===2)out.push(`<div class="home-feed-break">${firstEngagement}</div>`);
    if(n===4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
-   if(n===6)out.push(`<div class="home-feed-break">${engagement[1]}</div>`);
-   if(n===9)out.push(`<div class="home-feed-break">${engagement[2]}</div>`);
+   if(n===6)out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
+   if(n===9)out.push(`<div class="home-feed-break">${laterEngagement}</div>`);
+   if(n>9 && (n-9)%6===0)out.push(`<div class="home-feed-break">${engagement[(day+n)%engagement.length]}</div>`);
  });
- if(ratingCards.length<2)out.push(`<div class="home-feed-break">${engagement[0]}</div>`);
+ if(ratingCards.length<2)out.push(`<div class="home-feed-break">${firstEngagement}</div>`);
  if(ratingCards.length<4)out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
+ if(ratingCards.length<6)out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
  return out.join("");
 }
 
@@ -4594,6 +4620,39 @@ function suggestedDinerMarkup(u,pct,shared){
      <button class="${isFollowing||isPending?"secondary":"primary"}" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
    </div>
  </div>`;
+}
+
+function homeSuggestedRestaurantMarkup(r,reason){
+ const score=r.tablescore===null||r.tablescore===undefined?"--":Number(r.tablescore).toFixed(2);
+ const diners=uniqueRaterCount(r);
+ return `<div class="home-restaurant-card" onclick="openRestaurantById('${r.id}')">
+   <div class="home-play-kicker">SUGGESTED RESTAURANT</div>
+   <div class="home-restaurant-main">
+     <div class="home-restaurant-copy">
+       <div class="home-restaurant-name">${esc(r.name||"Restaurant")}</div>
+       <div class="home-restaurant-reason">${esc(reason)}</div>
+       <div class="row-meta" style="margin-top:5px">${Number(r.rating_count||0)} rating${Number(r.rating_count||0)===1?"":"s"} / ${diners} diner${diners===1?"":"s"}</div>
+     </div>
+     <div class="home-restaurant-score">${score}</div>
+   </div>
+ </div>`;
+}
+function loadHomeSuggestedRestaurant(){
+ const slot=document.getElementById("homeSuggestedRestaurantSlot");
+ if(!slot)return;
+ const local=(restaurantStats||[]).filter(isLocalRestaurant);
+ if(!local.length){slot.remove();return;}
+ const hot=local.filter(hotRankingEligible).sort((a,b)=>Number(b.hot_score||0)-Number(a.hot_score||0));
+ const top=local.filter(r=>topRankingEligible(r)&&r.tablescore!==null).sort((a,b)=>Number(b.tablescore||0)-Number(a.tablescore||0));
+ const building=local.filter(r=>!topRankingEligible(r)&&Number(r.rating_count||0)>0).sort((a,b)=>newRestaurantSortValue(b)-newRestaurantSortValue(a));
+ const day=Math.floor(Date.now()/86400000);
+ let pool=[],reason="";
+ if(hot.length){pool=hot;reason="Hot near you - TableRec diners are rating it now."}
+ else if(top.length){pool=top;reason="One of the strongest TableRec-rated restaurants near you."}
+ else if(building.length){pool=building;reason="Building buzz near you - see what early diners think."}
+ if(!pool.length){slot.remove();return;}
+ const r=pool[day%Math.min(pool.length,5)];
+ slot.innerHTML=homeSuggestedRestaurantMarkup(r,reason);
 }
 
 async function loadHomeSuggestedDiner(){
@@ -4634,7 +4693,9 @@ async function loadFollowingFeed(){
     return;
   }
   if(!followingIds.size){
-    el.innerHTML=`<div class="empty"><div class="section-title">No ratings from your circle yet</div><p class="muted" style="font-size:13px">Find people to follow and their newest restaurant ratings will show up here.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div>`;
+    const poll=HOME_POLL_DECK[Math.floor(Date.now()/86400000)%HOME_POLL_DECK.length];
+    el.innerHTML=`<div class="empty"><div class="section-title">Build your table</div><p class="muted" style="font-size:13px">Follow diners to fill Home with restaurant ratings that match your circle.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div><div class="home-quiet-grid">${homePollCard(poll)}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
+    loadHomeSuggestedRestaurant();
     return;
   }
 
@@ -4656,7 +4717,9 @@ async function loadFollowingFeed(){
     return;
   }
   if(!ratings?.length){
-    el.innerHTML='<div class="empty"><div class="section-title">Quiet table for now</div><p class="muted" style="font-size:13px">The people you follow have not posted any restaurant ratings yet.</p></div>';
+    const poll=HOME_POLL_DECK[Math.floor(Date.now()/86400000)%HOME_POLL_DECK.length];
+    el.innerHTML=`<div class="empty"><div class="section-title">Quiet table for now</div><p class="muted" style="font-size:13px">Your circle has not posted a new rating yet. There's still plenty to explore.</p></div><div class="home-quiet-grid">${homePollCard(poll)}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
+    loadHomeSuggestedRestaurant();
     return;
   }
 
@@ -4668,6 +4731,7 @@ async function loadFollowingFeed(){
   const ratingCards=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id)));
   el.innerHTML=buildMixedHomeFeed(ratingCards);
   void loadHomeSuggestedDiner();
+  loadHomeSuggestedRestaurant();
   await hydrateRatingEngagement(ratings.map(r=>r.id));
 }
 
@@ -8609,8 +8673,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.52.1";
-const TABLESCORE_BUILD_LABEL="Suggested Diners + RUN IT Dice";
+const TABLESCORE_VERSION="5.53.0";
+const TABLESCORE_BUILD_LABEL="Final Home Social Feed";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
