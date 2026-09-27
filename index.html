@@ -2005,8 +2005,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
       <div class="settings-row" style="display:block;margin-top:14px;border-top:1px solid var(--line);border-bottom:0;padding-top:16px">
         <div style="font-weight:950;color:var(--red)">Delete Account</div>
-        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">Permanently deletes your TableRec account and account-linked data. This cannot be undone.</div>
-        <button id="deleteAccountBtn" class="secondary" style="margin-top:10px;border-color:var(--red);color:var(--red)" onclick="deleteTableScoreAccount()">Delete My Account</button>
+        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">Permanent deletion requires verification through the email already connected to this account.</div>
+        <div id="deleteAccountVerifyStatus" class="muted" style="font-size:11px;line-height:1.4;margin-top:7px"></div>
+        <button id="deleteAccountBtn" class="secondary" style="margin-top:10px;border-color:var(--red);color:var(--red)" onclick="sendDeleteAccountVerification()">Verify by Email to Delete</button>
       </div>
     </div>
 
@@ -2086,6 +2087,21 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       </div>
       <div id="ratingDetailComments" style="margin-top:4px"></div>
       <div id="ratingCommentComposer"></div>
+    </div>
+  </div>
+</div>
+
+<div id="deleteAccountVerifyModal" class="modal hidden" onclick="if(event.target===this)closeDeleteAccountVerify()">
+  <div class="modal-panel" style="max-width:560px">
+    <div class="modal-head">
+      <div><div class="eyebrow">SECURITY VERIFIED</div><h2 style="margin:4px 0 0">Delete Account</h2></div>
+      <button class="secondary modal-close-btn" onclick="closeDeleteAccountVerify()">Close</button>
+    </div>
+    <div class="modal-body">
+      <p class="muted" style="font-size:12px;line-height:1.5">Your account email has been verified. This permanently deletes your TableRec account and account-linked data and cannot be undone.</p>
+      <div style="font-weight:900;margin:14px 0 7px">Type DELETE to permanently delete your account.</div>
+      <div class="field"><input id="deleteAccountConfirmText" autocomplete="off" spellcheck="false" placeholder="DELETE"></div>
+      <button id="finalDeleteAccountBtn" class="secondary" style="width:100%;margin-top:10px;border-color:var(--red);color:var(--red)" onclick="deleteTableScoreAccount()">Permanently Delete Account</button>
     </div>
   </div>
 </div>
@@ -4622,37 +4638,76 @@ async function signIn(){
   const cb=afterAuth;afterAuth=null;if(cb)cb();
 }
 
+let deleteVerificationCooldownUntil=0;
+let deleteVerificationTimer=null;
+
+function updateDeleteVerificationUI(){
+  const status=document.getElementById("deleteAccountVerifyStatus");
+  const btn=document.getElementById("deleteAccountBtn");
+  if(!status||!btn)return;
+  const remaining=Math.max(0,Math.ceil((deleteVerificationCooldownUntil-Date.now())/1000));
+  status.textContent=currentUser?.email?`Verification destination: ${maskedAccountEmail()}`:"";
+  if(remaining>0){btn.disabled=true;btn.textContent=`Resend in ${remaining}s`;}
+  else{
+    btn.disabled=false;btn.textContent="Verify by Email to Delete";
+    if(deleteVerificationTimer){clearInterval(deleteVerificationTimer);deleteVerificationTimer=null;}
+  }
+}
+
+async function sendDeleteAccountVerification(){
+  if(!currentUser)return openAccount();
+  const email=String(currentUser.email||"").trim();
+  if(!email)return alert("This account does not have an email available for verification.");
+  if(Date.now()<deleteVerificationCooldownUntil)return updateDeleteVerificationUI();
+  const btn=document.getElementById("deleteAccountBtn");
+  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  const redirectTo=window.location.origin+window.location.pathname+"?delete_verify=1";
+  const {error}=await db.auth.signInWithOtp({email,options:{emailRedirectTo:redirectTo,shouldCreateUser:false}});
+  if(error){updateDeleteVerificationUI();return alert("Could not send the deletion verification email: "+error.message);}
+  deleteVerificationCooldownUntil=Date.now()+60000;
+  updateDeleteVerificationUI();
+  deleteVerificationTimer=setInterval(updateDeleteVerificationUI,1000);
+  alert("Verification link sent to the email on your account. Open that email and return to TableRec to continue account deletion.");
+}
+
+function openDeleteAccountVerify(){
+  if(!currentUser)return;
+  const input=document.getElementById("deleteAccountConfirmText"); if(input)input.value="";
+  lockBackgroundScroll();
+  document.getElementById("deleteAccountVerifyModal")?.classList.remove("hidden");
+}
+function closeDeleteAccountVerify(){
+  document.getElementById("deleteAccountVerifyModal")?.classList.add("hidden");
+  unlockBackgroundScroll();
+  const url=new URL(window.location.href);
+  if(url.searchParams.has("delete_verify")){
+    url.searchParams.delete("delete_verify");
+    history.replaceState({},document.title,url.pathname+(url.search?url.search:"")+url.hash);
+  }
+}
 async function deleteTableScoreAccount(){
   if(!currentUser)return openAccount();
-
-  const first=confirm(
-    "Delete your TableRec account permanently?\n\nThis cannot be undone."
-  );
-  if(!first)return;
-
-  const typed=prompt('Type DELETE to confirm permanent account deletion.');
-  if(typed!=="DELETE"){
-    if(typed!==null)alert("Account deletion cancelled. Type DELETE exactly to confirm.");
-    return;
-  }
-
-  const btn=document.getElementById("deleteAccountBtn");
-  const originalText=btn?.textContent||"Delete My Account";
+  const url=new URL(window.location.href);
+  if(url.searchParams.get("delete_verify")!=="1")return alert("Verify account ownership through the deletion email before continuing.");
+  const typed=(document.getElementById("deleteAccountConfirmText")?.value||"").trim();
+  if(typed!=="DELETE")return alert("Type DELETE exactly to confirm permanent account deletion.");
+  const btn=document.getElementById("finalDeleteAccountBtn");
   if(btn){btn.disabled=true;btn.textContent="Deleting Account...";}
-
   try{
     const {data,error}=await db.rpc("delete_my_tablescore_account");
     if(error)throw error;
     if(data && data.deleted===false)throw new Error("Account deletion was not completed.");
-
-    closeSettings();
-    await signOut();
+    closeDeleteAccountVerify(); closeSettings(); await signOut();
     alert("Your TableRec account has been permanently deleted.");
   }catch(err){
     console.error("delete account:",err);
     alert(err?.message||"TableRec could not delete your account. Please try again.");
-    if(btn){btn.disabled=false;btn.textContent=originalText;}
+    if(btn){btn.disabled=false;btn.textContent="Permanently Delete Account";}
   }
+}
+function maybeOpenVerifiedDeleteFlow(){
+  const url=new URL(window.location.href);
+  if(url.searchParams.get("delete_verify")==="1"&&currentUser)setTimeout(openDeleteAccountVerify,50);
 }
 
 async function signOut(){
@@ -7532,6 +7587,7 @@ function openSettings(){
   setTimeout(()=>{
     renderLocationStatus();
     updateSettingsPasswordResetUI();
+    updateDeleteVerificationUI();
   },0);
   const badgeLabCard=document.getElementById("secretBadgeLabCard");
   if(badgeLabCard)badgeLabCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
@@ -9627,6 +9683,7 @@ async function init(){
     const {data:{session}}=await db.auth.getSession();
     currentUser=session?.user||null;
     restoreThemeForCurrentUser();
+    maybeOpenVerifiedDeleteFlow();
   }catch(e){
     console.error("session:",e);
     currentUser=null;
@@ -9677,6 +9734,7 @@ async function init(){
     currentUser=sessionNow?.user||null;
     restoreThemeForCurrentUser();
     if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
+    else maybeOpenVerifiedDeleteFlow();
 
     // Never block the visible app while account data refreshes.
     Promise.allSettled([
@@ -9919,7 +9977,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.8";
+const TABLESCORE_VERSION="5.56.9";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
