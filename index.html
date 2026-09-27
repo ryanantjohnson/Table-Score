@@ -6106,8 +6106,8 @@ async function openPublicProfile(userId){
   const publicBadgeSlugs=await loadPublicBadges(userId);
   const publicBadgesEl=document.getElementById("publicProfileBadges");if(publicBadgesEl)publicBadgesEl.innerHTML=publicBadgeSlugs.map(badgeMarkup).join("");
   document.getElementById("publicProfileArea").textContent=p.home_city||"TableRec member";
-  document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"â";
-  document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"â";
+  document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"-";
+  document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"-";
   document.getElementById("publicFollowersCount").textContent=(followers||[]).length;
   document.getElementById("publicFollowingCount").textContent=(following||[]).length;
 
@@ -9815,7 +9815,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.3";
+const TABLESCORE_VERSION="5.56.4";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
