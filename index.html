@@ -1996,10 +1996,9 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
       <div class="settings-row" style="display:block">
         <div style="font-weight:900">Change Password</div>
-        <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">Use 8+ characters with an uppercase letter, number, and special character.</div>
-        <div class="field" style="margin:9px 0 7px"><input id="settingsNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
-        <div class="field" style="margin:0 0 9px"><input id="settingsConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
-        <button class="primary" onclick="changePassword()">Update Password</button>
+        <div class="muted" style="font-size:11px;line-height:1.45;margin-top:3px">For your security, password changes require access to the email already connected to this account. We will send a secure reset link there.</div>
+        <div id="settingsPasswordResetStatus" class="muted" style="font-size:11px;line-height:1.4;margin-top:7px"></div>
+        <button id="settingsPasswordResetBtn" class="primary" style="margin-top:9px" onclick="sendSettingsPasswordReset()">Send Secure Reset Link</button>
       </div>
 
       <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
@@ -4489,7 +4488,7 @@ async function finishPasswordRecovery(){
   document.getElementById("recoveryNewPassword").value="";
   document.getElementById("recoveryConfirmPassword").value="";
   closePasswordRecovery();
-  alert("Password updated.");
+  alert("Password changed successfully.");
 }
 
 async function changeUsername(){
@@ -4516,17 +4515,56 @@ async function changeUsername(){
   alert("Username updated to @"+username+".");
 }
 
-async function changePassword(){
+function maskedAccountEmail(){
+  const email=String(currentUser?.email||"");
+  const parts=email.split("@");
+  if(parts.length!==2)return "your account email";
+  const local=parts[0],domain=parts[1];
+  const localMask=local.length<=2?local[0]+"*":local.slice(0,2)+"*".repeat(Math.min(5,Math.max(2,local.length-2)));
+  const d=domain.split(".");
+  const host=d[0]||"";
+  const hostMask=host.length<=2?host[0]+"*":host[0]+"*".repeat(Math.min(5,Math.max(2,host.length-1)));
+  return `${localMask}@${hostMask}${d.length>1?"."+d.slice(1).join("."):""}`;
+}
+
+let settingsPasswordResetCooldownUntil=0;
+let settingsPasswordResetTimer=null;
+
+function updateSettingsPasswordResetUI(){
+  const status=document.getElementById("settingsPasswordResetStatus");
+  const btn=document.getElementById("settingsPasswordResetBtn");
+  if(!status||!btn)return;
+  const remaining=Math.max(0,Math.ceil((settingsPasswordResetCooldownUntil-Date.now())/1000));
+  status.textContent=currentUser?.email?`Reset link destination: ${maskedAccountEmail()}`:"";
+  if(remaining>0){
+    btn.disabled=true;
+    btn.textContent=`Resend in ${remaining}s`;
+  }else{
+    btn.disabled=false;
+    btn.textContent="Send Secure Reset Link";
+    if(settingsPasswordResetTimer){clearInterval(settingsPasswordResetTimer);settingsPasswordResetTimer=null;}
+  }
+}
+
+async function sendSettingsPasswordReset(){
   if(!currentUser)return openAccount();
-  const p1=document.getElementById("settingsNewPassword").value;
-  const p2=document.getElementById("settingsConfirmPassword").value;
-  if(!validAccountPassword(p1))return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
-  if(p1!==p2)return alert("Those passwords do not match.");
-  const {error}=await db.auth.updateUser({password:p1});
-  if(error)return alert("Could not update your password: "+error.message);
-  document.getElementById("settingsNewPassword").value="";
-  document.getElementById("settingsConfirmPassword").value="";
-  alert("Password updated.");
+  const email=String(currentUser.email||"").trim();
+  if(!email)return alert("This account does not have an email available for password recovery.");
+  if(Date.now()<settingsPasswordResetCooldownUntil)return updateSettingsPasswordResetUI();
+
+  const btn=document.getElementById("settingsPasswordResetBtn");
+  if(btn){btn.disabled=true;btn.textContent="Sending...";}
+  const redirectTo=window.location.origin+window.location.pathname+"?recovery=password";
+  const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
+  if(error){
+    updateSettingsPasswordResetUI();
+    return alert("Could not send the secure reset email: "+error.message);
+  }
+
+  settingsPasswordResetCooldownUntil=Date.now()+60000;
+  updateSettingsPasswordResetUI();
+  settingsPasswordResetTimer=setInterval(updateSettingsPasswordResetUI,1000);
+  alert("Secure password reset link sent to the email on your account. Open that email and follow the link to choose a new password.");
 }
 
 async function signIn(){
@@ -9851,7 +9889,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.6";
+const TABLESCORE_VERSION="5.56.7";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
