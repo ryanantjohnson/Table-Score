@@ -9097,9 +9097,22 @@ async function openNotification(id){
     }
   }
 
-  if(["follow_request","follow-request","followrequest"].includes(String(n.type||"").toLowerCase())){
+  const notificationType=String(n.type||"").toLowerCase().replace(/[-\s]+/g,"_");
+  if(["follow_request","followrequest"].includes(notificationType)){
     closeNotifications();
     await showFollowRequests();
+    return;
+  }
+
+  // Public-account follows are accepted immediately. Any notification whose
+  // purpose is "you have a new follower" opens the Followers list so the owner
+  // can immediately see who followed them and open that person's profile.
+  if([
+    "new_follower","new_follow","follow","follower",
+    "follow_accepted","followaccepted","follow_accept","followed_you"
+  ].includes(notificationType)){
+    closeNotifications();
+    await openConnectionsFor(currentUser.id,"followers","Your");
     return;
   }
 
@@ -9838,7 +9851,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.5";
+const TABLESCORE_VERSION="5.56.6";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
