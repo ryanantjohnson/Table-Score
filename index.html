@@ -2096,10 +2096,12 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
       <div class="section-title">Set a New Password</div>
       <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
     </div>
-    <p class="muted" style="font-size:12px;line-height:1.45">Enter a new TableRec password below.</p>
+    <p class="muted" style="font-size:12px;line-height:1.45">Your email link has been verified. For added protection, enter your current password, then choose a different new password.</p>
+    <div class="field"><input id="recoveryCurrentPassword" type="password" autocomplete="current-password" placeholder="Current password"></div>
     <div class="field"><input id="recoveryNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
     <div class="field"><input id="recoveryConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
-    <button class="primary" onclick="finishPasswordRecovery()">Save New Password</button>
+    <div class="muted" style="font-size:11px;line-height:1.4;margin:6px 0 10px">8+ characters with an uppercase letter, number, and special character. Your new password must be different from your current password.</div>
+    <button id="recoverySavePasswordBtn" class="primary" onclick="finishPasswordRecovery()">Save New Password</button>
   </div>
 </div>
 
@@ -4472,23 +4474,48 @@ async function forgotPassword(){
 
 function openPasswordRecovery(){
   closeAccount();
+  lockBackgroundScroll();
   document.getElementById("passwordRecoveryModal").classList.remove("hidden");
 }
 function closePasswordRecovery(){
   document.getElementById("passwordRecoveryModal").classList.add("hidden");
+  unlockBackgroundScroll();
 }
 
 async function finishPasswordRecovery(){
+  const currentPassword=document.getElementById("recoveryCurrentPassword")?.value||"";
   const p1=document.getElementById("recoveryNewPassword").value;
   const p2=document.getElementById("recoveryConfirmPassword").value;
+  if(!currentPassword)return alert("Enter your current password.");
   if(!validAccountPassword(p1))return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
   if(p1!==p2)return alert("Those passwords do not match.");
-  const {error}=await db.auth.updateUser({password:p1});
-  if(error)return alert("Could not update your password: "+error.message);
-  document.getElementById("recoveryNewPassword").value="";
-  document.getElementById("recoveryConfirmPassword").value="";
-  closePasswordRecovery();
-  alert("Password changed successfully.");
+  if(p1===currentPassword)return alert("Your new password must be different from your current password.");
+
+  const btn=document.getElementById("recoverySavePasswordBtn");
+  if(btn){btn.disabled=true;btn.textContent="Updating...";}
+
+  try{
+    const {error}=await db.auth.updateUser({
+      password:p1,
+      current_password:currentPassword
+    });
+    if(error)throw error;
+
+    document.getElementById("recoveryCurrentPassword").value="";
+    document.getElementById("recoveryNewPassword").value="";
+    document.getElementById("recoveryConfirmPassword").value="";
+    closePasswordRecovery();
+    alert("Password changed successfully. Your previous password can no longer be used.");
+  }catch(err){
+    const msg=String(err?.message||"");
+    if(/current.password|invalid.*password|password.*incorrect|credentials/i.test(msg)){
+      alert("Your current password was not accepted. Your password has not been changed.");
+    }else{
+      alert("Could not update your password: "+(msg||"Please try again."));
+    }
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent="Save New Password";}
+  }
 }
 
 async function changeUsername(){
@@ -7502,7 +7529,10 @@ function openSettings(){
   if(versionEl)versionEl.textContent=TABLESCORE_VERSION;
   if(buildEl)buildEl.textContent=TABLESCORE_BUILD_LABEL;
   if(!currentUser)return openAccount();
-  setTimeout(renderLocationStatus,0);
+  setTimeout(()=>{
+    renderLocationStatus();
+    updateSettingsPasswordResetUI();
+  },0);
   const badgeLabCard=document.getElementById("secretBadgeLabCard");
   if(badgeLabCard)badgeLabCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
   const cleanupCard=document.getElementById("restaurantCleanupCard");
@@ -9889,7 +9919,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.7";
+const TABLESCORE_VERSION="5.56.8";
 const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
