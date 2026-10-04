@@ -5074,8 +5074,10 @@ async function syncRatingCommentsIfChanged(ratingId){
 }
 
 function startRatingCommentLiveSync(ratingId){
+  // V5.57.9: the unified social sync loop owns open-thread refreshes.
+  // Keeping a second interval here caused overlapping reads, comment flicker,
+  // stale deletes, and engagement controls being rebuilt under a tap.
   stopRatingCommentLiveSync();
-  ratingCommentSyncTimer=setInterval(()=>void syncRatingCommentsIfChanged(ratingId),2000);
 }
 
 function engagementMarkup(ratingId,restaurantId=null){
@@ -5703,6 +5705,7 @@ async function deleteRatingComment(commentId,ratingId){
     .eq("user_id",currentUser.id);
   if(error)return alert("Could not delete comment: "+error.message);
   await loadRatingComments(ratingId);
+  if(activeRatingDetailId===ratingId)await hydrateRatingEngagement([ratingId]);
 }
 
 function scoreWord(score){
@@ -9520,17 +9523,22 @@ async function syncOpenSocialSurfaces(){
   if(tableRecSocialSyncBusy||document.hidden||!currentUser)return;
   tableRecSocialSyncBusy=true;
   try{
+    // One authoritative pass per tick. Never rebuild the engagement buttons:
+    // hydrateRatingEngagement updates their count/class in place, so an in-flight
+    // tap cannot lose its DOM node while toggleDig is executing.
     if(activeRatingDetailId){
-      await Promise.allSettled([
-        syncRatingCommentsIfChanged(activeRatingDetailId),
-        renderRatingDetailEngagement(activeRatingDetailId),
-        hydrateRatingEngagement([activeRatingDetailId])
-      ]);
+      const ratingId=activeRatingDetailId;
+      await syncRatingCommentsIfChanged(ratingId);
+      if(activeRatingDetailId===ratingId){
+        await hydrateRatingEngagement([ratingId]);
+      }
     }
 
     const active=document.querySelector(".screen.active")?.id||"";
     if(active==="profile"){
-      await refreshUserData();
+      // Only refresh account/profile data when no rating modal is open. This
+      // prevents a broad render from competing with the open social thread.
+      if(!activeRatingDetailId)await refreshUserData();
     }else if(active==="publicProfile"&&viewedProfile?.id){
       const uid=viewedProfile.id;
       const [{data:followers},{data:following}]=await Promise.all([
@@ -10257,8 +10265,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.8";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Social Sync + Theme Repair + Visual Sweep";
+const TABLESCORE_VERSION="5.57.9";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Stable Social Sync";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
