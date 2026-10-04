@@ -1031,6 +1031,22 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .where-spin{animation:wherePulse .16s ease-in-out alternate 5}
 @keyframes wherePulse{from{transform:scale(.985);opacity:.7}to{transform:scale(1);opacity:1}}
 
+/* V5.57.5 RUN IT contrast: these surfaces stay dark/teal in every theme,
+   so their foreground colors must not inherit light-theme ink variables. */
+.where-eat-close{color:#fff!important}
+.where-mode.active{color:#fff!important}
+.where-mode.active span{color:#c7d1d3!important}
+.where-result-card{color:#fff!important}
+.where-result-card .where-result-name{color:#fff!important}
+.where-result-card .where-result-meta,
+.where-result-card #whereTableRecHistory{color:#b9c4c6!important}
+.where-result-card .kicker{color:var(--gold)!important}
+.where-result-card .secondary{color:var(--gold)!important}
+.where-radius button.active,
+.where-cuisines button.active,
+.where-price button.active,
+#whereEatSpinBtn{color:#fff!important}
+
 
 /* V5.49.1 Where to Eat theatrics + price */
 .where-price{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -4958,6 +4974,50 @@ function updateSaveRestaurantButton(){
 
 let activeRatingDetailId=null;
 let activeRatingRestaurantId=null;
+let ratingCommentSyncTimer=null;
+let ratingCommentSyncSignature="";
+
+function stopRatingCommentLiveSync(){
+  if(ratingCommentSyncTimer){
+    clearInterval(ratingCommentSyncTimer);
+    ratingCommentSyncTimer=null;
+  }
+  ratingCommentSyncSignature="";
+}
+
+async function syncRatingCommentsIfChanged(ratingId){
+  if(!ratingId || activeRatingDetailId!==ratingId || document.hidden)return;
+  const {data,error}=await db.from("rating_comments")
+    .select("id,created_at")
+    .eq("rating_id",ratingId)
+    .order("created_at",{ascending:true})
+    .limit(100);
+  if(error)return;
+  const signature=(data||[]).map(c=>c.id).join("|");
+  if(signature===ratingCommentSyncSignature)return;
+
+  const input=document.getElementById("ratingCommentInput");
+  const draft=input?.value||"";
+  const start=input?.selectionStart??draft.length;
+  const end=input?.selectionEnd??start;
+  const hadFocus=document.activeElement===input;
+
+  ratingCommentSyncSignature=signature;
+  await loadRatingComments(ratingId);
+  if(activeRatingDetailId!==ratingId)return;
+
+  const next=document.getElementById("ratingCommentInput");
+  if(next && draft){
+    next.value=draft;
+    try{next.setSelectionRange(start,end)}catch(e){}
+    if(hadFocus)next.focus();
+  }
+}
+
+function startRatingCommentLiveSync(ratingId){
+  stopRatingCommentLiveSync();
+  ratingCommentSyncTimer=setInterval(()=>void syncRatingCommentsIfChanged(ratingId),2000);
+}
 
 function engagementMarkup(ratingId,restaurantId=null){
   const save=restaurantId?`<button id="ratingSaveBtn-${ratingId}" data-restaurant-id="${restaurantId||""}" class="secondary engagement-btn rating-save-btn" onclick="event.stopPropagation();toggleSaveRatingRestaurant('${ratingId}','${restaurantId}')">&#9825; Save</button>`:"";
@@ -5106,6 +5166,7 @@ async function openRatingDetail(ratingId){
   tableRecPushOrigin();
   activeRatingDetailId=ratingId;
   activeRatingRestaurantId=null;
+  startRatingCommentLiveSync(ratingId);
   const modal=document.getElementById("ratingDetailModal");
 
   // Build the lightweight shell BEFORE it becomes visible. No DOM geometry changes
@@ -5238,6 +5299,7 @@ async function openRatingDetail(ratingId){
 }
 
 function closeRatingDetail(){
+  stopRatingCommentLiveSync();
   hideMentionPortal();
   const modal=document.getElementById("ratingDetailModal");
   modal.classList.add("hidden");
@@ -5265,6 +5327,7 @@ async function loadRatingComments(ratingId){
   }
 
   count.textContent=`${comments?.length||0} comment${comments?.length===1?"":"s"}`;
+  ratingCommentSyncSignature=(comments||[]).map(c=>c.id).join("|");
 
   const userIds=[...new Set((comments||[]).map(c=>c.user_id))];
   let people=[];
@@ -9075,7 +9138,9 @@ async function submitRating(){
     selectedRestaurantId=restaurant.id;
     selectedRestaurantName=restaurant.name;
     await Promise.all([refreshUserData(),loadRestaurantStats()]);
-    showScreen("saved");
+    // Submitted ratings belong on the restaurant page, not Saved Restaurants.
+    restaurantReturnScreen="profile";
+    await openRestaurantById(restaurant.id);
   }catch(err){
     console.error(err);
     alert("TableRec could not submit this rating: "+(err.message||"Unknown error"));
@@ -10046,8 +10111,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.3";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - RUN IT Mobile Result View";
+const TABLESCORE_VERSION="5.57.5";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Rating Route + RUN IT Contrast + Live Comments";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
