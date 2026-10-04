@@ -1047,6 +1047,22 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .where-price button.active,
 #whereEatSpinBtn{color:#fff!important}
 
+/* V5.57.6: light themes use a clean light result card; Night keeps the dark treatment. */
+body:not([data-theme="night"]) .where-result-card{
+  background:#fff!important;color:#11161a!important;border-color:var(--gold)!important
+}
+body:not([data-theme="night"]) .where-result-card .where-result-name{color:#11161a!important}
+body:not([data-theme="night"]) .where-result-card .where-result-meta,
+body:not([data-theme="night"]) .where-result-card #whereTableRecHistory{color:#5f6d70!important}
+body:not([data-theme="night"]) .where-result-card .kicker{color:var(--gold)!important}
+body:not([data-theme="night"]) .where-result-card .secondary{
+  background:#fff!important;color:var(--gold)!important;border-color:var(--gold)!important
+}
+body[data-theme="night"] .where-result-card{background:#11161a!important;color:#fff!important}
+body[data-theme="night"] .where-result-card .where-result-name{color:#fff!important}
+body[data-theme="night"] .where-result-card .where-result-meta,
+body[data-theme="night"] .where-result-card #whereTableRecHistory{color:#b9c4c6!important}
+
 
 /* V5.49.1 Where to Eat theatrics + price */
 .where-price{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
@@ -7222,6 +7238,43 @@ function closeSecretBadgeLab(){
 let tableScoreLocation=null;
 let tableScoreLocationWatchId=null;
 
+function restoreStoredTableScoreLocation(){
+  const lat=Number(localStorage.getItem("ts_lat"));
+  const lon=Number(localStorage.getItem("ts_lon"));
+  const accuracy=Number(localStorage.getItem("ts_location_accuracy"));
+  if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
+  tableScoreLocation={
+    latitude:lat,
+    longitude:lon,
+    accuracy:Number.isFinite(accuracy)&&accuracy>0?accuracy:null,
+    capturedAt:0
+  };
+  locationEnabled=true;
+  return true;
+}
+
+async function resumeGrantedTableScoreLocation(){
+  restoreStoredTableScoreLocation();
+  if(!("geolocation" in navigator))return;
+
+  // Never trigger a fresh permission prompt on startup. If the browser exposes
+  // permission state, only refresh automatically when permission is already granted.
+  if(!navigator.permissions?.query)return;
+  try{
+    const permission=await navigator.permissions.query({name:"geolocation"});
+    if(permission.state==="granted"){
+      navigator.geolocation.getCurrentPosition(
+        pos=>acceptTableScorePosition(pos),
+        ()=>renderLocationStatus(),
+        {enableHighAccuracy:false,timeout:8000,maximumAge:300000}
+      );
+    }
+  }catch(e){
+    // Safari versions that do not expose geolocation through Permissions API
+    // simply keep using the last valid stored location until the user taps My Location.
+  }
+}
+
 function locationAccuracyLabel(meters){
   if(!Number.isFinite(meters))return "";
   return ` Accuracy about ${Math.round(meters)} m.`;
@@ -7252,6 +7305,8 @@ function acceptTableScorePosition(pos){
   localStorage.setItem("ts_location_enabled","1");
   localStorage.setItem("ts_lat",String(pos.coords.latitude));
   localStorage.setItem("ts_lon",String(pos.coords.longitude));
+  localStorage.setItem("ts_location_accuracy",String(pos.coords.accuracy||""));
+  localStorage.setItem("ts_location_enabled","1");
   try{
     sessionStorage.setItem("tablescore_location_ok","1");
   }catch(e){}
@@ -9535,11 +9590,10 @@ async function loadWhereEatPool(){
   let coords=currentTableScoreCoords();
 
   if(!manualMode){
-    try{
-      coords=await getFreshTableScoreCoords();
-    }catch(err){
-      if(!coords)throw err;
-      console.warn("RUN IT fresh location unavailable; using the last saved location.",err);
+    // Reuse the last valid device location. A fresh GPS request is reserved for
+    // explicit My Location/Refresh actions and Verified Visit submission.
+    if(!coords){
+      throw new Error("Location is not enabled yet. Use My Current Location once, then RUN IT again.");
     }
   }else if(!coords){
     throw new Error("Choose a browsing area before using RUN IT.");
@@ -9809,6 +9863,7 @@ function openWhereEatDirections(){
 }
 
 async function init(){
+  restoreStoredTableScoreLocation();
   updateArea();
   calculate();
 
@@ -9845,6 +9900,7 @@ async function init(){
 
   // Reveal the UI immediately instead of blocking on every database/reward request.
   document.body.classList.remove("booting");
+  void resumeGrantedTableScoreLocation();
 
   // Startup reuses the last valid browsing location instead of forcing a new
   // geolocation request on every refresh. Explicit My Location / Retry actions
@@ -10111,8 +10167,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.5";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Rating Route + RUN IT Contrast + Live Comments";
+const TABLESCORE_VERSION="5.57.6";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - RUN IT Light Cards + Location Persistence";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
