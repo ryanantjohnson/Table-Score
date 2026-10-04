@@ -1006,6 +1006,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 /* V5.49.0 Where to Eat */
 .where-eat-sheet{max-height:88vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+#whereEatSpinBtn{position:sticky;bottom:0;z-index:120;margin-top:10px;box-shadow:0 -10px 24px var(--sheetBg),0 8px 20px rgba(0,0,0,.18)}
 .where-eat-close{
   position:fixed!important;top:calc(env(safe-area-inset-top) + 58px)!important;right:24px!important;
   z-index:5000!important;width:auto!important;min-width:96px!important;margin:0!important;padding:9px 15px!important;
@@ -1315,6 +1316,13 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   -webkit-overflow-scrolling:touch;
 }
 
+/* V5.57.1: restore reliable iPhone taps in the edit-rating modal. */
+#editRatingModal{touch-action:auto!important;}
+#editRatingModal .edit-rating-sheet{touch-action:pan-y!important;}
+#editRatingModal button{pointer-events:auto!important;touch-action:manipulation!important;-webkit-user-select:none;user-select:none;}
+#editRatingModal .edit-rating-actions{pointer-events:auto!important;}
+
+
 /* V5.55.8 rating-card save action */
 .rating-action-row{
   display:flex!important;
@@ -1579,7 +1587,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </section>
 
   <section id="rate" class="screen">
-    <div class="backline"><button class="backbtn" onclick="showScreen('home')">&lsaquo;</button><div class="page-title" style="margin:0">Rate Your Experience</div></div>
+    <div class="backline"><button class="backbtn" onclick="returnFromRate()">&lsaquo;</button><div class="page-title" style="margin:0">Rate Your Experience</div></div>
     <div class="steps"><i class="on"></i><i class="on"></i><i></i></div>
     <div class="card">
       <div class="field">
@@ -3114,6 +3122,7 @@ function openRestaurantPageLocation(){
 }
 
 function returnFromRestaurant(){
+  if(restoreRestaurantFinderAfterDrill())return;
   const target=restaurantReturnScreen||"home";
   showScreen(target,{restore:true});
   if(target==="discover"){
@@ -3469,6 +3478,7 @@ function showLocationDiagnostic(){
 }
 
 let restaurantFinderMode="search";
+let restaurantFinderReturnMode=null;
 
 let exploreRestaurantMap=null;
 let exploreRestaurantMapMarkers=[];
@@ -3812,7 +3822,7 @@ function queueRestaurantPredictions(){
     return;
   }
 
-  restaurantPredictionTimer=setTimeout(()=>loadRestaurantPredictions(q),260);
+  restaurantPredictionTimer=setTimeout(()=>loadRestaurantPredictions(q),180);
 }
 
 async function loadRestaurantPredictions(query){
@@ -3822,7 +3832,7 @@ async function loadRestaurantPredictions(query){
 
   try{
     const coords=currentTableScoreCoords();
-    const body={mode:"search",query};
+    const body={mode:"autocomplete",query};
     if(coords){
       body.latitude=coords.latitude;
       body.longitude=coords.longitude;
@@ -3876,12 +3886,23 @@ function openRestaurantAction(r){
 }
 function closeRestaurantAction(){
   document.getElementById("restaurantActionModal")?.classList.add("hidden");
-  if(restaurantFinderMode==="search"){
-    document.getElementById("nearbyRestaurantModal")?.classList.remove("hidden");
+  const finder=document.getElementById("nearbyRestaurantModal");
+  if(finder && !finder.classList.contains("hidden")){
     lockBackgroundScroll();
   }else{
     unlockBackgroundScroll();
   }
+}
+function restoreRestaurantFinderAfterDrill(){
+  if(!restaurantFinderReturnMode)return false;
+  const mode=restaurantFinderReturnMode;
+  restaurantFinderReturnMode=null;
+  const finder=document.getElementById("nearbyRestaurantModal");
+  if(!finder)return false;
+  restaurantFinderMode=mode;
+  finder.classList.remove("hidden");
+  lockBackgroundScroll();
+  return true;
 }
 async function tableRecRestaurantForPlace(place,createIfMissing=false){
   if(!place)return null;
@@ -4040,6 +4061,7 @@ async function openRestaurantActionTableRec(){
   try{
     const restaurant=await restaurantActionTableRecRestaurant(true);
     if(!restaurant?.id)throw new Error("Could not identify this restaurant.");
+    restaurantFinderReturnMode=restaurantFinderMode;
     document.getElementById("restaurantActionModal")?.classList.add("hidden");
     document.getElementById("nearbyRestaurantModal")?.classList.add("hidden");
     unlockBackgroundScroll();
@@ -4051,8 +4073,17 @@ async function openRestaurantActionTableRec(){
 }
 function rateRestaurantAction(){
   const r=restaurantActionPlace;if(!r)return;
+  restaurantFinderReturnMode=restaurantFinderMode;
   selectedRestaurantId=null;selectedGoogleRestaurant={...r};selectedRestaurantName=r.name||"Restaurant";
-  syncRateRestaurantPicker();closeRestaurantAction();showScreen("rate");
+  syncRateRestaurantPicker();
+  document.getElementById("restaurantActionModal")?.classList.add("hidden");
+  document.getElementById("nearbyRestaurantModal")?.classList.add("hidden");
+  unlockBackgroundScroll();
+  showScreen("rate");
+}
+function returnFromRate(){
+  if(restoreRestaurantFinderAfterDrill())return;
+  showScreen("home");
 }
 
 function handleRestaurantPredictionKeydown(event){
@@ -4167,28 +4198,13 @@ async function loadNearbyRestaurants(forceFresh=false){
 function chooseRestaurantSearchResult(index){
   const r=nearbyGoogleRestaurants[index];
   if(!r)return;
-  if(restaurantFinderMode==="search"){
-    closeNearbyRestaurantPicker();
-    openRestaurantAction(r);
-    return;
-  }
-  chooseNearbyRestaurant(index);
+  openRestaurantAction(r);
 }
 
 function chooseNearbyRestaurant(index){
   const r=nearbyGoogleRestaurants[index];
   if(!r)return;
-
-  selectedRestaurantId=null;
-  selectedGoogleRestaurant={
-    ...r,
-    city:r.city||null,
-    state_region:r.state_region||null,
-    postal_code:r.postal_code||null
-  };
-  selectedRestaurantName=r.name||"Restaurant";
-  syncRateRestaurantPicker();
-  closeNearbyRestaurantPicker();
+  openRestaurantAction(r);
 }
 
 function openLocationChooser(){
@@ -4356,12 +4372,12 @@ function showMapRestaurant(i,marker){
   restaurantMapInfoWindow?.setContent(`<div style="color:#111;max-width:220px"><strong>${esc(r.name||"Restaurant")}</strong><br><span style="font-size:11px">${esc(r.address||restaurantTypeLabel(r))}</span></div>`);
   restaurantMapInfoWindow?.open({map:restaurantMap,anchor:marker});
   const el=document.getElementById("mapRestaurantSelection");
-  if(el)el.innerHTML=`<div class="map-selection"><div class="map-selection-name">${esc(r.name||"Restaurant")}</div><div class="map-selection-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div><button class="primary" style="margin-top:9px" onclick="chooseMapRestaurant()">Rate This Restaurant</button></div>`;
+  if(el)el.innerHTML=`<div class="map-selection"><div class="map-selection-name">${esc(r.name||"Restaurant")}</div><div class="map-selection-meta">${esc(restaurantTypeLabel(r))}${r.address?`<br>${esc(r.address)}`:""}</div><button class="primary" style="margin-top:9px" onclick="chooseMapRestaurant()">Restaurant Options</button></div>`;
+  openRestaurantAction(r);
 }
 function chooseMapRestaurant(){
   if(!mapSelectedRestaurant)return;
-  const i=nearbyGoogleRestaurants.indexOf(mapSelectedRestaurant);
-  if(i>=0)chooseNearbyRestaurant(i);
+  openRestaurantAction(mapSelectedRestaurant);
 }
 async function centerRestaurantMapOnMe(){
   try{
@@ -10014,8 +10030,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.0";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization";
+const TABLESCORE_VERSION="5.57.1";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - QA Corrections";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -10314,7 +10330,7 @@ if(document.readyState==="loading"){
         <button data-price="3" class="active" onclick="toggleWhereEatPrice(3)">$$$</button>
         <button data-price="4" class="active" onclick="toggleWhereEatPrice(4)">$$$$</button>
       </div>
-      <div class="muted" style="font-size:10px;margin-top:6px">$ inexpensive &nbsp;·&nbsp; $$ everyday &nbsp;·&nbsp; $$$ upscale &nbsp;·&nbsp; $$$$ fine dining</div>
+      <div class="muted" style="font-size:10px;margin-top:6px">$ lowest &nbsp;·&nbsp; $$ moderate &nbsp;·&nbsp; $$$ expensive &nbsp;·&nbsp; $$$$ very expensive</div>
     </div>
 
     <div id="whereCuisineWrap" class="field hidden">
