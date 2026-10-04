@@ -2287,7 +2287,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
     <div id="restaurantActionMeta" class="muted" style="font-size:11px;line-height:1.45"></div>
     <div style="display:grid;gap:8px;margin-top:14px">
       <button class="primary" onclick="openRestaurantActionDirections()">Directions</button>
-      <button class="secondary" onclick="openRestaurantActionGoogle()">View Restaurant</button>
+      <button class="secondary" onclick="openRestaurantActionTableRec()">View on TableRec</button>
       <button id="restaurantActionSaveBtn" class="secondary save-restaurant-btn" onclick="toggleSaveRestaurantAction()">&#9825; Save Restaurant</button>
       <button class="secondary" onclick="rateRestaurantAction()">Rate on TableRec</button>
     </div>
@@ -4035,8 +4035,19 @@ function restaurantActionMapsUrl(){
 function openRestaurantActionDirections(){
   const url=restaurantActionMapsUrl(); if(url)window.open(url,"_blank","noopener");
 }
-function openRestaurantActionGoogle(){
-  const url=restaurantActionMapsUrl(); if(url)window.open(url,"_blank","noopener");
+async function openRestaurantActionTableRec(){
+  if(!restaurantActionPlace)return;
+  try{
+    const restaurant=await restaurantActionTableRecRestaurant(true);
+    if(!restaurant?.id)throw new Error("Could not identify this restaurant.");
+    document.getElementById("restaurantActionModal")?.classList.add("hidden");
+    document.getElementById("nearbyRestaurantModal")?.classList.add("hidden");
+    unlockBackgroundScroll();
+    await openRestaurantById(restaurant.id);
+  }catch(err){
+    console.error("View on TableRec:",err);
+    alert(err?.message||"TableRec could not open this restaurant.");
+  }
 }
 function rateRestaurantAction(){
   const r=restaurantActionPlace;if(!r)return;
@@ -9420,11 +9431,32 @@ function whereEatMatchesCuisine(r,key){
   };
   return (allowed[key]||[]).some(t=>structured.has(t));
 }
+function tableRecMilesBetween(lat1,lon1,lat2,lon2){
+  const aLat=Number(lat1),aLon=Number(lon1),bLat=Number(lat2),bLon=Number(lon2);
+  if(![aLat,aLon,bLat,bLon].every(Number.isFinite))return null;
+  const toRad=n=>n*Math.PI/180;
+  const dLat=toRad(bLat-aLat),dLon=toRad(bLon-aLon);
+  const a=Math.sin(dLat/2)**2+
+    Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLon/2)**2;
+  return 3958.7613*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
+}
 async function loadWhereEatPool(){
   const status=document.getElementById("whereEatStatus");
   status.textContent="Searching the full area...";
+
+  const manualMode=localStorage.getItem("ts_location_mode")==="manual";
   let coords=currentTableScoreCoords();
-  if(!coords)coords=await getFreshTableScoreCoords();
+
+  if(!manualMode){
+    try{
+      coords=await getFreshTableScoreCoords();
+    }catch(err){
+      if(!coords)throw err;
+      console.warn("RUN IT fresh location unavailable; using the last saved location.",err);
+    }
+  }else if(!coords){
+    throw new Error("Choose a browsing area before using RUN IT.");
+  }
 
   const {data,error}=await db.functions.invoke("where-to-eat",{body:{
     latitude:coords.latitude,
@@ -9434,7 +9466,13 @@ async function loadWhereEatPool(){
   if(error)throw error;
   if(data?.error)throw new Error(data.error);
 
-  const rows=Array.isArray(data?.restaurants)?data.restaurants:[];
+  const rows=(Array.isArray(data?.restaurants)?data.restaurants:[])
+    .map(r=>{
+      const computed=tableRecMilesBetween(coords.latitude,coords.longitude,r?.latitude,r?.longitude);
+      return {...r,distance_miles:Number.isFinite(computed)?computed:Number(r?.distance_miles)};
+    })
+    .filter(r=>Number.isFinite(Number(r.distance_miles)) && Number(r.distance_miles)<=Number(whereEatRadius)+0.05);
+
   if(!rows.length)throw new Error("No restaurants found in that radius.");
   return rows;
 }
@@ -9711,12 +9749,11 @@ async function init(){
   // Reveal the UI immediately instead of blocking on every database/reward request.
   document.body.classList.remove("booting");
 
-  // If Current Location is the browsing mode, get a truly fresh GPS fix on every refresh.
-  // This runs after the UI is visible so GPS/reverse-geocoding never slows first paint.
-  refreshLiveBrowseLocation({reloadRestaurants:false}).then(()=>{
-    renderHomeRankings();
-    renderExplore();
-  });
+  // Startup reuses the last valid browsing location instead of forcing a new
+  // geolocation request on every refresh. Explicit My Location / Retry actions
+  // still request a fresh GPS fix.
+  renderHomeRankings();
+  renderExplore();
 
   // Core data can populate progressively.
   Promise.allSettled([
@@ -9977,8 +10014,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.56.9";
-const TABLESCORE_BUILD_LABEL="Verified Check Hotfix";
+const TABLESCORE_VERSION="5.57.0";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
