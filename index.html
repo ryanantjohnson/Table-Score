@@ -1007,6 +1007,8 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 /* V5.49.0 Where to Eat */
 .where-eat-sheet{max-height:88vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
 #whereEatSpinBtn{position:relative;bottom:auto;z-index:1;margin-top:12px;box-shadow:0 8px 20px rgba(0,0,0,.18)}
+.where-eat-sheet.where-result-focus{padding-bottom:calc(24px + env(safe-area-inset-bottom))}
+.where-eat-sheet.where-result-focus #whereEatSpinBtn{margin-bottom:8px}
 .where-eat-close{
   position:fixed!important;top:calc(env(safe-area-inset-top) + 58px)!important;right:24px!important;
   z-index:5000!important;width:auto!important;min-width:96px!important;margin:0!important;padding:9px 15px!important;
@@ -9363,6 +9365,7 @@ const WHERE_RECENT_KEY="ts_where_recent_v1";
 const WHERE_RECENT_CONCEPT_KEY="ts_where_recent_concepts_v1";
 
 function openWhereToEat(){
+  document.querySelector(".where-eat-sheet")?.classList.remove("where-result-focus");
   document.querySelectorAll(".nav button").forEach(b=>b.classList.toggle("active",b.dataset.s==="runit"));
   const grid=document.getElementById("whereCuisineGrid");
   if(grid&&!grid.innerHTML){
@@ -9705,9 +9708,19 @@ async function spinWhereToEat(){
     status.textContent=`${conceptCount} different restaurant option${conceptCount===1?"":"s"} ready${pool.length>conceptCount?` (${pool.length} locations searched)`:""}`;
     await animateWhereRestaurant(pool,whereEatPick,whereEatMode==="cuisine"?`${cuisineLabel.toUpperCase()} IS LOCKED IN`:"HERE WE GO...");
     renderWhereEatPick(whereEatPick,cuisineLabel);
+    const sheet=document.querySelector(".where-eat-sheet");
+    sheet?.classList.add("where-result-focus");
+    requestAnimationFrame(()=>{
+      const result=document.getElementById("whereEatResult");
+      if(sheet&&result){
+        const top=Math.max(0,result.offsetTop-10);
+        sheet.scrollTo({top,behavior:"smooth"});
+      }
+    });
   }catch(err){
     console.error("Where to Eat:",err);
     whereEatPick=null;
+    document.querySelector(".where-eat-sheet")?.classList.remove("where-result-focus");
     document.getElementById("whereEatResult").innerHTML="";
     status.textContent=err?.message||"TableRec could not pick a restaurant.";
   }finally{
@@ -10033,8 +10046,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.2";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Navigation + Saved + RUN IT";
+const TABLESCORE_VERSION="5.57.3";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - RUN IT Mobile Result View";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
