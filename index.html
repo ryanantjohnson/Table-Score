@@ -1047,21 +1047,38 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 .where-price button.active,
 #whereEatSpinBtn{color:#fff!important}
 
-/* V5.57.6: light themes use a clean light result card; Night keeps the dark treatment. */
-body:not([data-theme="night"]) .where-result-card{
+/* V5.57.7: complete light-theme RUN IT treatment. Theme lives on <html>, not <body>. */
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-eat-close{
+  background:#fff!important;color:#11161a!important;border-color:var(--gold)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.20)!important
+}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-stage{
   background:#fff!important;color:#11161a!important;border-color:var(--gold)!important
 }
-body:not([data-theme="night"]) .where-result-card .where-result-name{color:#11161a!important}
-body:not([data-theme="night"]) .where-result-card .where-result-meta,
-body:not([data-theme="night"]) .where-result-card #whereTableRecHistory{color:#5f6d70!important}
-body:not([data-theme="night"]) .where-result-card .kicker{color:var(--gold)!important}
-body:not([data-theme="night"]) .where-result-card .secondary{
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-stage-name{color:#11161a!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-stage-sub{color:#5f6d70!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card{
+  background:#fff!important;color:#11161a!important;border-color:var(--gold)!important
+}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card .where-result-name{color:#11161a!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card .where-result-meta,
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card #whereTableRecHistory{color:#5f6d70!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card .kicker{color:var(--gold)!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) .where-result-card .secondary{
   background:#fff!important;color:var(--gold)!important;border-color:var(--gold)!important
 }
-body[data-theme="night"] .where-result-card{background:#11161a!important;color:#fff!important}
-body[data-theme="night"] .where-result-card .where-result-name{color:#fff!important}
-body[data-theme="night"] .where-result-card .where-result-meta,
-body[data-theme="night"] .where-result-card #whereTableRecHistory{color:#b9c4c6!important}
+html[data-theme="night"] .where-result-card,
+html[data-theme="electric"] .where-result-card,
+html[data-theme="night"] .where-stage,
+html[data-theme="electric"] .where-stage{background:#11161a!important;color:#fff!important}
+html[data-theme="night"] .where-result-card .where-result-name,
+html[data-theme="electric"] .where-result-card .where-result-name,
+html[data-theme="night"] .where-stage-name,
+html[data-theme="electric"] .where-stage-name{color:#fff!important}
+html[data-theme="night"] .where-result-card .where-result-meta,
+html[data-theme="electric"] .where-result-card .where-result-meta,
+html[data-theme="night"] .where-result-card #whereTableRecHistory,
+html[data-theme="electric"] .where-result-card #whereTableRecHistory{color:#b9c4c6!important}
 
 
 /* V5.49.1 Where to Eat theatrics + price */
@@ -2490,7 +2507,16 @@ function applyTheme(theme){
   if(meta)meta.setAttribute("content",colors[next]||colors.fresh);
   renderThemeChoices();
 }
-function setTheme(theme){applyTheme(theme);}
+async function setTheme(theme){
+  applyTheme(theme);
+  try{
+    const {data}=await db.auth.getUser();
+    const uid=data?.user?.id||currentUser?.id;
+    if(uid)localStorage.setItem(tableRecThemeKey(uid),currentTheme);
+  }catch(e){
+    if(currentUser?.id)localStorage.setItem(tableRecThemeKey(currentUser.id),currentTheme);
+  }
+}
 function renderThemeChoices(){document.querySelectorAll("[data-theme-choice]").forEach(btn=>btn.classList.toggle("active",btn.dataset.themeChoice===currentTheme));}
 applyTheme(currentTheme);
 
@@ -10167,8 +10193,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.6";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - RUN IT Light Cards + Location Persistence";
+const TABLESCORE_VERSION="5.57.7";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Full RUN IT Light Treatment + Theme Persistence";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
