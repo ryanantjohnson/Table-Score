@@ -1006,7 +1006,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
 
 /* V5.49.0 Where to Eat */
 .where-eat-sheet{max-height:88vh;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-#whereEatSpinBtn{position:sticky;bottom:0;z-index:120;margin-top:10px;box-shadow:0 -10px 24px var(--sheetBg),0 8px 20px rgba(0,0,0,.18)}
+#whereEatSpinBtn{position:relative;bottom:auto;z-index:1;margin-top:12px;box-shadow:0 8px 20px rgba(0,0,0,.18)}
 .where-eat-close{
   position:fixed!important;top:calc(env(safe-area-inset-top) + 58px)!important;right:24px!important;
   z-index:5000!important;width:auto!important;min-width:96px!important;margin:0!important;padding:9px 15px!important;
@@ -1632,11 +1632,7 @@ body{background:var(--bg);color:var(--ink);transition:background .2s ease,color 
   </section>
 
   <section id="saved" class="screen">
-    <div class="page-title" style="padding-top:18px">Saved</div>
-    <div class="saved-tabs">
-      <button id="savedRatingsTab" class="active" onclick="setSavedView('ratings')">My Ratings</button>
-      <button id="savedRestaurantsTab" onclick="setSavedView('restaurants')">Saved Restaurants</button>
-    </div>
+    <div class="page-title" style="padding-top:18px">Saved Restaurants</div>
     <div id="savedList" class="list"></div>
   </section>
 
@@ -2385,7 +2381,7 @@ let myRatings=[];
 let restaurantStats=[];
 let savedRestaurantIds=new Set();
 let savedRestaurants=[];
-let savedView="ratings";
+let savedView="restaurants";
 let selectedRestaurantId=null;
 let restaurantReturnScreen="explore";
 let selectedRestaurantName="";
@@ -3902,6 +3898,13 @@ function restoreRestaurantFinderAfterDrill(){
   restaurantFinderMode=mode;
   finder.classList.remove("hidden");
   lockBackgroundScroll();
+  if(restaurantActionPlace){
+    const action=document.getElementById("restaurantActionModal");
+    if(action){
+      action.classList.remove("hidden");
+      void refreshRestaurantActionSaveButton();
+    }
+  }
   return true;
 }
 async function tableRecRestaurantForPlace(place,createIfMissing=false){
@@ -10030,8 +10033,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.1";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - QA Corrections";
+const TABLESCORE_VERSION="5.57.2";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Navigation + Saved + RUN IT";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
