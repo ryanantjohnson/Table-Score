@@ -2478,6 +2478,9 @@ html:is([data-theme="night"],[data-theme="electric"]) body
         <button id="ratingDetailMapAction" class="secondary hidden"
                 style="width:auto;padding:7px 11px;margin-top:7px;font-size:11px"
                 onclick="openActiveRatingRestaurantLocation()">View Restaurant Map</button>
+        <button id="ratingDetailRestaurantAction" class="secondary hidden"
+                style="width:auto;padding:7px 11px;margin-top:7px;font-size:11px"
+                onclick="if(activeRatingRestaurantId){const restaurantId=activeRatingRestaurantId;closeRatingDetail();openRestaurantById(restaurantId)}">View Restaurant</button>
       </div>
     </div>
 
@@ -5626,6 +5629,7 @@ async function openRatingDetail(ratingId){
   document.getElementById("ratingDetailScore").textContent="--";
   document.getElementById("ratingDetailLabel").textContent="";
   document.getElementById("ratingDetailMapAction")?.classList.add("hidden");
+  document.getElementById("ratingDetailRestaurantAction")?.classList.add("hidden");
   document.getElementById("ratingDetailBreakdown").innerHTML=ratingDetailSkeletonBreakdown();
   document.getElementById("ratingDetailBestDish").innerHTML="";
   document.getElementById("ratingDetailQuickTake").textContent="";
@@ -5667,6 +5671,7 @@ async function openRatingDetail(ratingId){
   activeRatingRestaurantId=r.restaurant_id||null;
   const mapAction=document.getElementById("ratingDetailMapAction");
   if(mapAction)mapAction.classList.toggle("hidden",!activeRatingRestaurantId);
+  document.getElementById("ratingDetailRestaurantAction")?.classList.toggle("hidden",!activeRatingRestaurantId);
   const score=Number(r.overall_score);
   const name=p?.display_name||p?.username||"TableRec User";
 
@@ -6406,7 +6411,7 @@ function feedRatingCard(r,person){
       </div>
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
-    <button onclick="event.stopPropagation();openRestaurantById('${restaurant.id||r.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
+    <button onclick="event.stopPropagation();openRatingDetail('${r.id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
       <div class="tr-feed-restaurant-name">${esc(restaurant.name||"Restaurant")}</div>
       <div class="row-meta">${[restaurant.city,restaurant.state_region].filter(Boolean).map(esc).join(", ")}</div>
     </button>
@@ -7164,7 +7169,7 @@ async function renderMyProfileRatings(){
     return `<div class="card rating-clickable" onclick="openRatingDetail('${r.id}')" style="margin:0 0 10px;padding:12px">
       <div class="row profile-rating-head" style="border:0;padding:0;background:transparent;align-items:flex-start">
         <div style="min-width:0;flex:1">
-          <button onclick="event.stopPropagation();${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
+          <button onclick="event.stopPropagation();openRatingDetail('${r.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
             <div class="row-name">${esc(restaurantName)}</div>
           </button>
           <div class="row-meta">${new Date(r.created_at).toLocaleDateString()} - ${r.verified_visit?"Verified Visit":"Unverified"}</div>
@@ -10783,7 +10788,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.8";
+const TABLESCORE_VERSION="5.58.9";
 const TABLESCORE_BUILD_LABEL="TableRec Identity - Boot Recovery + Splash Timing";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
