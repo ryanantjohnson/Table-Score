@@ -1929,6 +1929,32 @@ html[data-theme="night"] body .tr-close-control{
 .tr-legal-consent input{flex-shrink:0;width:19px;height:19px;margin:2px 0;accent-color:var(--tr-orange)}
 .tr-account-legal{text-align:center;font-size:12px;line-height:1.5;margin-top:12px}
 
+/* V5.58.14 - Saved titles wrap within the card without an inner capsule. */
+.tr-saved-restaurant-head{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:12px}
+.tr-saved-restaurant-head .row-name,.tr-saved-restaurant-head .row-meta{overflow-wrap:anywhere;white-space:normal}
+/* Non-scrolling toolbar keeps each Close button clear of all scrolling content. */
+:is(#settingsModal,#ratingDetailModal,#whereToEatModal)>.sheet{
+ display:flex!important;flex-direction:column!important;overflow:hidden!important;padding:0!important;
+ max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 28px);
+}
+.tr-modal-toolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;flex:0 0 auto;padding:14px 18px;background:var(--sheetBg);border-bottom:1px solid var(--line)}
+.tr-modal-toolbar>.section-title{min-width:0;overflow-wrap:anywhere;font-size:20px}
+.tr-modal-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px;flex:1 1 auto}
+:is(#settingsModal,#ratingDetailModal,#whereToEatModal) .tr-modal-toolbar>.tr-close-control{
+ position:static!important;inset:auto!important;transform:none!important;float:none!important;
+ width:auto!important;min-width:0!important;height:44px!important;min-height:44px!important;
+ flex:0 0 auto!important;margin:0!important;padding:0 13px!important;line-height:1!important;
+ font-size:12px!important;border-radius:14px!important;z-index:auto!important;
+}
+#ratingDetailModal #ratingDetailRestaurant{overflow-wrap:anywhere;white-space:normal}
+#ratingDetailModal .tr-modal-scroll>.section-head>div{min-width:0;width:100%}
+/* Keep the verification signal green while reducing the panel's visual weight. */
+#verifiedMsg{
+ background:color-mix(in srgb,var(--card) 94%,var(--green) 6%)!important;
+ color:var(--ink)!important;border:1px solid color-mix(in srgb,var(--line) 75%,var(--green) 25%)!important;
+ border-left:3px solid var(--green)!important;padding:11px 12px;font-weight:650;line-height:1.5;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -2351,11 +2377,13 @@ html[data-theme="night"] body .tr-close-control{
 </div>
 
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
-  <button class="tr-close-control secondary settings-external-close" onclick="closeSettings()">Close</button>
   <div class="sheet" style="max-height:88vh;overflow:auto">
-    <div class="section-head">
+    <div class="tr-modal-toolbar">
       <div class="section-title">Settings</div>
+      <button class="tr-close-control secondary settings-external-close" onclick="closeSettings()">Close</button>
     </div>
+    <div class="tr-modal-scroll">
+
 
     <div class="card" style="margin-top:8px">
       <div class="section-title" style="font-size:15px">Notifications</div>
@@ -2519,6 +2547,7 @@ html[data-theme="night"] body .tr-close-control{
         </div>
       </div>
     </div>
+    </div>
   </div>
 </div>
 
@@ -2545,8 +2574,12 @@ html[data-theme="night"] body .tr-close-control{
 
 <div id="mentionPortal" aria-label="Mention suggestions"></div>
 <div id="ratingDetailModal" class="modal hidden" onclick="if(event.target===this)closeRatingDetail()">
-  <button class="tr-close-control secondary rating-detail-floating-close" onclick="closeRatingDetail()">Close</button>
   <div class="sheet" style="max-height:90vh;overflow:auto">
+    <div class="tr-modal-toolbar">
+      <div class="section-title">Rating details</div>
+      <button class="tr-close-control secondary rating-detail-floating-close" onclick="closeRatingDetail()">Close</button>
+    </div>
+    <div class="tr-modal-scroll">
     <div class="section-head" style="position:static;padding-bottom:9px">
       <div>
         <div id="ratingDetailRestaurant" class="section-title">Rating</div>
@@ -2589,6 +2622,7 @@ html[data-theme="night"] body .tr-close-control{
       </div>
       <div id="ratingDetailComments" style="margin-top:4px"></div>
       <div id="ratingCommentComposer"></div>
+    </div>
     </div>
   </div>
 </div>
@@ -5349,7 +5383,7 @@ async function renderSaved(){
       const r=item.restaurants||{};
       return `<div class="card" style="margin:0">
         <button onclick="openRestaurantById('${item.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left">
-          <div class="row" style="border:0;padding:0;background:transparent">
+          <div class="tr-saved-restaurant-head">
             <div style="min-width:0">
               <div class="row-name">${esc(r.name||"Restaurant")}</div>
               <div class="row-meta">${[r.cuisine,r.city,r.state_region].filter(Boolean).map(esc).join(" - ")||"Saved restaurant"}</div>
@@ -5373,7 +5407,7 @@ async function renderSaved(){
   el.innerHTML=myRatings.map(e=>{
     const name=e.restaurants?.name||"Restaurant";
     return `<div class="card" style="margin:0">
-      <div class="row" style="border:0;padding:0;background:transparent">
+      <div class="tr-saved-restaurant-head">
         <div><div class="row-name">${esc(name)}</div><div class="row-meta">${new Date(e.created_at).toLocaleDateString()} - ${e.verified_visit?"Verified Visit":"Unverified"}</div></div>
         <div class="row-score">${Number(e.overall_score).toFixed(2)}</div>
       </div>
@@ -10867,8 +10901,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.13";
-const TABLESCORE_BUILD_LABEL="TableRec - Legal Links + Signup Agreement";
+const TABLESCORE_VERSION="5.58.14";
+const TABLESCORE_BUILD_LABEL="TableRec - Final Layout Polish";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -11132,9 +11166,13 @@ if(document.readyState==="loading"){
 
 
 <div id="whereToEatModal" class="modal hidden" onclick="if(event.target===this)closeWhereToEat()">
-  <button class="tr-close-control secondary where-eat-close" onclick="closeWhereToEat()">Close</button>
   <div class="sheet where-eat-sheet">
-    <div class="section-title" style="font-size:25px">Where to Eat?</div>
+    <div class="tr-modal-toolbar">
+      <div class="section-title">Where to Eat?</div>
+      <button class="tr-close-control secondary where-eat-close" onclick="closeWhereToEat()">Close</button>
+    </div>
+    <div class="tr-modal-scroll">
+
     <div class="muted" style="font-size:12px;margin-top:4px">Choose how much control you want, then let TableRec handle the decision.</div>
 
     <div class="where-mode-grid">
@@ -11178,6 +11216,7 @@ if(document.readyState==="loading"){
     <div id="whereEatStatus" class="muted" style="font-size:11px;line-height:1.4;margin:10px 0"></div>
     <div id="whereEatResult"></div>
     <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">RUN IT</button>
+    </div>
   </div>
 </div>
 
