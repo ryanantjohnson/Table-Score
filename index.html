@@ -1955,6 +1955,19 @@ html[data-theme="night"] body .tr-close-control{
  border-left:3px solid var(--green)!important;padding:11px 12px;font-weight:650;line-height:1.5;
 }
 
+
+/* V5.58.15 - Profile titles retain contrast over photos in both modes. */
+html body .profile-hero.has-background #profileTitle,
+html body #publicProfileHero.has-background #publicProfileTitle{
+  color:var(--ink)!important;text-shadow:none!important;
+}
+/* Keep a comment's Delete control from stretching to the row height. */
+html body .comment-item > .comment-delete{
+  align-self:center!important;flex:0 0 auto!important;
+  width:auto!important;height:44px!important;min-height:44px!important;
+  padding:0 12px!important;line-height:1!important;white-space:nowrap;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -10901,8 +10914,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.14";
-const TABLESCORE_BUILD_LABEL="TableRec - Final Layout Polish";
+const TABLESCORE_VERSION="5.58.15";
+const TABLESCORE_BUILD_LABEL="TableRec - Profile Title and Comment Polish";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
