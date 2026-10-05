@@ -1496,6 +1496,101 @@ html:not([data-theme="night"]):not([data-theme="electric"]) #notificationsModal 
   border-color:var(--gold)!important;
   box-shadow:0 8px 24px rgba(0,0,0,.20)!important;
 }
+
+
+/* ===== V5.58.0 TableRec Identity Foundation ===== */
+:root{
+  --tr-orange:#f36f21;
+  --tr-orange-deep:#d95416;
+  --tr-cream:#fff4df;
+  --tr-charcoal:#202326;
+  --tr-outline:2px;
+  --tr-radius:18px;
+  --tr-radius-lg:24px;
+}
+/* TableRec is the constant brand; themes remain the mood around it. */
+.brand{
+  display:inline-flex;align-items:center;gap:0;
+  font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",sans-serif!important;
+  font-size:24px!important;font-weight:1000!important;letter-spacing:-.065em!important;line-height:.9;
+  color:var(--ink);position:relative;
+}
+.brand-table{color:var(--ink)}
+.brand-rec{color:var(--tr-orange);margin-left:1px}
+.brand:after{
+  content:"";position:absolute;left:0;right:0;bottom:-6px;height:3px;border-radius:999px;
+  background:var(--tr-orange);opacity:.92;
+}
+.topbar{padding-bottom:14px!important}
+
+/* Bold editorial title language inspired by the locked TR icon without making body copy cartoonish. */
+.hero h1,.page-title,.sheet h2,.section-title,#profileName,#publicProfileName,#editRatingRestaurant{
+  font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",sans-serif!important;
+  letter-spacing:-.035em;
+}
+.page-title{font-weight:1000!important;line-height:1.02;position:relative;padding-bottom:10px}
+.page-title:after{
+  content:"";display:block;width:42px;height:5px;border-radius:999px;background:var(--tr-orange);margin-top:8px;
+}
+.section-title{font-weight:1000!important;letter-spacing:-.025em}
+.kicker{font-weight:950!important;letter-spacing:.12em!important}
+
+/* Signature TableRec geometry: heavier outlines, confident rounded corners, compact shadows. */
+.card,.feed-rating-card,.community-rating,.hot,.mini,.row,.stat,.account-subcard,.map-selection{
+  border-width:var(--tr-outline)!important;
+  border-radius:var(--tr-radius)!important;
+}
+.card,.feed-rating-card,.community-rating{
+  box-shadow:0 5px 0 color-mix(in srgb,var(--ink) 12%,transparent),var(--shadow)!important;
+}
+.hero{
+  border:2px solid color-mix(in srgb,var(--tr-orange) 38%,var(--line))!important;
+  border-radius:var(--tr-radius-lg)!important;
+  position:relative;overflow:hidden;
+}
+.hero:after{
+  content:"";position:absolute;width:70px;height:70px;border:8px solid var(--tr-orange);border-radius:50%;
+  right:-38px;top:-38px;opacity:.16;pointer-events:none;
+}
+
+/* Buttons and controls inherit theme colors but share TableRec's shape language. */
+.primary,.secondary,.chip,.theme-choice,.place-finder-tabs button,.saved-tabs button,.where-mode,.where-radius button,.where-price button{
+  border-radius:13px!important;font-weight:950!important;
+}
+.primary{border:2px solid color-mix(in srgb,var(--gold) 72%,var(--ink))!important;box-shadow:0 4px 0 color-mix(in srgb,var(--ink) 18%,transparent)!important}
+.primary:active{transform:translateY(2px);box-shadow:0 2px 0 color-mix(in srgb,var(--ink) 18%,transparent)!important}
+.secondary{border-width:2px!important}
+.chip.active,.saved-tabs button.active,.place-finder-tabs button.active{box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 15%,transparent)}
+.search input,.field input,.field textarea,.place-search-row input,.place-picker-trigger{
+  border-width:2px!important;border-radius:14px!important;
+}
+
+/* Bottom navigation reads as one branded control across every theme. */
+.nav{border-top-width:2px!important}
+.nav button{font-weight:900!important;letter-spacing:-.01em}
+.nav button.active{position:relative}
+.nav button.active:after{
+  content:"";display:block;width:20px;height:3px;border-radius:999px;background:var(--tr-orange);margin:4px auto 0;
+}
+
+/* Orange is the fixed brand signature, not a replacement for theme accents. */
+.top-notifications,.top-settings{border-width:2px!important}
+.notification-count{background:var(--tr-orange)!important;color:#fff!important}
+.theme-choice.active{outline-color:var(--tr-orange)!important}
+
+/* Light themes: warm ink/cream brand cues. Dark themes: cream/orange brand cues. */
+html:not([data-theme="night"]):not([data-theme="electric"]) .brand-table{color:#202326}
+html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{color:var(--tr-cream)}
+html[data-theme="night"] .hero,html[data-theme="electric"] .hero{
+  border-color:color-mix(in srgb,var(--tr-orange) 45%,var(--line))!important;
+}
+
+@media(max-width:420px){
+  .brand{font-size:23px!important}
+  .page-title{font-size:29px!important}
+  .card,.feed-rating-card,.community-rating{border-width:1.5px!important}
+}
+
 </style>
 </head>
 <body class="booting">
@@ -10382,8 +10477,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.13";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Requests + Location Resume + Modal Theme";
+const TABLESCORE_VERSION="5.58.0";
+const TABLESCORE_BUILD_LABEL="TableRec Identity Foundation";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
