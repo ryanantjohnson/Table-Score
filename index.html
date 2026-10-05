@@ -1,16 +1,13 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme="warm">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
-<meta name="theme-color" content="#090b0d">
+<meta name="theme-color" content="#fff8f0">
 <title>TableRec</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
-:root{
-  --bg:#090b0d; --card:#111519; --card2:#151a1f; --ink:#f7f4ee; --muted:#9a9fa4;
-  --line:#252b31; --gold:#e3b55f; --gold2:#f1cf86; --green:#54d192; --red:#ef7272;
-}
+:root{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#202326;--muted:#75675d;--line:#ead9c7;--gold:#d95416;--gold2:#d95416;--green:#477d51;--red:#bd4542;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(243,111,33,.16),rgba(243,111,33,.03));color-scheme:light;}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{margin:0;background:var(--bg);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",sans-serif}
 button,input,textarea{font:inherit}
@@ -291,12 +288,8 @@ body.booting .app, body.booting .nav{visibility:hidden}
 
 /* ===== TableRec V5.16 Visual System + Themes ===== */
 :root{--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
-html[data-theme="classic"]{--bg:#fbfbfa;--card:#fff;--card2:#f4f5f3;--ink:#171a18;--muted:#747a76;--line:#e3e6e1;--gold:#3e7b59;--gold2:#4e946c;--green:#3e9b6c;--red:#cf5f5f;--accentText:#fff;--navBg:rgba(251,251,250,.95);--topBg:rgba(251,251,250,.92);--sheetBg:#fff;--inputBg:#f6f7f5;--chipBg:#f4f5f3;--shadow:0 10px 28px rgba(30,40,34,.07);--heroSoft:linear-gradient(135deg,rgba(78,148,108,.11),rgba(255,255,255,0))}
-html[data-theme="fresh"]{--bg:#f7faf9;--card:#fff;--card2:#f0f5f4;--ink:#13201f;--muted:#6f7f7d;--line:#dce7e5;--gold:#168b8f;--gold2:#22a9ad;--green:#39a977;--red:#d95d5d;--accentText:#fff;--navBg:rgba(247,250,249,.95);--topBg:rgba(247,250,249,.92);--sheetBg:#fff;--inputBg:#f4f8f7;--chipBg:#f0f5f4;--shadow:0 10px 28px rgba(16,48,45,.08);--heroSoft:linear-gradient(135deg,rgba(34,169,173,.14),rgba(22,139,143,.03))}
-html[data-theme="warm"]{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#3b2418;--muted:#8b6e5f;--line:#ead9c7;--gold:#d5672d;--gold2:#ee8446;--green:#5c9a67;--red:#cf5b58;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(238,132,70,.16),rgba(213,103,45,.03))}
-html[data-theme="electric"]{--bg:#0a0b0b;--card:#111315;--card2:#171a1d;--ink:#f8f8f5;--muted:#9ca2a0;--line:#2a2e2d;--gold:#9fcf45;--gold2:#b4dc63;--green:#72c76a;--red:#ff7777;--accentText:#0b0d0b;--navBg:rgba(10,11,11,.95);--topBg:rgba(10,11,11,.92);--sheetBg:#111315;--inputBg:#171a1d;--chipBg:#171a1d;--shadow:0 12px 30px rgba(0,0,0,.35);--heroSoft:linear-gradient(135deg,rgba(159,207,69,.12),rgba(159,207,69,0))}
-html[data-theme="night"]{--bg:#090b0d;--card:#111519;--card2:#151a1f;--ink:#f7f4ee;--muted:#9a9fa4;--line:#252b31;--gold:#e3b55f;--gold2:#f1cf86;--green:#54d192;--red:#ef7272;--accentText:#111;--navBg:rgba(9,11,13,.95);--topBg:rgba(9,11,13,.92);--sheetBg:#101418;--inputBg:#151a1f;--chipBg:#151a1f;--shadow:0 12px 30px rgba(0,0,0,.34);--heroSoft:linear-gradient(135deg,rgba(227,181,95,.12),rgba(227,181,95,0))}
-body{background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}.app{padding-left:12px;padding-right:12px}.topbar{background:var(--topBg);border-bottom:1px solid var(--line)}.brand{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif;letter-spacing:-.04em;font-size:22px;font-weight:950}.loc{color:var(--gold)}.hero{margin:8px 0 4px;padding:20px 16px 18px;border-radius:24px;background:var(--heroSoft)}.hero h1,.page-title,.hot-title,.sheet h2,#profileName,#publicProfileName,#editRatingRestaurant{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif}.hero h1{font-size:38px;letter-spacing:-.045em}.kicker{letter-spacing:.11em}.card{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.hot,.mini,.row,.stat,.community-cat{background:var(--card2);border-color:var(--line)}.search input,.field input,.field textarea,.scorebox input,.modal-sheet select{background:var(--inputBg)!important;color:var(--ink)!important;border-color:var(--line)!important}.chip{background:var(--chipBg);color:var(--ink);border-color:var(--line)}.chip.active,.numgrid button.sel,.toggle button.on,.saved-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}.primary{background:var(--gold);color:var(--accentText);box-shadow:0 6px 18px rgba(0,0,0,.08)}.secondary{border-color:var(--gold);color:var(--gold2)}.nav{background:var(--navBg);border-color:var(--line)}.nav button.active{color:var(--gold)}.sheet,.modal-sheet{background:var(--sheetBg)!important;border-color:var(--line)!important}.edit-rating-header,.edit-rating-actions{background:var(--sheetBg)!important}.mapfake{background:linear-gradient(135deg,var(--card2),var(--card))}.bar{background:var(--line)}.bar i{background:var(--gold)}.steps i{background:var(--line)}.steps i.on{background:var(--gold)}.numgrid button,.adjust button,.toggle button{background:var(--card2);color:var(--ink);border-color:var(--line)}.total{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.photo-add-btn{background:var(--card2);border-color:var(--gold);color:var(--gold)}.pill{background:var(--card2);border-color:var(--gold);color:var(--gold)}.profileavatar,.avatar{background-color:var(--gold)!important;color:var(--accentText)}.settings-gear{background:var(--card);border-color:var(--line)}.slider{background:var(--card2);border-color:var(--line)}.switch input:checked + .slider{background:var(--gold)}.engagement-btn.dug{border-color:var(--gold)!important;background:var(--card2)!important;color:var(--gold)!important}.community-score,.row-score,.mini-score,.big{color:var(--gold2)}.community-score-label,.community-verified,.community-own,#profileUsername,#publicProfileUsername{color:var(--gold)}.restaurant-hero{box-shadow:var(--shadow)}.rating-photo-thumb{border-radius:14px}.engagement-row{gap:10px}.engagement-btn{font-size:12px!important;padding:8px 11px!important}.theme-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;margin-top:12px}.theme-choice{border:1px solid var(--line);background:var(--card2);border-radius:14px;padding:8px 5px;color:var(--ink);font-size:10px;font-weight:900;text-align:center}.theme-choice.active{outline:2px solid var(--gold);outline-offset:1px}.theme-swatch{display:block;width:30px;height:30px;border-radius:50%;margin:0 auto 6px;border:2px solid rgba(255,255,255,.55);box-shadow:0 0 0 1px rgba(0,0,0,.12)}.sw-classic{background:linear-gradient(135deg,#fbfbfa 50%,#4e946c 50%)}.sw-fresh{background:linear-gradient(135deg,#f7faf9 50%,#22a9ad 50%)}.sw-warm{background:linear-gradient(135deg,#fff8f0 50%,#ee8446 50%)}.sw-electric{background:linear-gradient(135deg,#0a0b0b 50%,#caff2f 50%)}.sw-night{background:linear-gradient(135deg,#090b0d 50%,#e3b55f 50%)}@media(max-width:420px){.theme-grid{gap:6px}.theme-choice{padding:7px 3px;font-size:9px}.theme-swatch{width:27px;height:27px}.hero{padding:18px 14px}.hero h1{font-size:34px}}
+html[data-theme="warm"]{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#202326;--muted:#75675d;--line:#ead9c7;--gold:#d95416;--gold2:#d95416;--green:#477d51;--red:#bd4542;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(243,111,33,.16),rgba(243,111,33,.03));color-scheme:light;}
+body{background:var(--bg);color:var(--ink);transition:background .2s ease,color .2s ease}.app{padding-left:12px;padding-right:12px}.topbar{background:var(--topBg);border-bottom:1px solid var(--line)}.brand{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif;letter-spacing:-.04em;font-size:22px;font-weight:950}.loc{color:var(--gold)}.hero{margin:8px 0 4px;padding:20px 16px 18px;border-radius:24px;background:var(--heroSoft)}.hero h1,.page-title,.hot-title,.sheet h2,#profileName,#publicProfileName,#editRatingRestaurant{font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Segoe UI",sans-serif}.hero h1{font-size:38px;letter-spacing:-.045em}.kicker{letter-spacing:.11em}.card{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.hot,.mini,.row,.stat,.community-cat{background:var(--card2);border-color:var(--line)}.search input,.field input,.field textarea,.scorebox input,.modal-sheet select{background:var(--inputBg)!important;color:var(--ink)!important;border-color:var(--line)!important}.chip{background:var(--chipBg);color:var(--ink);border-color:var(--line)}.chip.active,.numgrid button.sel,.toggle button.on,.saved-tabs button.active{background:var(--gold);border-color:var(--gold);color:var(--accentText)}.primary{background:var(--gold);color:var(--accentText);box-shadow:0 6px 18px rgba(0,0,0,.08)}.secondary{border-color:var(--gold);color:var(--gold2)}.nav{background:var(--navBg);border-color:var(--line)}.nav button.active{color:var(--gold)}.sheet,.modal-sheet{background:var(--sheetBg)!important;border-color:var(--line)!important}.edit-rating-header,.edit-rating-actions{background:var(--sheetBg)!important}.mapfake{background:linear-gradient(135deg,var(--card2),var(--card))}.bar{background:var(--line)}.bar i{background:var(--gold)}.steps i{background:var(--line)}.steps i.on{background:var(--gold)}.numgrid button,.adjust button,.toggle button{background:var(--card2);color:var(--ink);border-color:var(--line)}.total{background:var(--card);border-color:var(--line);box-shadow:var(--shadow)}.photo-add-btn{background:var(--card2);border-color:var(--gold);color:var(--gold)}.pill{background:var(--card2);border-color:var(--gold);color:var(--gold)}.profileavatar,.avatar{background-color:var(--gold)!important;color:var(--accentText)}.settings-gear{background:var(--card);border-color:var(--line)}.slider{background:var(--card2);border-color:var(--line)}.switch input:checked + .slider{background:var(--gold)}.engagement-btn.dug{border-color:var(--gold)!important;background:var(--card2)!important;color:var(--gold)!important}.community-score,.row-score,.mini-score,.big{color:var(--gold2)}.community-score-label,.community-verified,.community-own,#profileUsername,#publicProfileUsername{color:var(--gold)}.restaurant-hero{box-shadow:var(--shadow)}.rating-photo-thumb{border-radius:14px}.engagement-row{gap:10px}.engagement-btn{font-size:12px!important;padding:8px 11px!important}@media(max-width:420px){.hero{padding:18px 14px}.hero h1{font-size:34px}}
 
 
 /* ===== V5.16.1 Rating cards + account controls ===== */
@@ -1508,7 +1501,7 @@ html:not([data-theme="night"]):not([data-theme="electric"]) #notificationsModal 
   --tr-radius:18px;
   --tr-radius-lg:24px;
 }
-/* TableRec is the constant brand; themes remain the mood around it. */
+/* TableRec uses one orange, cream and charcoal brand palette. */
 .brand{
   display:inline-flex;align-items:center;gap:0;
   font-family:ui-rounded,-apple-system,BlinkMacSystemFont,"SF Pro Rounded","Arial Rounded MT Bold","Segoe UI",sans-serif!important;
@@ -1554,7 +1547,7 @@ html:not([data-theme="night"]):not([data-theme="electric"]) #notificationsModal 
 }
 
 /* Buttons and controls inherit theme colors but share TableRec's shape language. */
-.primary,.secondary,.chip,.theme-choice,.place-finder-tabs button,.saved-tabs button,.where-mode,.where-radius button,.where-price button{
+.primary,.secondary,.chip,.place-finder-tabs button,.saved-tabs button,.where-mode,.where-radius button,.where-price button{
   border-radius:13px!important;font-weight:950!important;
 }
 .primary{border:2px solid color-mix(in srgb,var(--gold) 72%,var(--ink))!important;box-shadow:0 4px 0 color-mix(in srgb,var(--ink) 18%,transparent)!important}
@@ -1576,7 +1569,6 @@ html:not([data-theme="night"]):not([data-theme="electric"]) #notificationsModal 
 /* Orange is the fixed brand signature, not a replacement for theme accents. */
 .top-notifications,.top-settings{border-width:2px!important}
 .notification-count{background:var(--tr-orange)!important;color:#fff!important}
-.theme-choice.active{outline-color:var(--tr-orange)!important}
 
 /* Light themes: warm ink/cream brand cues. Dark themes: cream/orange brand cues. */
 html:not([data-theme="night"]):not([data-theme="electric"]) .brand-table{color:#202326}
@@ -1861,6 +1853,11 @@ html:is([data-theme="night"],[data-theme="electric"]) body
   box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 12%,transparent)!important;
 }
 .tr-close-control:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
+/* V5.58.10 - Brand colors on notification buttons instead of browser link blue. */
+.notification-item{color:var(--ink)}
+.notification-title{color:var(--ink)}
+.notification-item > div > div:first-child{color:var(--tr-orange)}
 
 </style>
 </head>
@@ -2342,17 +2339,6 @@ html:is([data-theme="night"],[data-theme="electric"]) body
       <div id="chefsTableApplicationStatus" class="muted" style="font-size:11px;margin-top:9px"></div>
     </div>
 
-    <div class="card">
-      <div class="section-title" style="font-size:15px">Appearance</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Same TableRec. Pick the color personality that feels right to you.</div>
-      <div class="theme-grid" id="themeGrid">
-        <button class="theme-choice" data-theme-choice="classic" onclick="setTheme('classic')"><span class="theme-swatch sw-classic"></span>Classic</button>
-        <button class="theme-choice" data-theme-choice="fresh" onclick="setTheme('fresh')"><span class="theme-swatch sw-fresh"></span>Fresh</button>
-        <button class="theme-choice" data-theme-choice="warm" onclick="setTheme('warm')"><span class="theme-swatch sw-warm"></span>Warm</button>
-        <button class="theme-choice" data-theme-choice="electric" onclick="setTheme('electric')"><span class="theme-swatch sw-electric"></span>Electric</button>
-        <button class="theme-choice" data-theme-choice="night" onclick="setTheme('night')"><span class="theme-swatch sw-night"></span>Night</button>
-      </div>
-    </div>
     <div class="card">
       <div class="section-title" style="font-size:15px">Location</div>
       <div class="settings-row">
@@ -2860,39 +2846,20 @@ let backgroundSourceFile=null,backgroundObjectUrl="",backgroundNaturalW=0,backgr
 let backgroundPointers=new Map(),backgroundPinchStartDistance=0,backgroundPinchStartZoom=1,backgroundDragStart=null;
 
 
-const TABLESCORE_THEMES=["classic","fresh","warm","electric","night"];
-let currentTheme=localStorage.getItem("ts_theme")||"fresh";
+// V5.58.10: one TableRec appearance. The legacy warm key keeps existing
+// light-surface selectors compatible and migrates saved account preferences.
 function tableRecThemeKey(userId=currentUser?.id){return userId?`ts_theme_user_${userId}`:"ts_theme";}
-function restoreThemeForCurrentUser(){
-  const userKey=currentUser?.id?tableRecThemeKey(currentUser.id):null;
-  const saved=(userKey&&localStorage.getItem(userKey))||localStorage.getItem("ts_theme")||"fresh";
-  applyTheme(saved,{persist:false});
-}
-function applyTheme(theme,{persist=true}={}){
-  const next=TABLESCORE_THEMES.includes(theme)?theme:"fresh";
-  currentTheme=next;
-  document.documentElement.setAttribute("data-theme",next);
-  if(persist){
-    localStorage.setItem("ts_theme",next);
-    if(currentUser?.id)localStorage.setItem(tableRecThemeKey(currentUser.id),next);
-  }
+function applyTheme(){
+  document.documentElement.setAttribute("data-theme","warm");
   const meta=document.querySelector('meta[name="theme-color"]');
-  const colors={classic:"#fbfbfa",fresh:"#f7faf9",warm:"#fff8f0",electric:"#0a0b0b",night:"#090b0d"};
-  if(meta)meta.setAttribute("content",colors[next]||colors.fresh);
-  renderThemeChoices();
-}
-async function setTheme(theme){
-  applyTheme(theme);
+  if(meta)meta.setAttribute("content","#fff8f0");
   try{
-    const {data}=await db.auth.getUser();
-    const uid=data?.user?.id||currentUser?.id;
-    if(uid)localStorage.setItem(tableRecThemeKey(uid),currentTheme);
-  }catch(e){
-    if(currentUser?.id)localStorage.setItem(tableRecThemeKey(currentUser.id),currentTheme);
-  }
+    localStorage.setItem("ts_theme","warm");
+    if(currentUser?.id)localStorage.setItem(tableRecThemeKey(currentUser.id),"warm");
+  }catch(e){ /* Appearance remains available when storage is unavailable. */ }
 }
-function renderThemeChoices(){document.querySelectorAll("[data-theme-choice]").forEach(btn=>btn.classList.toggle("active",btn.dataset.themeChoice===currentTheme));}
-applyTheme(currentTheme);
+function restoreThemeForCurrentUser(){applyTheme();}
+applyTheme();
 
 
 // V5.56.5: Supabase owns durable session persistence.
@@ -8192,7 +8159,6 @@ function openSettings(){
   const cleanupCard=document.getElementById("restaurantCleanupCard");
   if(cleanupCard)cleanupCard.classList.toggle("hidden",currentUser.id!==TABLESCORE_OG_USER_ID);
   if(currentUser.id===TABLESCORE_OG_USER_ID)refreshRestaurantCleanupSummary();
-  renderThemeChoices();
   renderTitlePicker();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
   document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
@@ -10788,8 +10754,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.9";
-const TABLESCORE_BUILD_LABEL="TableRec Identity - Boot Recovery + Splash Timing";
+const TABLESCORE_VERSION="5.58.10";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Orange, Cream & Charcoal";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
