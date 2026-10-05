@@ -1701,6 +1701,97 @@ html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{c
   .tr-launch-mark{width:116px;height:116px}.tr-launch-tr{font-size:64px}.tr-launch-word{font-size:43px}
 }
 
+
+
+/* ===== V5.58.3 HOME + FEED IDENTITY REFINEMENT ===== */
+/* Home should feel like a restaurant brand, not a generic social dashboard. */
+#home{position:relative}
+#home .home-social-head{margin:2px 2px 16px;padding:18px 4px 15px!important}
+#home .home-social-head:before{
+  content:"";position:absolute;right:72px;top:7px;width:38px;height:38px;border:3px solid var(--tr-orange);
+  border-radius:50%;opacity:.10;transform:rotate(-12deg);pointer-events:none
+}
+#home .home-social-title{font-size:32px!important;max-width:78%;text-wrap:balance}
+#home .home-people-btn{
+  border:2px solid var(--tr-orange)!important;border-radius:999px!important;background:transparent!important;
+  padding:8px 11px!important;line-height:1!important
+}
+
+/* Following becomes the feed frame instead of another generic white card. */
+#home .tr-home-following{
+  margin-top:0!important;padding:0!important;background:transparent!important;border:0!important;
+  box-shadow:none!important;border-radius:0!important;overflow:visible!important
+}
+#home .tr-home-following>.section-head{
+  display:flex!important;grid-template-columns:none!important;align-items:flex-end!important;
+  padding:0 3px 11px;margin:0 0 2px!important;border-bottom:2px solid color-mix(in srgb,var(--tr-orange) 28%,var(--line))
+}
+#home .tr-home-following>.section-head:before{display:none!important}
+#home .tr-home-following>.section-head .section-title{font-size:21px!important}
+#home .tr-home-following>.section-head .muted{font-size:10px!important;letter-spacing:.01em}
+#home #followingFeed{gap:16px!important;margin-top:14px!important}
+
+/* Rating posts: confident editorial hierarchy + signature orange edge. */
+#home .feed-rating-card{
+  margin:0!important;padding:18px 17px 16px 20px!important;border-radius:25px!important;
+  border-color:color-mix(in srgb,var(--ink) 22%,var(--line))!important;
+  box-shadow:0 7px 0 color-mix(in srgb,var(--ink) 12%,transparent),0 16px 30px rgba(0,0,0,.055)!important
+}
+#home .feed-rating-card:before{width:7px!important}
+#home .feed-rating-card:after{
+  content:"";position:absolute;right:-23px;top:-26px;width:64px;height:64px;border:8px solid var(--tr-orange);
+  border-radius:50%;opacity:.055;pointer-events:none
+}
+.tr-feed-restaurant-name{
+  font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",-apple-system,BlinkMacSystemFont,sans-serif!important;
+  font-size:21px;font-weight:1000;letter-spacing:-.04em;line-height:1.05
+}
+.tr-feed-score-row{display:flex;align-items:center;gap:9px;margin-top:10px}
+.tr-feed-score{
+  color:var(--tr-orange);font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",sans-serif;
+  font-size:31px;font-weight:1000;letter-spacing:-.055em;line-height:1
+}
+.tr-feed-score-word{
+  display:inline-flex;align-items:center;min-height:25px;padding:4px 8px;border-radius:999px;
+  background:var(--tr-soft-orange);color:var(--ink);font-size:10px;font-weight:1000;letter-spacing:.02em
+}
+#home .feed-rating-card .row-meta{font-weight:720}
+#home .feed-rating-card .engagement-row{margin-top:13px;padding-top:12px;border-top:2px solid color-mix(in srgb,var(--tr-orange) 15%,var(--line))}
+#home .feed-rating-card .engagement-btn{
+  min-height:39px;border-radius:13px!important;padding:8px 12px!important;background:color-mix(in srgb,var(--card) 90%,var(--tr-orange) 10%)!important
+}
+
+/* Break cards become little pieces of TableRec editorial content. */
+#home .home-feed-break{margin:1px 0}
+#home .home-play-card,#home .home-diner-card,#home .home-restaurant-card{
+  border:2px solid color-mix(in srgb,var(--tr-orange) 20%,var(--line))!important;border-radius:22px!important;
+  box-shadow:0 5px 0 color-mix(in srgb,var(--ink) 7%,transparent)!important;position:relative;overflow:hidden
+}
+#home .home-play-card:before,#home .home-diner-card:before,#home .home-restaurant-card:before{
+  content:"";position:absolute;left:0;top:0;width:54px;height:5px;background:var(--tr-orange);border-radius:0 0 999px 0
+}
+#home .home-play-kicker{color:var(--tr-orange)!important;font-weight:1000!important;letter-spacing:.16em!important}
+#home .home-play-question{font-size:21px!important;line-height:1.05!important;margin-top:7px!important}
+#home .home-poll-option{
+  border:2px solid color-mix(in srgb,var(--ink) 10%,var(--line))!important;border-radius:15px!important;
+  font-weight:950!important
+}
+#home .home-poll-option.selected{border-color:var(--tr-orange)!important;box-shadow:inset 0 0 0 1px var(--tr-orange)!important}
+#home .home-run-card{background:linear-gradient(135deg,var(--tr-soft-orange),var(--card))!important}
+#home .home-run-dice{filter:none!important}
+
+/* Theme stays the mood; TableRec orange stays the identifying signature. */
+html[data-theme="night"] #home .feed-rating-card,
+html[data-theme="electric"] #home .feed-rating-card{box-shadow:0 7px 0 rgba(0,0,0,.42)!important}
+html[data-theme="night"] .tr-feed-score-word,
+html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
+
+@media(max-width:420px){
+  #home .home-social-title{font-size:31px!important;max-width:76%}
+  #home .home-people-btn{padding:7px 9px!important;font-size:11px!important}
+  #home .feed-rating-card{padding:17px 15px 15px 19px!important}
+  .tr-feed-restaurant-name{font-size:20px}.tr-feed-score{font-size:30px}
+}
 </style>
 </head>
 <body class="booting">
@@ -1791,7 +1882,7 @@ html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{c
       <button class="home-people-btn" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button>
     </div>
 
-    <div class="card" style="margin-top:10px">
+    <div class="card tr-home-following" style="margin-top:10px">
       <div class="section-head">
         <div>
           <div class="section-title">Following</div>
@@ -6269,12 +6360,12 @@ function feedRatingCard(r,person){
       ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
     </div>
     <button onclick="event.stopPropagation();openRestaurantById('${restaurant.id||r.restaurant_id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
-      <div style="font-family:Georgia,serif;font-size:19px;font-weight:800">${esc(restaurant.name||"Restaurant")}</div>
+      <div class="tr-feed-restaurant-name">${esc(restaurant.name||"Restaurant")}</div>
       <div class="row-meta">${[restaurant.city,restaurant.state_region].filter(Boolean).map(esc).join(", ")}</div>
     </button>
-    <div style="display:flex;align-items:baseline;gap:8px;margin-top:8px">
-      <div style="font-size:26px;font-weight:950;color:var(--gold)">${Number.isFinite(score)?score.toFixed(2):"--"}</div>
-      <div style="font-size:12px;font-weight:900">${esc(scoreWord(score))}</div>
+    <div class="tr-feed-score-row">
+      <div class="tr-feed-score">${Number.isFinite(score)?score.toFixed(2):"--"}</div>
+      <div class="tr-feed-score-word">${esc(scoreWord(score))}</div>
     </div>
     ${details?`<div class="muted" style="font-size:11px;margin-top:3px">${details}</div>`:""}
     ${photoGridMarkup(r._photos)}
@@ -10616,8 +10707,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.2";
-const TABLESCORE_BUILD_LABEL="Full TableRec Identity + Cold Launch";
+const TABLESCORE_VERSION="5.58.3";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Home + Feed Refinement";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
