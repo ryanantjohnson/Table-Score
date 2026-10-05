@@ -1828,6 +1828,40 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   line-height:1!important;
 }
 
+
+/* V5.58.8 - Readable dark-banner titles and shared Close colors.
+   Keep existing placement, sizing and icon shapes; only unify their treatment. */
+.restaurant-hero #rName{
+  color:var(--tr-cream)!important;
+  font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",-apple-system,BlinkMacSystemFont,sans-serif!important;
+  font-weight:1000!important;
+  letter-spacing:-.035em;
+  line-height:1.08;
+  overflow-wrap:anywhere;
+  text-shadow:0 2px 8px rgba(0,0,0,.65);
+}
+.restaurant-hero #rMeta{color:#eee2d4!important}
+.tr-close-control{
+  background:var(--card)!important;
+  background-image:none!important;
+  color:var(--ink)!important;
+  border:2px solid var(--tr-orange)!important;
+  font-weight:950!important;
+  box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 12%,transparent)!important;
+}
+/* Explicit modal scope overrides older hard-coded floating Close rules. */
+html:not([data-theme="night"]):not([data-theme="electric"]) body
+:is(#ratingDetailModal,#settingsModal,#notificationsModal,#whereEatModal,#photoLightbox,.modal,.account-mark-overlay) .tr-close-control,
+html:is([data-theme="night"],[data-theme="electric"]) body
+:is(#ratingDetailModal,#settingsModal,#notificationsModal,#whereEatModal,#photoLightbox,.modal,.account-mark-overlay) .tr-close-control{
+  background:var(--card)!important;
+  background-image:none!important;
+  color:var(--ink)!important;
+  border-color:var(--tr-orange)!important;
+  box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 12%,transparent)!important;
+}
+.tr-close-control:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+
 </style>
 </head>
 <body class="booting">
@@ -2204,7 +2238,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
 
 <div id="badgeFolderModal" class="modal hidden" onclick="if(event.target===this)closeBadgeFolder()">
   <div class="sheet badge-folder-sheet">
-    <button class="secondary badge-folder-close" onclick="closeBadgeFolder()" aria-label="Close badges">
+    <button class="tr-close-control secondary badge-folder-close" onclick="closeBadgeFolder()" aria-label="Close badges">
       <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
     </button>
     <div class="section-title" id="badgeFolderTitle" style="font-size:24px">Reward Collection</div>
@@ -2241,7 +2275,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div class="page-title" style="margin:0">Secret Badge Lab</div>
         <div class="muted" style="font-size:11px;margin-top:4px">OG preview only - nothing here is awarded</div>
       </div>
-      <button class="secondary badge-folder-close" onclick="closeSecretBadgeLab()" aria-label="Close preview">
+      <button class="tr-close-control secondary badge-folder-close" onclick="closeSecretBadgeLab()" aria-label="Close preview">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>
       </button>
     </div>
@@ -2250,7 +2284,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
 </div>
 
 <div id="settingsModal" class="modal hidden" onclick="if(event.target===this)closeSettings()">
-  <button class="secondary settings-external-close" onclick="closeSettings()">Close</button>
+  <button class="tr-close-control secondary settings-external-close" onclick="closeSettings()">Close</button>
   <div class="sheet" style="max-height:88vh;overflow:auto">
     <div class="section-head">
       <div class="section-title">Settings</div>
@@ -2416,7 +2450,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <div class="sheet">
     <div class="section-head">
       <div class="section-title">Follow Requests</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeFollowRequests()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeFollowRequests()">Close</button>
     </div>
     <div id="followRequestsList" class="list" style="max-height:60vh;overflow:auto"></div>
   </div>
@@ -2426,7 +2460,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <div class="sheet">
     <div class="section-head">
       <div id="connectionsTitle" class="section-title">Followers</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeConnections()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeConnections()">Close</button>
     </div>
     <div id="connectionsList" class="list" style="margin-top:10px;max-height:55vh;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch"></div>
   </div>
@@ -2435,7 +2469,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
 
 <div id="mentionPortal" aria-label="Mention suggestions"></div>
 <div id="ratingDetailModal" class="modal hidden" onclick="if(event.target===this)closeRatingDetail()">
-  <button class="secondary rating-detail-floating-close" onclick="closeRatingDetail()">Close</button>
+  <button class="tr-close-control secondary rating-detail-floating-close" onclick="closeRatingDetail()">Close</button>
   <div class="sheet" style="max-height:90vh;overflow:auto">
     <div class="section-head" style="position:static;padding-bottom:9px">
       <div>
@@ -2484,7 +2518,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <div class="modal-panel" style="max-width:560px">
     <div class="modal-head">
       <div><div class="eyebrow">SECURITY VERIFIED</div><h2 style="margin:4px 0 0">Delete Account</h2></div>
-      <button class="secondary modal-close-btn" onclick="closeDeleteAccountVerify()">Close</button>
+      <button class="tr-close-control secondary modal-close-btn" onclick="closeDeleteAccountVerify()">Close</button>
     </div>
     <div class="modal-body">
       <p class="muted" style="font-size:12px;line-height:1.5">Your account email has been verified. This permanently deletes your TableRec account and account-linked data and cannot be undone.</p>
@@ -2499,7 +2533,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <div class="sheet">
     <div class="section-head">
       <div class="section-title">Set a New Password</div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
     </div>
     <p class="muted" style="font-size:12px;line-height:1.45">Your email link has been verified. For added protection, enter your current password, then choose a different new password.</p>
     <div class="field"><input id="recoveryCurrentPassword" type="password" autocomplete="current-password" placeholder="Current password"></div>
@@ -2563,7 +2597,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div id="ratingLocationTitle" class="section-title">Restaurant</div>
         <div id="ratingLocationAddress" class="muted" style="font-size:11px;margin-top:3px"></div>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRatingRestaurantLocation()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeRatingRestaurantLocation()">Close</button>
     </div>
 
     <div class="card" style="margin-top:10px">
@@ -2587,7 +2621,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div class="section-title">Verify Restaurant Locations</div>
         <div id="restaurantCleanupCount" class="muted" style="font-size:10px;margin-top:3px"></div>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanup()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanup()">Close</button>
     </div>
 
     <div class="notice" style="margin-top:8px">
@@ -2606,7 +2640,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div id="cleanupMatchTitle" class="section-title">Find the real location</div>
         <div id="cleanupMatchMeta" class="muted" style="font-size:10px;margin-top:3px"></div>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanupMatch()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantCleanupMatch()">Close</button>
     </div>
 
     <div class="place-search-row" style="margin-top:10px">
@@ -2627,7 +2661,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div class="kicker">Real restaurants</div>
         <h2 style="margin-top:3px">Find a Restaurant</h2>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeNearbyRestaurantPicker()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeNearbyRestaurantPicker()">Close</button>
     </div>
     <div class="restaurant-finder-body">
     <div class="muted restaurant-finder-help" style="font-size:11px;line-height:1.45;margin-bottom:10px">Search by restaurant name, city, or address anywhere - or browse what's near you right now.</div>
@@ -2671,7 +2705,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <div class="sheet">
     <div class="section-head" style="margin-bottom:8px">
       <div><div class="kicker">Restaurant</div><h2 id="restaurantActionName" style="margin-top:3px">Restaurant</h2></div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantAction()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeRestaurantAction()">Close</button>
     </div>
     <div id="restaurantActionMeta" class="muted" style="font-size:11px;line-height:1.45"></div>
     <div style="display:grid;gap:8px;margin-top:14px">
@@ -2690,7 +2724,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
         <div class="kicker">Browsing area</div>
         <h2 style="margin-top:3px">Change Location</h2>
       </div>
-      <button class="secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
     </div>
     <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are on refresh. For best accuracy, allow Precise Location for TableRec in Safari.</div>
     <div class="location-sheet-actions">
@@ -10603,7 +10637,7 @@ function showAccountMarkInfo(kind){
     <div class="account-mark-hero">${accountMarkSvg(kind)}</div>
     <div class="account-mark-title">${m.title}</div>
     <div class="account-mark-copy">${m.copy}</div>
-    <button class="account-mark-close" type="button">Close</button>
+    <button class="tr-close-control account-mark-close" type="button">Close</button>
   </div>`;
   wrap.addEventListener("click", e => { if(e.target === wrap) wrap.remove(); });
   wrap.querySelector(".account-mark-close").onclick = () => wrap.remove();
@@ -10749,7 +10783,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.7";
+const TABLESCORE_VERSION="5.58.8";
 const TABLESCORE_BUILD_LABEL="TableRec Identity - Boot Recovery + Splash Timing";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
@@ -10905,7 +10939,7 @@ if(document.readyState==="loading"){
     <div class="sheet edit-rating-sheet">
       <div class="edit-rating-header">
         <div class="section-title">Edit Rating</div>
-        <button class="secondary edit-rating-close" onclick="closeEditRating()">Close</button>
+        <button class="tr-close-control secondary edit-rating-close" onclick="closeEditRating()">Close</button>
       </div>
       <div id="editRatingRestaurant" style="font-family:Georgia,serif;font-size:22px;font-weight:800;margin-bottom:12px"></div>
 
@@ -10946,7 +10980,7 @@ if(document.readyState==="loading"){
   </div>
 
 <div id="photoLightbox" class="photo-lightbox hidden" onclick="if(event.target===this)closePhotoLightbox()">
-    <button class="photo-lightbox-close" onclick="closePhotoLightbox()" aria-label="Close">&times;</button>
+    <button class="tr-close-control photo-lightbox-close" onclick="closePhotoLightbox()" aria-label="Close">&times;</button>
     <button id="photoPrev" class="photo-lightbox-nav photo-lightbox-prev" onclick="changeLightboxPhoto(-1)" aria-label="Previous">&lsaquo;</button>
     <img id="photoLightboxImage" alt="Dish photo">
     <button id="photoNext" class="photo-lightbox-nav photo-lightbox-next" onclick="changeLightboxPhoto(1)" aria-label="Next">&rsaquo;</button>
@@ -10978,7 +11012,7 @@ if(document.readyState==="loading"){
         <div class="section-title">Request Verification</div>
         <div class="muted" style="font-size:11px;margin-top:3px">Verification is required before approval.</div>
       </div>
-      <button class="icon-btn" onclick="closeChefsTableApplication()">â</button>
+      <button class="tr-close-control icon-btn" onclick="closeChefsTableApplication()">â</button>
     </div>
     <label>Creator / public name</label>
     <input id="ctCreatorName" placeholder="Name people know you by">
@@ -11006,7 +11040,7 @@ if(document.readyState==="loading"){
   <div class="modal-card" style="max-height:88vh;overflow:auto">
     <div class="modal-head">
       <div class="section-title">Verification Requests</div>
-      <button class="icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <button class="tr-close-control icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
     </div>
     <div id="chefsTableAdminList"></div>
   </div>
@@ -11014,7 +11048,7 @@ if(document.readyState==="loading"){
 
 
 <div id="whereToEatModal" class="modal hidden" onclick="if(event.target===this)closeWhereToEat()">
-  <button class="secondary where-eat-close" onclick="closeWhereToEat()">Close</button>
+  <button class="tr-close-control secondary where-eat-close" onclick="closeWhereToEat()">Close</button>
   <div class="sheet where-eat-sheet">
     <div class="section-title" style="font-size:25px">Where to Eat?</div>
     <div class="muted" style="font-size:12px;margin-top:4px">Choose how much control you want, then let TableRec handle the decision.</div>
@@ -11071,7 +11105,7 @@ if(document.readyState==="loading"){
         <div class="section-title" style="font-size:25px">Find People</div>
         <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by name or username</div>
       </div>
-      <button class="secondary" style="width:auto;padding:9px 13px" onclick="closePeopleFinder()">Close</button>
+      <button class="tr-close-control secondary" style="width:auto;padding:9px 13px" onclick="closePeopleFinder()">Close</button>
     </div>
     <div class="search">
       <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search name or @username" oninput="queuePeopleSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPeople(true)}">
@@ -11089,7 +11123,7 @@ if(document.readyState==="loading"){
 </div>
 
 <div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
-  <button class="secondary notifications-floating-close" onclick="closeNotifications()">Close</button>
+  <button class="tr-close-control secondary notifications-floating-close" onclick="closeNotifications()">Close</button>
   <div class="sheet notifications-sheet">
     <div class="section-head">
       <div>
