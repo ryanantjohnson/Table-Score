@@ -5165,32 +5165,61 @@ async function hydrateRatingEngagement(ratingIds){
   updateRatingSaveButtons();
 }
 
+const tableRecDigLocks=new Set();
+
+function paintDigState(ratingId,isDug,count){
+  document.querySelectorAll(`[id="digCount-${ratingId}"]`).forEach(el=>{
+    el.textContent=Math.max(0,Number(count)||0);
+  });
+  document.querySelectorAll(`[id="digBtn-${ratingId}"]`).forEach(btn=>{
+    btn.classList.toggle("dug",!!isDug);
+    btn.setAttribute("aria-pressed",isDug?"true":"false");
+  });
+}
+
 async function toggleDig(ratingId){
   if(!currentUser){
     openAccount(()=>toggleDig(ratingId));
     return;
   }
+  if(tableRecDigLocks.has(ratingId))return;
 
-  const {data:existing,error:findErr}=await db.from("rating_digs")
-    .select("rating_id")
-    .eq("rating_id",ratingId)
-    .eq("user_id",currentUser.id)
-    .maybeSingle();
+  tableRecDigLocks.add(ratingId);
+  const buttons=[...document.querySelectorAll(`[id="digBtn-${ratingId}"]`)];
+  const wasDug=buttons.some(btn=>btn.classList.contains("dug"));
+  const visibleCount=Number(document.querySelector(`[id="digCount-${ratingId}"]`)?.textContent)||0;
+  const nextDug=!wasDug;
+  const optimisticCount=Math.max(0,visibleCount+(nextDug?1:-1));
 
-  if(findErr)return alert("Could not update Dig It: "+findErr.message);
+  // Give the tap an immediate, stable visual response instead of waiting for
+  // a round trip and a broad card re-hydration.
+  paintDigState(ratingId,nextDug,optimisticCount);
+  buttons.forEach(btn=>btn.disabled=true);
 
-  if(existing){
-    const {error}=await db.from("rating_digs").delete()
-      .eq("rating_id",ratingId)
-      .eq("user_id",currentUser.id);
-    if(error)return alert("Could not remove Dig It: "+error.message);
-  }else{
-    const {error}=await db.from("rating_digs").insert({rating_id:ratingId,user_id:currentUser.id});
-    if(error)return alert("Could not Dig It: "+error.message);
+  try{
+    if(nextDug){
+      const {error}=await db.from("rating_digs").upsert(
+        {rating_id:ratingId,user_id:currentUser.id},
+        {onConflict:"rating_id,user_id",ignoreDuplicates:true}
+      );
+      if(error)throw error;
+    }else{
+      const {error}=await db.from("rating_digs").delete()
+        .eq("rating_id",ratingId)
+        .eq("user_id",currentUser.id);
+      if(error)throw error;
+    }
+
+    // Confirm only after the write. Do not rebuild the rating card or detail
+    // engagement DOM; hydrate updates the existing controls in place.
+    await hydrateRatingEngagement([ratingId]);
+  }catch(err){
+    paintDigState(ratingId,wasDug,visibleCount);
+    alert("Could not update Dig It: "+(err?.message||"Unknown error"));
+  }finally{
+    document.querySelectorAll(`[id="digBtn-${ratingId}"]`).forEach(btn=>btn.disabled=false);
+    tableRecDigLocks.delete(ratingId);
   }
-
-  await hydrateRatingEngagement([ratingId]);
-  if(activeRatingDetailId===ratingId)await renderRatingDetailEngagement(ratingId);
 }
 
 async function renderRatingDetailEngagement(ratingId){
@@ -10265,8 +10294,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.9";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Stable Social Sync";
+const TABLESCORE_VERSION="5.57.10";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Dig It Interaction Repair";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
