@@ -1827,28 +1827,6 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
       <p class="muted" style="font-size:10px;margin:10px 0 0">Nearby restaurant discovery will be expanded when a live restaurant data provider is connected. TableRec ratings shown in this version come only from the TableRec database.</p>
     </div>
 
-    <div id="socialCard" class="card hidden">
-      <div class="section-head">
-        <div>
-          <div class="section-title">Find People</div>
-          <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by name or username</div>
-        </div>
-        <span class="muted" style="font-size:11px">TableRec Social</span>
-      </div>
-      <div class="search">
-        <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search name or @username" oninput="queuePeopleSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPeople(true)}">
-        <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
-      </div>
-      <div id="peopleResults" class="list" style="margin-top:10px"></div>
-      <div id="peopleSuggestionsWrap" style="margin-top:16px">
-        <div class="section-head" style="margin-bottom:7px">
-          <div class="section-title" style="font-size:15px">Suggested for You</div>
-          <span class="muted" style="font-size:10px">Based on connections</span>
-        </div>
-        <div id="peopleSuggestions" class="list"></div>
-      </div>
-    </div>
-
     <div class="card">
       <div class="section-head"><div class="section-title">&#128293; Hot Right Now</div><button class="linkbtn" onclick="showScreen('explore')">See all &rsaquo;</button></div>
       <div id="hotNow"></div>
@@ -1876,7 +1854,7 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   <section id="home" class="screen active">
     <div class="home-social-head">
       <div><div class="kicker">TableRec Social</div><div class="home-social-title">What's on the table?</div></div>
-      <button class="home-people-btn" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button>
+      <button class="home-people-btn" onclick="openPeopleFinder()">Find People</button>
     </div>
 
     <div class="card tr-home-following" style="margin-top:10px">
@@ -6295,7 +6273,7 @@ async function loadFollowingFeed(){
   }
   if(!followingIds.size){
     const pollCard=nextHomePollCard();
-    el.innerHTML=`<div class="empty"><div class="section-title">Build your table</div><p class="muted" style="font-size:13px">Follow diners to fill Home with restaurant ratings that match your circle.</p><button class="secondary" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find People</button></div><div class="home-quiet-grid">${pollCard}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
+    el.innerHTML=`<div class="empty"><div class="section-title">Build your table</div><p class="muted" style="font-size:13px">Follow diners to fill Home with restaurant ratings that match your circle.</p><button class="secondary" onclick="openPeopleFinder()">Find People</button></div><div class="home-quiet-grid">${pollCard}${homeRunInsert()}<div id="homeSuggestedRestaurantSlot"></div></div>`;
     loadHomeSuggestedRestaurant();
     return;
   }
@@ -8845,6 +8823,16 @@ function peopleRowMarkup(u,{showMutual=false}={}){
   </div>`;
 }
 
+function openPeopleFinder(){
+  const modal=document.getElementById("peopleFinderModal");
+  if(!modal)return;
+  modal.classList.remove("hidden");
+  setTimeout(()=>document.getElementById("peopleSearch")?.focus(),120);
+}
+function closePeopleFinder(){
+  document.getElementById("peopleFinderModal")?.classList.add("hidden");
+}
+
 let peopleSearchTimer=null;
 let peopleSearchSequence=0;
 
@@ -10703,8 +10691,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.4";
-const TABLESCORE_BUILD_LABEL="TableRec Identity - Home Cleanup";
+const TABLESCORE_VERSION="5.58.5";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Discover Cleanup";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -11014,6 +11002,31 @@ if(document.readyState==="loading"){
     <div id="whereEatStatus" class="muted" style="font-size:11px;line-height:1.4;margin:10px 0"></div>
     <div id="whereEatResult"></div>
     <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">RUN IT</button>
+  </div>
+</div>
+
+<div id="peopleFinderModal" class="modal hidden" onclick="if(event.target===this)closePeopleFinder()">
+  <div id="socialCard" class="sheet">
+    <div class="section-head">
+      <div>
+        <div class="kicker">TableRec Social</div>
+        <div class="section-title" style="font-size:25px">Find People</div>
+        <div class="muted" style="font-size:11px;margin-top:2px">Search TableRec members by name or username</div>
+      </div>
+      <button class="secondary" style="width:auto;padding:9px 13px" onclick="closePeopleFinder()">Close</button>
+    </div>
+    <div class="search">
+      <input id="peopleSearch" autocapitalize="none" autocomplete="off" spellcheck="false" placeholder="Search name or @username" oninput="queuePeopleSearch()" onkeydown="if(event.key==='Enter'){event.preventDefault();searchPeople(true)}">
+      <button class="primary" style="width:auto;padding:0 16px" onclick="searchPeople()">Search</button>
+    </div>
+    <div id="peopleResults" class="list" style="margin-top:10px"></div>
+    <div id="peopleSuggestionsWrap" style="margin-top:16px">
+      <div class="section-head" style="margin-bottom:7px">
+        <div class="section-title" style="font-size:15px">Suggested for You</div>
+        <span class="muted" style="font-size:10px">Based on connections</span>
+      </div>
+      <div id="peopleSuggestions" class="list"></div>
+    </div>
   </div>
 </div>
 
