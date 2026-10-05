@@ -1707,10 +1707,7 @@ html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{c
 /* Home should feel like a restaurant brand, not a generic social dashboard. */
 #home{position:relative}
 #home .home-social-head{margin:2px 2px 16px;padding:18px 4px 15px!important}
-#home .home-social-head:before{
-  content:"";position:absolute;right:72px;top:7px;width:38px;height:38px;border:3px solid var(--tr-orange);
-  border-radius:50%;opacity:.10;transform:rotate(-12deg);pointer-events:none
-}
+#home .home-social-head:before{display:none!important}
 #home .home-social-title{font-size:32px!important;max-width:78%;text-wrap:balance}
 #home .home-people-btn{
   border:2px solid var(--tr-orange)!important;border-radius:999px!important;background:transparent!important;
@@ -1888,7 +1885,6 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
           <div class="section-title">Following</div>
           <div class="muted" style="font-size:11px;margin-top:2px">Newest activity from your TableRec circle</div>
         </div>
-        <button class="linkbtn" onclick="showScreen('discover');setTimeout(()=>document.getElementById('peopleSearch')?.focus(),120)">Find people &rsaquo;</button>
       </div>
       <div id="followingFeed" style="margin-top:8px"></div>
     </div>
@@ -10707,8 +10703,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.3";
-const TABLESCORE_BUILD_LABEL="TableRec Identity - Home + Feed Refinement";
+const TABLESCORE_VERSION="5.58.4";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Home Cleanup";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
