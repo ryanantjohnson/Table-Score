@@ -1484,6 +1484,18 @@ html:not([data-theme="night"]):not([data-theme="electric"]) .restaurant-finder-h
 #ratingDetailPhotos{
   contain:layout paint style;
 }
+
+/* V5.57.13 request inbox + consistent modal Close treatment */
+.notification-request-actions{display:flex;gap:8px;margin-top:10px}
+.notification-request-actions button{width:auto!important;min-width:84px!important;padding:8px 12px!important}
+html:not([data-theme="night"]):not([data-theme="electric"]) #settingsModal .settings-external-close,
+html:not([data-theme="night"]):not([data-theme="electric"]) #notificationsModal .notifications-floating-close{
+  background:#fff!important;
+  background-image:none!important;
+  color:#11161a!important;
+  border-color:var(--gold)!important;
+  box-shadow:0 8px 24px rgba(0,0,0,.20)!important;
+}
 </style>
 </head>
 <body class="booting">
@@ -1948,13 +1960,6 @@ html:not([data-theme="night"]):not([data-theme="electric"]) .restaurant-finder-h
           <input id="privateAccountToggle" type="checkbox" onchange="setPrivacyMode(this.checked)">
           <span class="slider"></span>
         </label>
-      </div>
-      <div class="settings-row" style="cursor:pointer" onclick="showFollowRequests()">
-        <div>
-          <div style="font-weight:900">Follow Requests</div>
-          <div id="followRequestSummary" class="muted" style="font-size:11px;margin-top:3px">No pending requests</div>
-        </div>
-        <div style="color:var(--gold);font-weight:900">&rsaquo;</div>
       </div>
     </div>
 
@@ -7328,27 +7333,39 @@ function restoreStoredTableScoreLocation(){
   return true;
 }
 
-async function resumeGrantedTableScoreLocation(){
-  restoreStoredTableScoreLocation();
-  if(!("geolocation" in navigator))return;
+let tableRecLocationResumeBusy=false;
 
-  // Never trigger a fresh permission prompt on startup. If the browser exposes
-  // permission state, only refresh automatically when permission is already granted.
-  if(!navigator.permissions?.query)return;
+async function resumeGrantedTableScoreLocation(){
+  const hadStoredLocation=restoreStoredTableScoreLocation();
+  if(!("geolocation" in navigator)||tableRecLocationResumeBusy)return;
+
+  // If this device has already enabled TableRec location, refresh it silently.
+  // This is important on iPhone Safari, where Permissions API support is not
+  // reliable enough to be the gate for refreshing an already-approved location.
+  const previouslyEnabled=localStorage.getItem("ts_location_enabled")==="1" || hadStoredLocation;
+  if(!previouslyEnabled)return;
+
+  tableRecLocationResumeBusy=true;
+  const finish=()=>{tableRecLocationResumeBusy=false;renderLocationStatus();};
   try{
-    const permission=await navigator.permissions.query({name:"geolocation"});
-    if(permission.state==="granted"){
-      navigator.geolocation.getCurrentPosition(
-        pos=>acceptTableScorePosition(pos),
-        ()=>renderLocationStatus(),
-        {enableHighAccuracy:false,timeout:8000,maximumAge:300000}
-      );
-    }
+    navigator.geolocation.getCurrentPosition(
+      pos=>{
+        acceptTableScorePosition(pos);
+        startTableScoreLocationWatch();
+        finish();
+      },
+      ()=>finish(),
+      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
+    );
   }catch(e){
-    // Safari versions that do not expose geolocation through Permissions API
-    // simply keep using the last valid stored location until the user taps My Location.
+    finish();
   }
 }
+
+document.addEventListener("visibilitychange",()=>{
+  if(!document.hidden)void resumeGrantedTableScoreLocation();
+});
+window.addEventListener("pageshow",()=>void resumeGrantedTableScoreLocation());
 
 function locationAccuracyLabel(meters){
   if(!Number.isFinite(meters))return "";
@@ -7828,6 +7845,7 @@ function openSettings(){
   if(birthInput)birthInput.value=profile?.birth_date||"";
   const settingsUsernameInput=document.getElementById("settingsUsernameInput");
   if(settingsUsernameInput)settingsUsernameInput.value="";
+  void loadSocialCounts();
   updateSettingsBadges();
   updateBrowserNotificationUI();
   lockBackgroundScroll();
@@ -7877,18 +7895,22 @@ function closeFollowRequests(){
   unlockBackgroundScroll();
 }
 
-async function approveFollowRequest(followerId){
+async function approveFollowRequest(followerId,{fromNotifications=false}={}){
   const {error}=await db.from("follows").update({status:"accepted"}).eq("follower_id",followerId).eq("following_id",currentUser.id).eq("status","pending");
   if(error)return alert(error.message);
   await loadSocialCounts();
-  await showFollowRequests();
+  await loadPendingFollowRequests();
+  await loadNotifications();
+  if(!fromNotifications)await showFollowRequests();
   renderProfile();
 }
-async function deleteFollowRequest(followerId){
+async function deleteFollowRequest(followerId,{fromNotifications=false}={}){
   const {error}=await db.from("follows").delete().eq("follower_id",followerId).eq("following_id",currentUser.id);
   if(error)return alert(error.message);
   await loadSocialCounts();
-  await showFollowRequests();
+  await loadPendingFollowRequests();
+  await loadNotifications();
+  if(!fromNotifications)await showFollowRequests();
   renderProfile();
 }
 
@@ -9368,6 +9390,7 @@ async function loadNotifications({showSystemAlerts=false}={}){
   }
 
   tableScoreNotifications=data||[];
+  await loadPendingFollowRequests();
   updateNotificationBadge();
   renderNotifications();
 
@@ -9386,23 +9409,68 @@ function updateNotificationBadge(){
   badge.classList.toggle("hidden",count===0);
 }
 
+let tableRecPendingFollowRequests=[];
+
+async function loadPendingFollowRequests(){
+  if(!currentUser){tableRecPendingFollowRequests=[];return;}
+  const {data,error}=await db.from("follows")
+    .select("follower_id")
+    .eq("following_id",currentUser.id)
+    .eq("status","pending");
+  if(error){console.warn("pending follow requests:",error);return;}
+  const ids=[...new Set((data||[]).map(x=>x.follower_id).filter(Boolean))];
+  if(!ids.length){tableRecPendingFollowRequests=[];followRequestCount=0;updateSettingsBadges();return;}
+  const people=await getPublicProfilesSafe(ids);
+  const byId=new Map((people||[]).map(x=>[x.id,x]));
+  tableRecPendingFollowRequests=ids.map(id=>byId.get(id)||{id,display_name:"TableRec User",username:""});
+  followRequestCount=ids.length;
+  updateSettingsBadges();
+}
+
 function renderNotifications(){
   const list=document.getElementById("notificationsList");
   if(!list)return;
-  if(!tableScoreNotifications.length){
-    list.innerHTML=`<div class="notification-empty"><div style="display:grid;place-items:center;color:var(--gold)"><svg viewBox="0 0 48 48" width="38" height="38" aria-hidden="true"><path d="M35 19a11 11 0 0 0-22 0c0 13-6 13-6 17h34c0-4-6-4-6-17M20 42h8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="37" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="3"/></svg></div><div class="section-title" style="font-size:15px;margin-top:8px">Nothing new yet</div><div class="muted" style="font-size:11px;margin-top:4px">First Round gifts, verification updates, and other activity will appear here.</div></div>`;
+
+  const requestCards=tableRecPendingFollowRequests.map(u=>`
+    <div class="notification-item unread follow-request-notification">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <div style="font-size:21px">${notificationIcon("follow_request")}</div>
+        <div style="min-width:0;flex:1">
+          <div class="notification-title">New follow request</div>
+          <div class="notification-body">${esc(u.display_name||u.username||"TableRec User")}${u.username?` (@${esc(u.username)})`:""} wants to follow you.</div>
+          <div class="notification-request-actions">
+            <button class="primary" onclick="event.stopPropagation();approveFollowRequest('${u.id}',{fromNotifications:true})">Accept</button>
+            <button class="secondary" onclick="event.stopPropagation();deleteFollowRequest('${u.id}',{fromNotifications:true})">Decline</button>
+          </div>
+        </div>
+      </div>
+    </div>`).join("");
+
+  const history=tableScoreNotifications.map(n=>{
+    const t=String(n.type||"").toLowerCase().replace(/[-\s]+/g,"_");
+    // A live actionable request card above replaces old request-history cards
+    // while that request is still pending. Historical request notifications
+    // remain visible after it is accepted/declined.
+    const liveRequest=(t==="follow_request"||t==="followrequest") &&
+      tableRecPendingFollowRequests.some(u=>u.id===n?.metadata?.follower_id);
+    if(liveRequest)return "";
+    return `<button class="notification-item ${n.is_read?"":"unread"}" onclick="openNotification('${n.id}')">
+      <div style="display:flex;gap:9px;align-items:flex-start">
+        <div style="font-size:21px">${notificationIcon(n.type)}</div>
+        <div style="min-width:0;flex:1">
+          <div class="notification-title">${esc(n.title||"TableRec")}</div>
+          <div class="notification-body">${esc(n.body||"")}</div>
+          <div class="notification-time">${notificationAge(n.created_at)}</div>
+        </div>
+      </div>
+    </button>`;
+  }).join("");
+
+  if(!requestCards && !history){
+    list.innerHTML=`<div class="notification-empty"><div style="display:grid;place-items:center;color:var(--gold)"><svg viewBox="0 0 48 48" width="38" height="38" aria-hidden="true"><path d="M35 19a11 11 0 0 0-22 0c0 13-6 13-6 17h34c0-4-6-4-6-17M20 42h8" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/><circle cx="37" cy="9" r="5" fill="none" stroke="currentColor" stroke-width="3"/></svg></div><div class="section-title" style="font-size:15px;margin-top:8px">Nothing new yet</div><div class="muted" style="font-size:11px;margin-top:4px">TableRec activity will appear here.</div></div>`;
     return;
   }
-  list.innerHTML=tableScoreNotifications.map(n=>`<button class="notification-item ${n.is_read?"":"unread"}" onclick="openNotification('${n.id}')">
-    <div style="display:flex;gap:9px;align-items:flex-start">
-      <div style="font-size:21px">${notificationIcon(n.type)}</div>
-      <div style="min-width:0;flex:1">
-        <div class="notification-title">${esc(n.title||"TableRec")}</div>
-        <div class="notification-body">${esc(n.body||"")}</div>
-        <div class="notification-time">${notificationAge(n.created_at)}</div>
-      </div>
-    </div>
-  </button>`).join("");
+  list.innerHTML=requestCards+history;
 }
 
 async function openNotifications(){
@@ -10314,8 +10382,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.12";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Live Visible Engagement Sync";
+const TABLESCORE_VERSION="5.57.13";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Requests + Location Resume + Modal Theme";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
