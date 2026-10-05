@@ -5,6 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="theme-color" content="#fff8f0">
 <title>TableRec</title>
+<script>
+// Apply the last device appearance before styles paint; account preference follows sign-in.
+try{if(localStorage.getItem("tr_display_mode")==="dark"){
+  document.documentElement.setAttribute("data-theme","night");
+  document.querySelector('meta[name="theme-color"]').setAttribute("content","#100d0b");
+}}catch(e){}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#202326;--muted:#75675d;--line:#ead9c7;--gold:#d95416;--gold2:#d95416;--green:#477d51;--red:#bd4542;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(243,111,33,.16),rgba(243,111,33,.03));color-scheme:light;}
@@ -1859,6 +1866,43 @@ html:is([data-theme="night"],[data-theme="electric"]) body
 .notification-title{color:var(--ink)}
 .notification-item > div > div:first-child{color:var(--tr-orange)}
 
+/* V5.58.11: logo-style outline on the two requested rating score treatments. */
+.tr-feed-score,#profile .profile-rating-head .row-score{
+  color:var(--tr-orange)!important;
+  -webkit-text-stroke:1px #121212;paint-order:stroke fill;
+  text-shadow:1px 1px 0 #121212,2px 2px 0 #121212;
+}
+/* Hot Right Now retains its warm dark artwork in both appearances. */
+.hot-cover{color:var(--tr-cream)}
+.hot-cover .hot-title,.hot-cover .big{color:var(--tr-cream)!important;text-shadow:1px 2px 0 #000}
+.hot-cover .muted{color:#eedfcd!important}
+.hot-cover .scoreline{flex-wrap:wrap;align-items:center}
+.hot-cover .scoreline>div{flex:1 1 190px;min-width:0}
+.hot-cover .pill{flex-shrink:0;background:#21150f!important;color:var(--tr-orange)!important;border-color:var(--tr-orange)!important}
+.linkbtn{white-space:nowrap;flex-shrink:0}
+.tr-display-modes{display:flex;gap:10px;margin-top:12px}
+.tr-display-modes button{flex:1;min-height:44px;background:var(--card2);color:var(--ink)}
+.tr-display-modes button.active{border-color:var(--tr-orange)!important;color:var(--tr-orange)!important;box-shadow:inset 0 0 0 1px var(--tr-orange)}
+html[data-theme="night"]{
+ --bg:#100d0b;--card:#1c1511;--card2:#281c15;--ink:#fff4df;--muted:#c9b7a5;--line:#594233;
+ --gold:#f36f21;--gold2:#f58b4c;--green:#92c79a;--red:#f48a83;--accentText:#fff4df;
+ --navBg:rgba(16,13,11,.96);--topBg:rgba(16,13,11,.95);--sheetBg:#1c1511;
+ --inputBg:#241a14;--chipBg:#281c15;--shadow:0 10px 28px rgba(0,0,0,.32);
+ --heroSoft:linear-gradient(135deg,#3b2316,#1c1511);--tr-soft-orange:rgba(243,111,33,.13);color-scheme:dark;
+}
+html[data-theme="night"] .hero{background:var(--heroSoft)!important}
+html[data-theme="night"] .where-stage,
+html[data-theme="night"] .where-result-card,
+html[data-theme="night"] .restaurant-finder-head{background:var(--card2)!important;color:var(--ink)!important}
+html[data-theme="night"] .where-stage-name,
+html[data-theme="night"] .where-result-name{color:var(--ink)!important}
+html[data-theme="night"] .where-stage-sub,
+html[data-theme="night"] .where-result-meta,
+html[data-theme="night"] #whereTableRecHistory{color:var(--muted)!important}
+html[data-theme="night"] .tr-feed-score,
+html[data-theme="night"] #profile .profile-rating-head .row-score,
+html[data-theme="night"] :is(.community-score,.row-score,.mini-score,.big){color:var(--tr-cream)!important}
+
 </style>
 </head>
 <body class="booting">
@@ -2337,6 +2381,15 @@ html:is([data-theme="night"],[data-theme="electric"]) body
       <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">Verification confirms that a notable public account is authentic. Established food creators, chefs, celebrities, athletes, public figures, and other notable accounts may be eligible. Verified accounts receive TableRec's small golden fork beside their name. Verification does not endorse or give extra weight to their ratings.</div>
       <button class="primary" style="margin-top:12px;width:100%" onclick="openChefsTableApplication()">Request Verification</button>
       <div id="chefsTableApplicationStatus" class="muted" style="font-size:11px;margin-top:9px"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title" style="font-size:15px">Appearance</div>
+      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Same TableRec. Light or dark.</div>
+      <div class="tr-display-modes" role="group" aria-label="Appearance">
+        <button type="button" class="secondary" data-display-mode="light" aria-pressed="true" onclick="setDisplayMode('light')">Light</button>
+        <button type="button" class="secondary" data-display-mode="dark" aria-pressed="false" onclick="setDisplayMode('dark')">Dark</button>
+      </div>
     </div>
 
     <div class="card">
@@ -2846,20 +2899,33 @@ let backgroundSourceFile=null,backgroundObjectUrl="",backgroundNaturalW=0,backgr
 let backgroundPointers=new Map(),backgroundPinchStartDistance=0,backgroundPinchStartZoom=1,backgroundDragStart=null;
 
 
-// V5.58.10: one TableRec appearance. The legacy warm key keeps existing
-// light-surface selectors compatible and migrates saved account preferences.
-function tableRecThemeKey(userId=currentUser?.id){return userId?`ts_theme_user_${userId}`:"ts_theme";}
-function applyTheme(){
-  document.documentElement.setAttribute("data-theme","warm");
+// V5.58.11: two appearances, one TableRec brand. Legacy color themes stay retired.
+let currentDisplayMode="light";
+function tableRecDisplayKey(userId=currentUser?.id){return userId?`tr_display_mode_user_${userId}`:"tr_display_mode";}
+function savedDisplayMode(key){try{return localStorage.getItem(key);}catch(e){return null;}}
+function applyTheme(mode="light",{persist=true}={}){
+  currentDisplayMode=mode==="dark"?"dark":"light";
+  document.documentElement.setAttribute("data-theme",currentDisplayMode==="dark"?"night":"warm");
   const meta=document.querySelector('meta[name="theme-color"]');
-  if(meta)meta.setAttribute("content","#fff8f0");
-  try{
-    localStorage.setItem("ts_theme","warm");
-    if(currentUser?.id)localStorage.setItem(tableRecThemeKey(currentUser.id),"warm");
-  }catch(e){ /* Appearance remains available when storage is unavailable. */ }
+  if(meta)meta.setAttribute("content",currentDisplayMode==="dark"?"#100d0b":"#fff8f0");
+  if(persist)try{
+    localStorage.setItem("tr_display_mode",currentDisplayMode);
+    if(currentUser?.id)localStorage.setItem(tableRecDisplayKey(currentUser.id),currentDisplayMode);
+  }catch(e){}
+  renderDisplayModes();
 }
-function restoreThemeForCurrentUser(){applyTheme();}
-applyTheme();
+function restoreThemeForCurrentUser(){
+  const mode=(currentUser?.id&&savedDisplayMode(tableRecDisplayKey(currentUser.id)))||savedDisplayMode("tr_display_mode")||"light";
+  applyTheme(mode);
+}
+function setDisplayMode(mode){applyTheme(mode);}
+function renderDisplayModes(){
+  document.querySelectorAll("[data-display-mode]").forEach(btn=>{
+    const active=btn.dataset.displayMode===currentDisplayMode;
+    btn.classList.toggle("active",active);btn.setAttribute("aria-pressed",String(active));
+  });
+}
+applyTheme(savedDisplayMode("tr_display_mode")||"light",{persist:false});
 
 
 // V5.56.5: Supabase owns durable session persistence.
@@ -7184,6 +7250,7 @@ async function loadSecretRewards(){
   }
   renderBadgePicker();
   renderOwnBadges();
+  renderDisplayModes();
   renderTitlePicker();
   loadChefsTableStatus();
 }
@@ -10754,8 +10821,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.10";
-const TABLESCORE_BUILD_LABEL="TableRec Identity - Orange, Cream & Charcoal";
+const TABLESCORE_VERSION="5.58.11";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Light + Dark Mode";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
