@@ -1968,6 +1968,23 @@ html body .comment-item > .comment-delete{
   padding:0 12px!important;line-height:1!important;white-space:nowrap;
 }
 
+
+/* V5.58.16: compact safety controls using the existing brand palette. */
+.tr-safety-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.tr-safety-actions button{width:auto!important;min-height:44px;padding:8px 12px!important;font-size:12px!important}
+#trProfileSafety{justify-content:center}
+#trSafetyModal{z-index:20000!important}
+#trSafetyModal>.sheet{display:flex;flex-direction:column;padding:0!important;overflow:hidden!important;max-height:88dvh}
+#trSafetyModal .tr-modal-toolbar .tr-close-control{position:static!important;inset:auto!important;transform:none!important;width:auto!important;min-height:44px;height:44px;padding:0 14px!important;font-size:12px!important}
+#trSafetyModal select,#trSafetyModal textarea{width:100%;color:var(--ink);background:var(--card2);border:1px solid var(--line);border-radius:14px;padding:12px;font:inherit}
+.tr-safety-note{font-size:12px;line-height:1.5}
+.tr-safety-list{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:12px}
+.tr-safety-list>div{min-width:0;overflow-wrap:anywhere}
+.tr-safety-list button{width:auto!important;min-height:44px;padding:8px 12px!important;flex-shrink:0}
+.tr-review-card{margin-top:14px}
+.tr-review-content{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.5}
+.tr-review-photo{width:100%;max-width:240px;height:auto;border-radius:14px;margin:6px 0}
+
 </style>
 </head>
 <body class="booting">
@@ -2265,6 +2282,7 @@ html body .comment-item > .comment-delete{
         <div id="publicProfileBadges" class="profile-badges"></div>
         <div id="publicProfileArea" class="muted" style="font-size:12px;margin-top:4px"></div>
         <button id="publicFollowBtn" class="primary hidden" style="width:auto;min-width:120px;margin:14px auto 0" onclick="togglePublicProfileFollow()">Follow</button>
+        <div id="trProfileSafety" class="tr-safety-actions"></div>
 
         <div id="markAdminCard" class="mark-admin-card">
           <div style="font-weight:950">Account Marks</div>
@@ -2396,8 +2414,13 @@ html body .comment-item > .comment-delete{
       <button class="tr-close-control secondary settings-external-close" onclick="closeSettings()">Close</button>
     </div>
     <div class="tr-modal-scroll">
-
-
+    <div class="card">
+      <div class="section-title">Community Safety</div>
+      <p class="muted tr-safety-note">Report concerns from a rating, comment, or member profile.</p>
+      <button class="secondary" onclick="closeSettings();trOpenBlocked()">Blocked Accounts</button>
+      <div id="trModeratorControls" class="hidden" style="margin-top:10px"><button class="primary" onclick="closeSettings();trOpenModeration()">Review Reports</button></div>
+      <p class="muted tr-safety-note"><a href="mailto:tablerechelp@gmail.com">Contact TableRec</a></p>
+    </div>
     <div class="card" style="margin-top:8px">
       <div class="section-title" style="font-size:15px">Notifications</div>
       <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">TableRec will keep an in-app notification history for account marks and important activity.</div>
@@ -2607,6 +2630,7 @@ html body .comment-item > .comment-delete{
     </div>
 
     <div id="ratingDetailAuthor" style="margin-top:8px"></div>
+    <div id="trRatingReportAction" class="tr-safety-actions"></div>
 
     <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;margin-top:12px">
       <div>
@@ -5752,6 +5776,7 @@ async function openRatingDetail(ratingId){
   loadingRestaurantTitle.style.cursor="default";
   document.getElementById("ratingDetailMeta").textContent="";
   document.getElementById("ratingDetailAuthor").innerHTML="";
+  document.getElementById("trRatingReportAction").innerHTML="";
   document.getElementById("ratingDetailScore").textContent="--";
   document.getElementById("ratingDetailLabel").textContent="";
   document.getElementById("ratingDetailMapAction")?.classList.add("hidden");
@@ -5787,6 +5812,7 @@ async function openRatingDetail(ratingId){
   const p=await getPublicProfileSafe(r.user_id);
 
   const own=!!currentUser&&r.user_id===currentUser.id;
+  document.getElementById("trRatingReportAction").innerHTML=currentUser&&!own?`<button class="secondary" onclick="trOpenReport('rating','${r.id}')">Report Rating</button>`:"";
   if(p?.is_private&&!own&&!(currentUser&&followingIds.has(r.user_id))){
     closeRatingDetail();
     alert("This rating belongs to a private account.");
@@ -5943,7 +5969,7 @@ async function loadRatingComments(ratingId){
           <div class="comment-text">${renderCommentBody(c.body,mentionIdMap)}</div>
           <button id="commentDigBtn-${c.id}" class="secondary engagement-btn comment-dig-btn" onclick="toggleCommentDig('${c.id}','${ratingId}')">&#127860; Dig It <span id="commentDigCount-${c.id}">0</span></button>
         </div>
-        ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:""}
+        ${own?`<button class="secondary comment-delete" onclick="deleteRatingComment('${c.id}','${ratingId}')">Delete</button>`:currentUser?`<button class="secondary comment-delete" onclick="trOpenReport('comment','${c.id}')">Report</button>`:""}
       </div>`;
     }).join("");
   }
@@ -6842,6 +6868,9 @@ async function openPublicProfile(userId){
 
   showScreen("publicProfile");
   document.getElementById("publicProfileName").textContent="Loading...";
+  document.getElementById("trProfileSafety").innerHTML="";
+  viewedProfile=null;
+  document.getElementById("markAdminCard")?.classList.remove("show");
   document.getElementById("publicProfileUsername").textContent="";
   const tasteCard=document.getElementById("publicTasteMatchCard");
   if(tasteCard)tasteCard.classList.add("hidden");
@@ -6860,6 +6889,14 @@ async function openPublicProfile(userId){
   if(!p){
     console.error(pErr);
     document.getElementById("publicProfileName").textContent="Profile unavailable";
+    ["publicProfileTitle","publicProfileBadges","publicProfileArea"].forEach(id=>document.getElementById(id).textContent="");
+    ["publicRatingsCount","publicPlacesCount","publicFollowersCount","publicFollowingCount"].forEach(id=>document.getElementById(id).textContent="0");
+    document.getElementById("publicBadgeFolderCard").classList.add("hidden");
+    document.getElementById("publicProfileAvatar").style.backgroundImage="none";
+    document.getElementById("publicProfileAvatar").textContent="T";
+    document.getElementById("publicProfileHeroBg").style.backgroundImage="none";
+    document.getElementById("publicProfileHero").classList.remove("has-background");
+    document.getElementById("publicFollowBtn").classList.add("hidden");
     document.getElementById("publicProfileRatings").innerHTML="";
     return;
   }
@@ -6868,6 +6905,8 @@ async function openPublicProfile(userId){
   if(gErr)console.error(gErr);
 
   viewedProfile=p;
+  document.getElementById("publicBadgeFolderCard").classList.remove("hidden");
+  document.getElementById("trProfileSafety").innerHTML=currentUser?`<button class="secondary" onclick="trOpenReport('user','${userId}')">Report Account</button><button class="secondary" onclick="trBlockUser('${userId}')">Block Account</button>`:"";
 
   // Fire the Easter-egg check immediately after the profile identity is verified.
   // This keeps the reward independent from later photo/badge/engagement loading.
@@ -8304,6 +8343,7 @@ function unlockBackgroundScroll(){
 }
 
 function openSettings(){
+  document.getElementById("trModeratorControls")?.classList.toggle("hidden",!isOGAccount());
   const versionEl=document.getElementById("settingsAppVersion");
   const buildEl=document.getElementById("settingsBuildLabel");
   if(versionEl)versionEl.textContent=TABLESCORE_VERSION;
@@ -10914,8 +10954,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.15";
-const TABLESCORE_BUILD_LABEL="TableRec - Profile Title and Comment Polish";
+const TABLESCORE_VERSION="5.58.16";
+const TABLESCORE_BUILD_LABEL="TableRec - Reports, Blocks and Moderation";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -11272,5 +11312,111 @@ if(document.readyState==="loading"){
 </div>
 
 <div id="rewardToast" class="reward-toast"></div>
+<div id="trSafetyModal" class="modal hidden" onclick="if(event.target===this)trCloseSafety()">
+ <div class="sheet"><div class="tr-modal-toolbar"><div id="trSafetyTitle" class="section-title">Community Safety</div><button class="tr-close-control secondary" onclick="trCloseSafety()">Close</button></div><div id="trSafetyBody" class="tr-modal-scroll"></div></div>
+</div>
+<script>
+let trReportContext=null;
+let trSafetyRequest=0;
+function trSafetySheet(title,html){
+  document.getElementById('trSafetyTitle').textContent=title;
+  document.getElementById('trSafetyBody').innerHTML=html;
+  lockBackgroundScroll();
+  document.getElementById('trSafetyModal').classList.remove('hidden');
+}
+function trCloseSafety(){
+  trSafetyRequest++;
+  trReportContext=null;
+  document.getElementById('trSafetyModal').classList.add('hidden');
+  if(!document.querySelector('.modal:not(.hidden)'))unlockBackgroundScroll();
+}
+function trOpenReport(type,id){
+  if(!currentUser)return alert('Sign in to report content.');
+  if(!['rating','comment','user'].includes(type)||!id)return;
+  trSafetyRequest++;
+  trReportContext={type,id,userId:currentUser.id};
+  trSafetySheet('Report '+(type==='user'?'account':type),`<p class="muted">Reports are private. TableRec reviews them against our community rules.</p>
+    <div class="field"><label for="trReportReason">Reason</label><select id="trReportReason"><option value="harassment">Harassment or bullying</option><option value="hate">Hateful content</option><option value="sexual_content">Sexual content</option><option value="violence">Threats or violence</option><option value="spam">Spam or misleading content</option><option value="privacy">Privacy concern</option><option value="other">Something else</option></select></div>
+    <div class="field"><label for="trReportDetails">Details (optional)</label><textarea id="trReportDetails" maxlength="2000" rows="4" placeholder="Tell us what we should review."></textarea></div>
+    <p id="trReportStatus" role="status" class="muted"></p><button id="trReportSubmit" class="primary" onclick="trSubmitReport()">Submit Report</button>
+    <p class="muted tr-safety-note">Need help? <a href="mailto:tablerechelp@gmail.com">tablerechelp@gmail.com</a></p>`);
+}
+async function trSubmitReport(){
+  const context=trReportContext;
+  const btn=document.getElementById('trReportSubmit');
+  if(!context||!currentUser||currentUser.id!==context.userId)return;
+  const reason=document.getElementById('trReportReason').value;
+  const details=document.getElementById('trReportDetails').value.trim();
+  btn.disabled=true;
+  try{
+    const {error}=await db.from('tr_content_reports').insert({target_type:context.type,target_id:context.id,reason,details});
+    if(trReportContext!==context)return;
+    if(error&&error.code!=='23505')throw error;
+    document.getElementById('trSafetyBody').innerHTML='<div class="section-title">Report received</div><p class="muted">Thank you. TableRec will review this report. Reporting does not automatically remove content.</p><button class="secondary" onclick="trCloseSafety()">Done</button>';
+    trReportContext=null;
+  }catch(error){
+    if(trReportContext===context){document.getElementById('trReportStatus').textContent=error.message||'Could not submit report. Please try again.';btn.disabled=false;}
+  }
+}
+async function trBlockUser(userId){
+  if(!currentUser||userId===currentUser.id)return;
+  if(!confirm('Block this account? You will stop seeing each other\'s ratings and comments, and follows in both directions will be removed. Unblocking will not restore follows.'))return;
+  const {error}=await db.from('tr_user_blocks').insert({blocked_id:userId});
+  if(error&&error.code!=='23505')return alert(error.message||'Could not block account.');
+  followingIds.delete(userId);pendingFollowingIds.delete(userId);
+  viewedProfile=null;viewedProfileRatings=[];
+  closePublicProfile();
+  await loadSocialCounts();
+  await loadFollowingFeed();
+  alert('Account blocked. You can unblock it in Settings > Blocked Accounts.');
+}
+async function trOpenBlocked(){
+  if(!currentUser)return;
+  const actor=currentUser.id;
+  const request=++trSafetyRequest;
+  trSafetySheet('Blocked Accounts','<p class="muted">Loading...</p>');
+  const {data,error}=await db.rpc('tr_get_my_blocked_users');
+  if(request!==trSafetyRequest||currentUser?.id!==actor)return;
+  if(error){document.getElementById('trSafetyBody').textContent=error.message;return;}
+  document.getElementById('trSafetyBody').innerHTML=(data||[]).length?(data||[]).map(p=>`<div class="card tr-safety-list"><div><b>${esc(p.display_name||p.username||'TableRec member')}</b><div class="muted">${p.username?'@'+esc(p.username):''}</div></div><button class="secondary" onclick="trUnblockUser('${p.user_id}',this)">Unblock</button></div>`).join(''):'<p class="muted">You have no blocked accounts.</p>';
+}
+async function trUnblockUser(userId,button){
+  if(!currentUser||!confirm('Unblock this account? Previous follows will stay removed.'))return;
+  button.disabled=true;
+  const {error}=await db.from('tr_user_blocks').delete().eq('blocker_id',currentUser.id).eq('blocked_id',userId);
+  if(error){button.disabled=false;return alert(error.message);}
+  await trOpenBlocked();
+}
+function trPhotoPreview(url){
+  try{const u=new URL(url);if(u.origin!==new URL(SUPABASE_URL).origin||u.protocol!=='https:')return '';return `<img src="${esc(u.href)}" alt="Reported rating photo" loading="lazy" class="tr-review-photo">`;}catch(e){return '';}
+}
+async function trOpenModeration(all=false){
+  if(!isOGAccount())return;
+  const actor=currentUser.id;
+  const request=++trSafetyRequest;
+  trSafetySheet('Moderation','<p class="muted">Loading reports...</p>');
+  const {data,error}=await db.rpc('tr_get_moderation_reports',{p_all:all});
+  if(request!==trSafetyRequest||currentUser?.id!==actor)return;
+  if(error){document.getElementById('trSafetyBody').textContent=error.message;return;}
+  const rows=Array.isArray(data)?data:[];
+  document.getElementById('trSafetyBody').innerHTML=`<div class="tr-safety-actions"><button class="secondary" onclick="trOpenModeration(false)">Pending</button><button class="secondary" onclick="trOpenModeration(true)">Recent Reports</button></div><p class="muted tr-safety-note">Review reports promptly. Hide content that breaks the rules or suspend abusive accounts. You can restore either action from Recent Reports.</p>`+(rows.length?rows.map(r=>`<div class="card tr-review-card"><div class="section-title">Reported ${esc(r.target_type)}</div><p><b>${esc(r.reported_name||r.reported_username||'Unavailable account')}</b> <span class="muted">${r.reported_username?'@'+esc(r.reported_username):''}</span></p><p class="muted">${esc(r.reason.replace(/_/g,' '))} - ${esc(r.status)}<br>${esc(new Date(r.created_at).toLocaleString())}</p><p class="tr-review-content">${esc(r.content||'Content no longer available')}</p>${(r.photos||[]).map(trPhotoPreview).join('')}<p class="tr-review-content">${esc(r.details||'No additional details')}</p><div class="tr-safety-actions">
+  ${r.target_type!=='user'?`<button class="secondary" onclick="trReviewReport('${r.id}','hide',${all},this)">Hide Content</button>`:''}
+  ${r.target_user_id&&r.target_user_id!==TABLESCORE_OG_USER_ID?`<button class="secondary" onclick="trReviewReport('${r.id}','suspend',${all},this)">Suspend Account</button>`:''}
+  <button class="secondary" onclick="trReviewReport('${r.id}','dismiss',${all},this)">Dismiss</button>
+  ${all&&r.target_type!=='user'?`<button class="secondary" onclick="trReviewReport('${r.id}','restore_content',true,this)">Restore Content</button>`:''}
+  ${all&&r.target_user_id?`<button class="secondary" onclick="trReviewReport('${r.id}','restore_user',true,this)">Restore Account</button>`:''}
+ </div></div>`).join(''):'<p class="muted">No reports to review.</p>');
+}
+async function trReviewReport(id,action,all,button){
+  if(!isOGAccount())return;
+  const text={hide:'Hide this content from the app?',suspend:'Suspend this account? Its content will be hidden and posting/social interactions disabled.',dismiss:'Dismiss this report?',restore_content:'Restore this content?',restore_user:'Restore this account?'}[action];
+  if(!text||!confirm(text))return;
+  button.disabled=true;
+  const {error}=await db.rpc('tr_review_report',{p_report_id:id,p_action:action});
+  if(error){button.disabled=false;return alert(error.message);}
+  await trOpenModeration(all);
+}
+
+</script>
 </body>
 </html>
