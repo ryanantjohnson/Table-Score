@@ -9564,10 +9564,20 @@ async function syncOpenSocialSurfaces(){
     }
 
     const active=document.querySelector(".screen.active")?.id||"";
+
+    // V5.57.12: refresh engagement state on rating controls that are actually
+    // rendered right now. This updates Dig It/comment counts and dug styling
+    // in place across accounts without rebuilding any rating cards.
+    const visibleRatingIds=[...document.querySelectorAll('[id^="digBtn-"]')]
+      .filter(btn=>btn.offsetParent!==null)
+      .map(btn=>String(btn.id||"").slice("digBtn-".length))
+      .filter(Boolean);
+    if(visibleRatingIds.length){
+      await hydrateRatingEngagement(visibleRatingIds);
+    }
+
     if(active==="profile"){
-      // V5.57.11: NEVER broad-refresh/re-render the Profile every two seconds.
-      // That was replacing Recent Rating cards while Dig It writes/hydration
-      // were still in flight, producing the visible 1 -> 0 race.
+      // NEVER broad-refresh/re-render the Profile every two seconds.
       // Poll only the two connection counts that need background freshness.
       const uid=currentUser.id;
       const [{count:followers},{count:following}]=await Promise.all([
@@ -10304,8 +10314,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.11";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Social Render Race Repair";
+const TABLESCORE_VERSION="5.57.12";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Live Visible Engagement Sync";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
