@@ -1591,9 +1591,119 @@ html[data-theme="night"] .hero,html[data-theme="electric"] .hero{
   .card,.feed-rating-card,.community-rating{border-width:1.5px!important}
 }
 
+
+
+/* ===== V5.58.1 FULL TABLEREC IDENTITY PASS ===== */
+:root{
+  --tr-orange:#f36f21;--tr-orange2:#ff8a3d;--tr-cream:#fff5df;--tr-ink:#1d1d1b;
+  --tr-stroke:rgba(29,29,27,.92);--tr-soft-orange:rgba(243,111,33,.10);
+}
+/* The logo is a brand asset, not a theme accent. */
+.brand{
+  font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",-apple-system,BlinkMacSystemFont,sans-serif!important;
+  font-size:25px!important;font-weight:1000!important;letter-spacing:-.075em!important;line-height:.9!important;
+  transform:rotate(-1deg);padding:3px 4px 7px 2px;
+  filter:drop-shadow(0 1px 0 rgba(0,0,0,.12));
+}
+.brand-table,.brand-rec{
+  -webkit-text-stroke:1.2px var(--tr-ink);paint-order:stroke fill;
+  text-shadow:1px 1px 0 var(--tr-ink),2px 2px 0 var(--tr-ink);
+}
+.brand-table{color:var(--tr-cream)!important}
+.brand-rec{color:var(--tr-orange)!important;margin-left:2px}
+.brand:after{height:4px!important;bottom:0!important;left:2px!important;right:2px!important;background:var(--tr-orange)!important;box-shadow:2px 2px 0 var(--tr-ink)}
+.topbar{border-bottom:2px solid color-mix(in srgb,var(--tr-orange) 18%,var(--line))!important}
+.loc{color:var(--tr-orange)!important;font-weight:950!important}
+
+/* TableRec title language: chunky and editorial, while body copy stays clean. */
+.home-social-title,.home-play-question,.home-restaurant-name,
+.hero h1,.page-title,.sheet h2,.section-title,#profileName,#publicProfileName,#editRatingRestaurant,
+.feed-rating-card button div[style*="font-family:Georgia"]{
+  font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",-apple-system,BlinkMacSystemFont,sans-serif!important;
+  font-weight:1000!important;letter-spacing:-.045em!important;
+}
+.home-social-title{font-size:30px!important;line-height:.98!important}
+.kicker{color:var(--tr-orange)!important;font-weight:1000!important;letter-spacing:.16em!important}
+.home-social-head{padding:18px 4px 10px!important;border-bottom:0!important;position:relative}
+.home-social-head:after{content:"";position:absolute;left:3px;bottom:0;width:64px;height:6px;border-radius:99px;background:var(--tr-orange)}
+.home-people-btn,.linkbtn{color:var(--tr-orange)!important;font-weight:1000!important}
+
+/* Graphic restaurant-card language from the approved direction. */
+.card,.feed-rating-card,.hot,.mini,.row,.stat,.account-subcard,.map-selection{
+  border:2px solid color-mix(in srgb,var(--ink) 16%,var(--line))!important;
+  border-radius:22px!important;
+}
+#home>.card{padding:18px!important;box-shadow:0 6px 0 color-mix(in srgb,var(--ink) 8%,transparent),0 16px 32px rgba(0,0,0,.06)!important}
+.feed-rating-card{
+  padding:16px!important;border-radius:24px!important;
+  box-shadow:0 7px 0 color-mix(in srgb,var(--ink) 11%,transparent)!important;
+  position:relative;overflow:hidden;
+}
+.feed-rating-card:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--tr-orange)}
+.feed-rating-card .pill{border:2px solid var(--tr-orange)!important;color:var(--tr-orange)!important;background:transparent!important;font-weight:1000!important}
+.feed-rating-card .engagement-btn{border:2px solid var(--tr-orange)!important;color:var(--tr-orange)!important;background:transparent!important}
+.feed-rating-card .engagement-btn.dug{background:var(--tr-soft-orange)!important;color:var(--tr-orange)!important}
+
+/* Signature controls: orange identifies TableRec even when the theme accent changes. */
+.top-notifications,.top-settings{border:2px solid color-mix(in srgb,var(--tr-orange) 30%,var(--line))!important;box-shadow:0 3px 0 color-mix(in srgb,var(--ink) 8%,transparent)!important}
+.primary{border-radius:16px!important}
+.nav button.active{color:var(--tr-orange)!important}
+.nav button.active:after{height:4px!important;width:28px!important;background:var(--tr-orange)!important}
+.run-it-nav .run-it-label{font-weight:1000!important;letter-spacing:.08em!important}
+.notification-count{background:var(--tr-orange)!important}
+
+/* A little food-brand personality without turning the product into a cartoon. */
+#home>.card:first-of-type>.section-head:before{content:"";width:10px;height:10px;border:3px solid var(--tr-orange);border-radius:50%;flex:0 0 auto}
+#home>.card:first-of-type>.section-head{display:grid!important;grid-template-columns:auto 1fr auto!important}
+#home>.card:first-of-type>.section-head>div{min-width:0}
+
+/* Cold-launch brand screen. On web it shows once per tab lifecycle; native packaging will map this to true cold launch. */
+#trLaunch{
+  position:fixed;inset:0;z-index:99999;background:var(--tr-orange);display:flex;align-items:center;justify-content:center;
+  padding:calc(28px + env(safe-area-inset-top)) 24px calc(28px + env(safe-area-inset-bottom));
+  transition:opacity .32s ease,visibility .32s ease;
+}
+#trLaunch.tr-launch-out{opacity:0;visibility:hidden;pointer-events:none}
+.tr-launch-inner{text-align:center;width:min(100%,430px);position:relative}
+.tr-launch-mark{
+  width:126px;height:126px;margin:0 auto 22px;border-radius:31px;background:var(--tr-orange);
+  border:5px solid var(--tr-ink);display:grid;place-items:center;transform:rotate(-3deg);
+  box-shadow:9px 9px 0 var(--tr-ink);
+}
+.tr-launch-tr{
+  color:var(--tr-cream);font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",sans-serif;
+  font-size:69px;line-height:.8;font-weight:1000;letter-spacing:-.12em;padding-right:7px;
+  -webkit-text-stroke:3px var(--tr-ink);paint-order:stroke fill;
+  text-shadow:4px 4px 0 var(--tr-ink);
+}
+.tr-launch-word{
+  color:var(--tr-cream);font-family:ui-rounded,"Arial Rounded MT Bold","SF Pro Rounded",sans-serif;
+  font-size:47px;line-height:.9;font-weight:1000;letter-spacing:-.075em;
+  -webkit-text-stroke:2px var(--tr-ink);paint-order:stroke fill;text-shadow:4px 4px 0 var(--tr-ink);
+}
+.tr-launch-values{margin-top:28px;color:var(--tr-ink);font-size:12px;font-weight:1000;letter-spacing:.13em;word-spacing:.16em}
+.tr-launch-dots{display:flex;justify-content:center;gap:8px;margin-top:20px}
+.tr-launch-dots i{width:7px;height:7px;background:var(--tr-cream);border:2px solid var(--tr-ink);border-radius:50%;animation:trDot 1s infinite alternate}
+.tr-launch-dots i:nth-child(2){animation-delay:.18s}.tr-launch-dots i:nth-child(3){animation-delay:.36s}
+@keyframes trDot{to{transform:translateY(-5px)}}
+
+html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{color:var(--tr-cream)!important}
+@media(max-width:420px){
+  .brand{font-size:24px!important}.home-social-title{font-size:29px!important}
+  .tr-launch-mark{width:116px;height:116px}.tr-launch-tr{font-size:64px}.tr-launch-word{font-size:43px}
+}
+
 </style>
 </head>
 <body class="booting">
+<div id="trLaunch" aria-label="TableRec opening screen">
+  <div class="tr-launch-inner">
+    <div class="tr-launch-mark"><div class="tr-launch-tr">TR</div></div>
+    <div class="tr-launch-word">TableRec</div>
+    <div class="tr-launch-values">FOOD. PEOPLE. OPINIONS. FUN.</div>
+    <div class="tr-launch-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+  </div>
+</div>
 <div class="app">
   <div class="topbar">
     <div><div class="brand" onclick="secretLogoTap()" style="cursor:pointer;user-select:none;-webkit-user-select:none"><span class="brand-table">Table</span><span class="brand-rec">Rec</span></div><button id="topLocation" class="loc" onclick="openLocationChooser()" style="display:block;border:0;background:none;padding:2px 0 0;text-align:left;cursor:pointer">&#128205; Set location</button></div>
@@ -10170,6 +10280,26 @@ function openWhereEatDirections(){
   window.open(`https://www.google.com/maps/search/?api=1&query=${q}`,"_blank");
 }
 
+let tableRecLaunchStartedAt=Date.now();
+function prepareTableRecLaunch(){
+  const launch=document.getElementById("trLaunch");
+  if(!launch)return;
+  try{
+    if(sessionStorage.getItem("tr_launch_seen")==="1")launch.style.display="none";
+    else sessionStorage.setItem("tr_launch_seen","1");
+  }catch(e){}
+}
+function finishTableRecLaunch(){
+  const launch=document.getElementById("trLaunch");
+  if(!launch||launch.style.display==="none")return;
+  const elapsed=Date.now()-tableRecLaunchStartedAt;
+  setTimeout(()=>{
+    launch.classList.add("tr-launch-out");
+    setTimeout(()=>launch.remove(),380);
+  },Math.max(0,950-elapsed));
+}
+prepareTableRecLaunch();
+
 async function init(){
   restoreStoredTableScoreLocation();
   updateArea();
@@ -10208,6 +10338,7 @@ async function init(){
 
   // Reveal the UI immediately instead of blocking on every database/reward request.
   document.body.classList.remove("booting");
+  finishTableRecLaunch();
   void resumeGrantedTableScoreLocation();
 
   // Startup reuses the last valid browsing location instead of forcing a new
@@ -10477,8 +10608,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.0";
-const TABLESCORE_BUILD_LABEL="TableRec Identity Foundation";
+const TABLESCORE_VERSION="5.58.1";
+const TABLESCORE_BUILD_LABEL="Full TableRec Identity + Cold Launch";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
