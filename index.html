@@ -1789,6 +1789,45 @@ html[data-theme="electric"] .tr-feed-score-word{color:var(--ink)}
   #home .feed-rating-card{padding:17px 15px 15px 19px!important}
   .tr-feed-restaurant-name{font-size:20px}.tr-feed-score{font-size:30px}
 }
+
+/* V5.58.7 - Profile rating card header layout fix.
+   Profile rating headers are content layout, not standalone pill/row components. */
+#profile .profile-rating-head{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) auto!important;
+  gap:14px!important;
+  align-items:start!important;
+  padding:0!important;
+  margin:0!important;
+  background:transparent!important;
+  border:0!important;
+  border-radius:0!important;
+  box-shadow:none!important;
+  overflow:visible!important;
+}
+#profile .profile-rating-head > div:first-child{
+  min-width:0!important;
+}
+#profile .profile-rating-head button{
+  max-width:100%!important;
+}
+#profile .profile-rating-head .row-name{
+  white-space:normal!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+  line-height:1.08!important;
+  padding:0!important;
+  margin:0!important;
+}
+#profile .profile-rating-head > div:last-child{
+  min-width:76px!important;
+  flex:0 0 auto!important;
+  padding-left:4px!important;
+}
+#profile .profile-rating-head .row-score{
+  line-height:1!important;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -7089,7 +7128,7 @@ async function renderMyProfileRatings(){
     const restaurantName=r.restaurants?.name||"Restaurant";
     const label=scoreWord(r.overall_score);
     return `<div class="card rating-clickable" onclick="openRatingDetail('${r.id}')" style="margin:0 0 10px;padding:12px">
-      <div class="row" style="border:0;padding:0;background:transparent;align-items:flex-start">
+      <div class="row profile-rating-head" style="border:0;padding:0;background:transparent;align-items:flex-start">
         <div style="min-width:0;flex:1">
           <button onclick="event.stopPropagation();${r.restaurant_id?`openRestaurantById('${r.restaurant_id}')`:""}" style="padding:0;border:0;background:none;color:inherit;text-align:left;${r.restaurant_id?"cursor:pointer":""}">
             <div class="row-name">${esc(restaurantName)}</div>
@@ -10710,7 +10749,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.6";
+const TABLESCORE_VERSION="5.58.7";
 const TABLESCORE_BUILD_LABEL="TableRec Identity - Boot Recovery + Splash Timing";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
