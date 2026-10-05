@@ -9565,9 +9565,19 @@ async function syncOpenSocialSurfaces(){
 
     const active=document.querySelector(".screen.active")?.id||"";
     if(active==="profile"){
-      // Only refresh account/profile data when no rating modal is open. This
-      // prevents a broad render from competing with the open social thread.
-      if(!activeRatingDetailId)await refreshUserData();
+      // V5.57.11: NEVER broad-refresh/re-render the Profile every two seconds.
+      // That was replacing Recent Rating cards while Dig It writes/hydration
+      // were still in flight, producing the visible 1 -> 0 race.
+      // Poll only the two connection counts that need background freshness.
+      const uid=currentUser.id;
+      const [{count:followers},{count:following}]=await Promise.all([
+        db.from("follows").select("*",{count:"exact",head:true}).eq("following_id",uid).eq("status","accepted"),
+        db.from("follows").select("*",{count:"exact",head:true}).eq("follower_id",uid).eq("status","accepted")
+      ]);
+      const f=document.getElementById("profileFollowers");
+      const g=document.getElementById("profileFollowing");
+      if(f&&followers!==null)f.textContent=followers;
+      if(g&&following!==null)g.textContent=following;
     }else if(active==="publicProfile"&&viewedProfile?.id){
       const uid=viewedProfile.id;
       const [{data:followers},{data:following}]=await Promise.all([
@@ -10294,8 +10304,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.57.10";
-const TABLESCORE_BUILD_LABEL="Launch Stabilization - Dig It Interaction Repair";
+const TABLESCORE_VERSION="5.57.11";
+const TABLESCORE_BUILD_LABEL="Launch Stabilization - Social Render Race Repair";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
