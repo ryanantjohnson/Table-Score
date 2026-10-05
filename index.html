@@ -1686,6 +1686,14 @@ html[data-theme="night"] .hero,html[data-theme="electric"] .hero{
 .tr-launch-dots i{width:7px;height:7px;background:var(--tr-cream);border:2px solid var(--tr-ink);border-radius:50%;animation:trDot 1s infinite alternate}
 .tr-launch-dots i:nth-child(2){animation-delay:.18s}.tr-launch-dots i:nth-child(3){animation-delay:.36s}
 @keyframes trDot{to{transform:translateY(-5px)}}
+/* V5.58.2: give the cold-launch identity enough time to register without slowing normal resume. */
+.tr-launch-mark{animation:trLaunchMarkIn .34s cubic-bezier(.2,.85,.25,1) both}
+.tr-launch-word{animation:trLaunchWordIn .32s .22s cubic-bezier(.2,.85,.25,1) both}
+.tr-launch-values{animation:trLaunchValuesIn .32s .48s ease-out both}
+.tr-launch-dots{animation:trLaunchValuesIn .25s .66s ease-out both}
+@keyframes trLaunchMarkIn{from{opacity:0;transform:translateY(12px) rotate(-3deg) scale(.9)}to{opacity:1;transform:translateY(0) rotate(-3deg) scale(1)}}
+@keyframes trLaunchWordIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes trLaunchValuesIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:translateY(0)}}
 
 html[data-theme="night"] .brand-table,html[data-theme="electric"] .brand-table{color:var(--tr-cream)!important}
 @media(max-width:420px){
@@ -10296,7 +10304,7 @@ function finishTableRecLaunch(){
   setTimeout(()=>{
     launch.classList.add("tr-launch-out");
     setTimeout(()=>launch.remove(),380);
-  },Math.max(0,950-elapsed));
+  },Math.max(0,1750-elapsed));
 }
 prepareTableRecLaunch();
 
@@ -10608,7 +10616,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.1";
+const TABLESCORE_VERSION="5.58.2";
 const TABLESCORE_BUILD_LABEL="Full TableRec Identity + Cold Launch";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
