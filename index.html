@@ -1903,6 +1903,23 @@ html[data-theme="night"] .tr-feed-score,
 html[data-theme="night"] #profile .profile-rating-head .row-score,
 html[data-theme="night"] :is(.community-score,.row-score,.mini-score,.big){color:var(--tr-cream)!important}
 
+/* V5.58.12 - Solid black silhouette avoids stroked shadow rings on iOS. */
+html[data-theme="warm"] .tr-feed-score,
+html[data-theme="warm"] #profile .profile-rating-head .row-score{
+  color:var(--tr-orange)!important;
+  -webkit-text-stroke:0!important;
+  text-shadow:-1px -1px 0 #000,0 -1px 0 #000,1px -1px 0 #000,
+    -1px 0 0 #000,1px 0 0 #000,-1px 1px 0 #000,0 1px 0 #000,
+    1px 1px 0 #000,2px 2px 0 #000,3px 3px 0 #000!important;
+}
+/* Cream labels and counts; orange outlines and selected backgrounds stay branded. */
+html[data-theme="night"] body .engagement-btn:not(.rating-save-btn),
+html[data-theme="night"] body .engagement-btn:not(.rating-save-btn) span,
+html[data-theme="night"] body .feed-rating-card .engagement-btn.dug:not(.rating-save-btn),
+html[data-theme="night"] body .tr-close-control{
+  color:var(--tr-cream)!important;
+}
+
 </style>
 </head>
 <body class="booting">
@@ -10821,8 +10838,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.11";
-const TABLESCORE_BUILD_LABEL="TableRec Identity - Light + Dark Mode";
+const TABLESCORE_VERSION="5.58.12";
+const TABLESCORE_BUILD_LABEL="TableRec Identity - Solid Score Shadows + Cream Controls";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
