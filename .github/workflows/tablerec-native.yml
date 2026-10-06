@@ -1,4 +1,4 @@
-name: TableRec Native Readiness
+name: TableRec Native Builds
 
 on:
   workflow_dispatch:
@@ -6,17 +6,20 @@ on:
     branches: [main]
     paths:
       - .github/workflows/tablerec-native.yml
+      - native/**
+      - index.html
+      - legal.html
 
 permissions:
   contents: read
 
 concurrency:
-  group: tablerec-native-readiness-${{ github.ref }}
+  group: tablerec-native-builds-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
-  readiness:
-    name: Check ${{ matrix.platform }} build tools
+  build:
+    name: Build ${{ matrix.platform }} test app
     strategy:
       fail-fast: false
       matrix:
@@ -26,7 +29,7 @@ jobs:
           - platform: Android
             runner: ubuntu-latest
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Read repository
         uses: actions/checkout@v5
@@ -66,37 +69,101 @@ jobs:
           console.log('Syntax check only. Native permissions and device behavior still require testing.');
           JS
 
-      - name: Check Apple build tools
+      - name: Prepare Java for Android
+        if: matrix.platform == 'Android'
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '21'
+
+      - name: Install native dependencies
+        working-directory: native
+        shell: bash
+        run: |
+          if [ -f package-lock.json ]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+
+      - name: Bundle TableRec web files
+        working-directory: native
+        run: node prepare-web.mjs
+
+      - name: Generate iOS project
         if: matrix.platform == 'iOS'
+        working-directory: native
         shell: bash
         run: |
           xcodebuild -version
-          xcrun --sdk iphonesimulator --show-sdk-version
-          swift --version
+          if [ ! -d ios ]; then
+            npx cap add ios --packagemanager CocoaPods
+          fi
+          npx cap sync ios
 
-      - name: Check Android build tools
-        if: matrix.platform == 'Android'
+      - name: Build unsigned iOS simulator app
+        if: matrix.platform == 'iOS'
+        working-directory: native
         shell: bash
         run: |
-          java -version
-          test -n "${ANDROID_HOME:-}"
-          test -d "$ANDROID_HOME/platforms"
-          test -d "$ANDROID_HOME/build-tools"
-          ls "$ANDROID_HOME/platforms"
-          ls "$ANDROID_HOME/build-tools"
+          xcodebuild \
+            -workspace ios/App/App.xcworkspace \
+            -scheme App \
+            -configuration Debug \
+            -sdk iphonesimulator \
+            -destination 'generic/platform=iOS Simulator' \
+            -derivedDataPath build/ios \
+            CODE_SIGNING_ALLOWED=NO \
+            build
+          mkdir -p artifacts
+          ditto -c -k --sequesterRsrc --keepParent \
+            build/ios/Build/Products/Debug-iphonesimulator/App.app \
+            artifacts/TableRec-iOS-Simulator.zip
 
-      - name: Record readiness result
+      - name: Generate Android project
+        if: matrix.platform == 'Android'
+        working-directory: native
+        shell: bash
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          fi
+          npx cap sync android
+          "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
+            'platforms;android-36' 'build-tools;36.0.0'
+
+      - name: Build Android debug APK
+        if: matrix.platform == 'Android'
+        working-directory: native/android
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon assembleDebug
+          mkdir -p ../artifacts
+          cp app/build/outputs/apk/debug/app-debug.apk ../artifacts/TableRec-Android-Debug.apk
+
+      - name: Save test build
+        uses: actions/upload-artifact@v4
+        with:
+          name: TableRec-${{ matrix.platform }}-test-build
+          path: |
+            native/artifacts/*
+            native/package-lock.json
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Record build result
         if: success()
         shell: bash
         env:
           TR_PLATFORM: ${{ matrix.platform }}
         run: |
-          python3 - <<'PY'
+          python3 - <<'PYTHON'
           import os
           with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
-              report.write('## TableRec ' + os.environ['TR_PLATFORM'] + ' readiness\n\n')
-              report.write('- Web documents and inline script syntax: passed.\n')
-              report.write('- Cloud build tools: available.\n')
-              report.write('- Next: add the native project and platform integrations.\n\n')
-              report.write('This workflow does not create an installable app or submit to a store.\n')
-          PY
+              report.write('## TableRec ' + os.environ['TR_PLATFORM'] + ' test build passed\n\n')
+              report.write('Download the test build from this run\'s Artifacts section.\n\n')
+              report.write('Android: debug APK for Android devices.\n\n')
+              report.write('iOS: unsigned simulator app; cannot be installed on an iPhone.\n\n')
+              report.write('Native permissions, app assets, authentication links, signing, and real-device QA remain pending. This is not a store release.\n')
+          PYTHON
