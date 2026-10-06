@@ -2417,8 +2417,8 @@ html body .comment-item > .comment-delete{
     <div class="card">
       <div class="section-title">Community Safety</div>
       <p class="muted tr-safety-note">Report concerns from a rating, comment, or member profile.</p>
-      <button class="secondary" onclick="closeSettings();trOpenBlocked()">Blocked Accounts</button>
-      <div id="trModeratorControls" class="hidden" style="margin-top:10px"><button class="primary" onclick="closeSettings();trOpenModeration()">Review Reports</button></div>
+      <button class="secondary" onclick="trOpenBlocked()">Blocked Accounts</button>
+      <div id="trModeratorControls" class="hidden" style="margin-top:10px"><button class="primary" onclick="trOpenModeration()">Review Reports</button></div>
       <p class="muted tr-safety-note"><a href="mailto:tablerechelp@gmail.com">Contact TableRec</a></p>
     </div>
     <div class="card" style="margin-top:8px">
@@ -10954,8 +10954,8 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.16";
-const TABLESCORE_BUILD_LABEL="TableRec - Reports, Blocks and Moderation";
+const TABLESCORE_VERSION="5.58.17";
+const TABLESCORE_BUILD_LABEL="TableRec - Safety Sheets Return to Settings";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
