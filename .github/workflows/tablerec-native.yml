@@ -101,6 +101,34 @@ jobs:
           fi
           npx cap sync ios
 
+      - name: Configure iOS foreground location permission
+        if: matrix.platform == 'iOS'
+        working-directory: native
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import plistlib
+          from pathlib import Path
+          path = Path('ios/App/App/Info.plist')
+          with path.open('rb') as source:
+              info = plistlib.load(source)
+          info['NSLocationWhenInUseUsageDescription'] = (
+              'TableRec uses your location while you use the app to find nearby '
+              'restaurants, choose RUN IT suggestions, and verify restaurant visits. '
+              'You can browse a selected area without sharing your location.'
+          )
+          if any(key in info for key in ['NSLocationAlwaysUsageDescription', 'NSLocationAlwaysAndWhenInUseUsageDescription']):
+              raise RuntimeError('Unexpected always-location permission: review before building.')
+          if 'location' in info.get('UIBackgroundModes', []):
+              raise RuntimeError('Unexpected background location mode: review before building.')
+          with path.open('wb') as output:
+              plistlib.dump(info, output, sort_keys=False)
+          with path.open('rb') as output:
+              assert plistlib.load(output)['NSLocationWhenInUseUsageDescription'] == info['NSLocationWhenInUseUsageDescription']
+          print('iOS foreground location explanation configured and verified.')
+          PYTHON
+          plutil -lint ios/App/App/Info.plist
+
       - name: Build unsigned iOS simulator app
         if: matrix.platform == 'iOS'
         working-directory: native
@@ -132,6 +160,45 @@ jobs:
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platforms;android-36' 'build-tools;36.0.0'
 
+      - name: Configure Android foreground location permissions
+        if: matrix.platform == 'Android'
+        working-directory: native
+        shell: bash
+        run: |
+          python3 - <<'PYTHON'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path = Path('android/app/src/main/AndroidManifest.xml')
+          android = 'http://schemas.android.com/apk/res/android'
+          for _, (prefix, uri) in ET.iterparse(path, events=['start-ns']):
+              ET.register_namespace(prefix, uri)
+          tree = ET.parse(path)
+          root = tree.getroot()
+          if root.tag != 'manifest':
+              raise RuntimeError('Expected an Android manifest.')
+          name = '{' + android + '}name'
+          required = '{' + android + '}required'
+          permissions = {item.get(name) for item in root.findall('uses-permission')}
+          if 'android.permission.ACCESS_BACKGROUND_LOCATION' in permissions:
+              raise RuntimeError('Unexpected background location permission: review before building.')
+          for permission in ['android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION']:
+              if permission not in permissions:
+                  root.append(ET.Element('uses-permission', {name: permission}))
+          # Do not exclude devices without a dedicated GPS sensor.
+          gps = next((item for item in root.findall('uses-feature') if item.get(name) == 'android.hardware.location.gps'), None)
+          if gps is None:
+              gps = ET.SubElement(root, 'uses-feature', {name: 'android.hardware.location.gps'})
+          gps.set(required, 'false')
+          ET.indent(tree, space='    ')
+          tree.write(path, encoding='utf-8', xml_declaration=True)
+          verified = ET.parse(path).getroot()
+          permissions = {item.get(name) for item in verified.findall('uses-permission')}
+          assert {'android.permission.ACCESS_COARSE_LOCATION', 'android.permission.ACCESS_FINE_LOCATION'} <= permissions
+          assert 'android.permission.ACCESS_BACKGROUND_LOCATION' not in permissions
+          assert verified.find('application') is not None
+          print('Android approximate/precise foreground location permissions configured and verified.')
+          PYTHON
+
       - name: Build Android debug APK
         if: matrix.platform == 'Android'
         working-directory: native/android
@@ -149,6 +216,8 @@ jobs:
           path: |
             native/artifacts/*
             native/package-lock.json
+            native/ios/App/App/Info.plist
+            native/android/app/src/main/AndroidManifest.xml
           retention-days: 7
           if-no-files-found: error
 
@@ -165,5 +234,6 @@ jobs:
               report.write('Download the test build from this run\'s Artifacts section.\n\n')
               report.write('Android: debug APK for Android devices.\n\n')
               report.write('iOS: unsigned simulator app; cannot be installed on an iPhone.\n\n')
-              report.write('Native permissions, app assets, authentication links, signing, and real-device QA remain pending. This is not a store release.\n')
+              report.write('Foreground location declarations are configured and checked by this workflow.\n\n')
+              report.write('Location prompts and GPS behavior still require real-device testing. App assets, authentication links, signing, and other native readiness work remain pending. This is not a store release.\n')
           PYTHON
