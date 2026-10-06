@@ -2876,6 +2876,7 @@ html body .comment-item > .comment-delete{
       <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closeLocationChooser()">Close</button>
     </div>
     <div class="muted" style="font-size:11px;line-height:1.45">Use Current Location follows where you are on refresh. For best accuracy, allow Precise Location for TableRec in Safari.</div>
+    <div id="locationOnboardingStatus" class="muted" role="status" style="font-size:12px;line-height:1.45;margin-top:12px"></div>
     <div class="location-sheet-actions">
       <button class="primary" onclick="useCurrentBrowseLocation()">&#128205; Use My Current Location</button>
       <div class="or">or choose another area</div>
@@ -4802,7 +4803,9 @@ function chooseNearbyRestaurant(index){
   openRestaurantAction(r);
 }
 
-function openLocationChooser(){
+function openLocationChooser(message=""){
+  const onboardingStatus=document.getElementById("locationOnboardingStatus");
+  if(onboardingStatus)onboardingStatus.textContent=message;
   const modal=document.getElementById("locationChooserModal");
   const input=document.getElementById("browseAreaInput");
   const current=document.getElementById("browseLocationCurrent");
@@ -5263,6 +5266,7 @@ async function signIn(){
     }catch(e){}
   }
   closeAccount();
+  queueFirstSignInLocation();
   await refreshUserData();
   const cb=afterAuth;afterAuth=null;if(cb)cb();
 }
@@ -7863,6 +7867,69 @@ function restoreStoredTableScoreLocation(){
   tableScoreLocation={...coords,accuracy:Number.isFinite(accuracy)&&accuracy>0?accuracy:null,capturedAt:0};
   locationEnabled=true;
   return true;
+}
+
+// First signed-in use on this browser: request permission without requiring
+// people to discover the location pin. Browser permission remains authoritative.
+let tableRecFirstLocationTimer=null;
+const tableRecLocationIntroducedUsers=new Set();
+function queueFirstSignInLocation(){
+  if(!currentUser?.id || document.body.classList.contains("booting"))return;
+  if(tableRecFirstLocationTimer!==null)return;
+  tableRecFirstLocationTimer=setTimeout(()=>{
+    tableRecFirstLocationTimer=null;
+    void introduceFirstSignInLocation();
+  },Math.max(0,2300-(Date.now()-tableRecLaunchStartedAt)));
+}
+
+async function introduceFirstSignInLocation(){
+  const userId=currentUser?.id;
+  if(!userId)return;
+  // Recovery and deletion email links must finish their own account flow first.
+  const params=new URLSearchParams(window.location.search);
+  const hashParams=new URLSearchParams(window.location.hash.replace(/^#/,""));
+  const accountFlowOpen=["passwordRecoveryModal","deleteAccountVerifyModal"].some(id=>{
+    const modal=document.getElementById(id);
+    return modal && !modal.classList.contains("hidden");
+  });
+  if(params.has("recovery") || hashParams.get("type")==="recovery" || accountFlowOpen)return;
+  const key="tr_location_intro_v1_"+userId;
+  if(tableRecLocationIntroducedUsers.has(userId))return;
+  try{if(localStorage.getItem(key)==="1")return;}catch(e){}
+  tableRecLocationIntroducedUsers.add(userId);
+  try{localStorage.setItem(key,"1");}catch(e){}
+  // Keep an area the person deliberately chose and reuse existing permission.
+  if(localStorage.getItem("ts_location_mode")==="manual" ||
+     localStorage.getItem("ts_location_enabled")==="1")return;
+  const stillActive=()=>currentUser?.id===userId && localStorage.getItem("ts_location_mode")!=="manual";
+  const fallback=message=>{
+    if(!stillActive())return;
+    openLocationChooser(message);
+  };
+  if(!navigator.geolocation){
+    fallback("Location is unavailable in this browser. Choose a city, state or ZIP to find restaurants.");
+    return;
+  }
+  const top=document.getElementById("topLocation");
+  if(top)top.innerHTML="&#128205; Getting your location...";
+  try{
+    const coords=await getTableRecBrowseCoords();
+    if(!stillActive())return;
+    localStorage.setItem("ts_location_mode","current");
+    area="Near you";
+    localStorage.setItem("ts_area",area);
+    updateArea();
+    startTableScoreLocationWatch();
+    // Browsing works as soon as coordinates arrive; the city label follows.
+    const freshArea=await reverseGeocodeBrowseArea(coords.latitude,coords.longitude);
+    if(!stillActive())return;
+    if(freshArea){area=freshArea;localStorage.setItem("ts_area",area);updateArea();}
+    await loadRestaurantStats();
+  }catch(err){
+    if(!stillActive())return;
+    updateArea();
+    fallback("We could not access your location. You can try Use My Current Location, or choose a city, state or ZIP below.");
+  }
 }
 
 let tableRecLocationResumeBusy=false;
@@ -10679,6 +10746,7 @@ async function init(){
   document.body.classList.remove("booting");
   finishTableRecLaunch();
   void resumeGrantedTableScoreLocation();
+  queueFirstSignInLocation();
 
   // Startup reuses the last valid browsing location instead of forcing a new
   // geolocation request on every refresh. Explicit My Location / Retry actions
@@ -10704,6 +10772,7 @@ async function init(){
     restoreThemeForCurrentUser();
     if(_event==="PASSWORD_RECOVERY")openPasswordRecovery();
     else maybeOpenVerifiedDeleteFlow();
+    if(_event==="SIGNED_IN" || _event==="INITIAL_SESSION")queueFirstSignInLocation();
 
     // Never block the visible app while account data refreshes.
     Promise.allSettled([
@@ -10966,7 +11035,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.19";
+const TABLESCORE_VERSION="5.58.20";
 const TABLESCORE_BUILD_LABEL="TableRec - Safety Sheets Return to Settings";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
