@@ -1664,6 +1664,8 @@ html[data-theme="night"] .hero,html[data-theme="electric"] .hero{
 }
 #trLaunch.tr-launch-out{opacity:0;visibility:hidden;pointer-events:none}
 .tr-launch-inner{text-align:center;width:min(100%,430px);position:relative}
+.tr-launch-version{position:absolute;bottom:calc(24px + env(safe-area-inset-bottom,0px));left:20px;right:20px;text-align:center;color:var(--tr-ink);font-size:12px;font-weight:800;letter-spacing:.04em}
+html[data-theme="night"] .tr-launch-version{color:var(--tr-cream)}
 .tr-launch-mark{
   width:126px;height:126px;margin:0 auto 22px;border-radius:31px;background:var(--tr-orange);
   border:5px solid var(--tr-ink);display:grid;place-items:center;transform:rotate(-3deg);
@@ -1995,6 +1997,7 @@ html body .comment-item > .comment-delete{
     <div class="tr-launch-values">FOOD. PEOPLE. OPINIONS. FUN.</div>
     <div class="tr-launch-dots" aria-hidden="true"><i></i><i></i><i></i></div>
   </div>
+  <div id="trLaunchVersion" class="tr-launch-version"></div>
 </div>
 <div class="app">
   <div class="topbar">
@@ -11035,7 +11038,9 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.20";
+const TABLESCORE_VERSION="5.58.21";
+const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
+if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Safety Sheets Return to Settings";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
