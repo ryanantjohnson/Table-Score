@@ -90,6 +90,51 @@ jobs:
         working-directory: native
         run: node prepare-web.mjs
 
+      - name: Prepare approved TableRec branding assets
+        working-directory: native
+        shell: bash
+        run: |
+          npm install --prefix build/branding-tools --no-save --no-package-lock --no-audit --no-fund sharp@0.34.5 @capacitor/assets@3.0.5
+          node <<'JS'
+          // Native build-time asset preparation. Does not change authentication or permissions.
+          const fs=require('node:fs');
+          const path=require('node:path');
+          const sharp=require(path.resolve('build/branding-tools/node_modules/sharp'));
+          async function main(){
+           const html=fs.readFileSync('../index.html','utf8');
+           const extract=name=>{
+             const match=html.match(new RegExp('--tr-'+name+':url\\("data:image/webp;base64,([A-Za-z0-9+/=]+)"\\)'));
+             if(!match)throw Error('Missing embedded approved '+name+' asset: update index.html first.');
+             return Buffer.from(match[1],'base64');
+           };
+           const icon=extract('icon'),wordmark=extract('wordmark'),mark=extract('mark');
+           const orange='#f36f21';
+           fs.mkdirSync('assets',{recursive:true});
+           const fullIcon=await sharp(icon).resize(1024,1024).flatten({background:orange}).png().toBuffer();
+           fs.writeFileSync('assets/icon-only.png',fullIcon);
+           // Android adaptive icon foreground: keep the mark inside the mask's safe center.
+           const adaptive=await sharp(mark).resize(640,640).png().toBuffer();
+           await sharp({create:{width:1024,height:1024,channels:4,background:{r:0,g:0,b:0,alpha:0}}})
+             .composite([{input:adaptive,left:192,top:192}]).png().toFile('assets/icon-foreground.png');
+           await sharp({create:{width:1024,height:1024,channels:3,background:orange}}).png().toFile('assets/icon-background.png');
+           const splashIcon=await sharp(mark).resize(620,620).png().toBuffer();
+           const splashWordmark=await sharp(wordmark).resize({width:1000}).png().toBuffer();
+           const splash=await sharp({create:{width:2732,height:2732,channels:3,background:orange}})
+             .composite([{input:splashIcon,left:1056,top:846},{input:splashWordmark,left:866,top:1520}])
+             .png().toBuffer();
+           fs.writeFileSync('assets/splash.png',splash);
+           fs.writeFileSync('assets/splash-dark.png',splash);
+           for(const file of ['icon-only.png','icon-foreground.png','icon-background.png','splash.png','splash-dark.png']){
+             const metadata=await sharp(path.join('assets',file)).metadata();
+             const expected=file.startsWith('splash')?2732:1024;
+             if(metadata.width!==expected||metadata.height!==expected)throw Error('Invalid asset dimensions: '+file);
+             if(file==='icon-only.png'&&metadata.hasAlpha)throw Error('iOS icon must be opaque.');
+           }
+           console.log('Approved TableRec native icon and launch artwork prepared and checked.');
+          }
+          main().catch(error=>{console.error(error);process.exit(1)});
+          JS
+
       - name: Generate iOS project
         if: matrix.platform == 'iOS'
         working-directory: native
@@ -128,6 +173,14 @@ jobs:
           print('iOS foreground location explanation configured and verified.')
           PYTHON
           plutil -lint ios/App/App/Info.plist
+
+      - name: Generate branded iOS icons and splash artwork
+        if: matrix.platform == 'iOS'
+        working-directory: native
+        shell: bash
+        run: |
+          node build/branding-tools/node_modules/@capacitor/assets/bin/capacitor-assets generate --ios --iconBackgroundColor '#f36f21' --iconBackgroundColorDark '#f36f21' --splashBackgroundColor '#f36f21' --splashBackgroundColorDark '#f36f21'
+
 
       - name: Build unsigned iOS simulator app
         if: matrix.platform == 'iOS'
@@ -199,6 +252,39 @@ jobs:
           print('Android approximate/precise foreground location permissions configured and verified.')
           PYTHON
 
+      - name: Generate branded Android icons and splash artwork
+        if: matrix.platform == 'Android'
+        working-directory: native
+        shell: bash
+        run: |
+          node build/branding-tools/node_modules/@capacitor/assets/bin/capacitor-assets generate --android --iconBackgroundColor '#f36f21' --iconBackgroundColorDark '#f36f21' --splashBackgroundColor '#f36f21' --splashBackgroundColorDark '#f36f21'
+          python3 - <<'PYTHON'
+          import xml.etree.ElementTree as ET
+          from pathlib import Path
+          path = Path('android/app/src/main/res/values/styles.xml')
+          tree = ET.parse(path)
+          style = next((item for item in tree.getroot().findall('style') if item.get('name') == 'AppTheme.NoActionBarLaunch'), None)
+          if style is None:
+              raise RuntimeError('Expected Capacitor Android launch style.')
+          values = {
+              'windowSplashScreenBackground': '#f36f21',
+              'windowSplashScreenAnimatedIcon': '@mipmap/ic_launcher',
+              'postSplashScreenTheme': '@style/AppTheme.NoActionBar',
+          }
+          for name, value in values.items():
+              element = next((item for item in style.findall('item') if item.get('name') == name), None)
+              if element is None:
+                  element = ET.SubElement(style, 'item', {'name': name})
+              element.text = value
+          ET.indent(tree, space='    ')
+          tree.write(path, encoding='utf-8', xml_declaration=True)
+          verified = ET.parse(path).getroot()
+          style = next(item for item in verified.findall('style') if item.get('name') == 'AppTheme.NoActionBarLaunch')
+          assert all(next(item for item in style.findall('item') if item.get('name') == name).text == value for name, value in values.items())
+          print('Android system launch screen uses approved orange and app icon.')
+          PYTHON
+
+
       - name: Build Android debug APK
         if: matrix.platform == 'Android'
         working-directory: native/android
@@ -215,6 +301,8 @@ jobs:
           name: TableRec-${{ matrix.platform }}-test-build
           path: |
             native/artifacts/*
+            native/assets/icon-only.png
+            native/assets/splash.png
             native/package-lock.json
             native/ios/App/App/Info.plist
             native/android/app/src/main/AndroidManifest.xml
@@ -235,5 +323,5 @@ jobs:
               report.write('Android: debug APK for Android devices.\n\n')
               report.write('iOS: unsigned simulator app; cannot be installed on an iPhone.\n\n')
               report.write('Foreground location declarations are configured and checked by this workflow.\n\n')
-              report.write('Location prompts and GPS behavior still require real-device testing. App assets, authentication links, signing, and other native readiness work remain pending. This is not a store release.\n')
+              report.write('Approved TableRec icon and native launch artwork were generated for this build. Android 12+ displays the system app icon before the matching in-app launch screen. Location prompts, GPS, authentication links, and other behavior still require real-device testing. Signing and store readiness work remain pending. This is not a store release.\n')
           PYTHON
