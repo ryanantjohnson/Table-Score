@@ -1,0 +1,102 @@
+name: TableRec Native Readiness
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/tablerec-native.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tablerec-native-readiness-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  readiness:
+    name: Check ${{ matrix.platform }} build tools
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: iOS
+            runner: macos-latest
+          - platform: Android
+            runner: ubuntu-latest
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 10
+    steps:
+      - name: Read repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Prepare Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Check TableRec web source
+        shell: bash
+        run: |
+          node <<'JS'
+          const fs = require('node:fs');
+          const vm = require('node:vm');
+          for (const file of ['index.html', 'legal.html']) {
+            if (!fs.existsSync(file)) throw new Error('Missing required file: ' + file);
+            const html = fs.readFileSync(file, 'utf8');
+            if (!/<html\b/i.test(html) || !/<\/html>/i.test(html)) {
+              throw new Error('Incomplete HTML document: ' + file);
+            }
+            const scripts = [...html.matchAll(/<script\b([^>]*)>([\s\S]*?)<\/script>/gi)];
+            let checked = 0;
+            for (const [, attributes, code] of scripts) {
+              if (/\bsrc\s*=/i.test(attributes)) continue;
+              if (/\btype\s*=\s*["'](?:application\/ld\+json|application\/json|importmap)["']/i.test(attributes)) continue;
+              if (/\btype\s*=\s*["']module["']/i.test(attributes)) {
+                throw new Error('Module script needs a module syntax check: ' + file);
+              }
+              new vm.Script(code, { filename: file + ':inline-' + checked });
+              checked++;
+            }
+            console.log(file + ': document present; ' + checked + ' inline scripts parse.');
+          }
+          console.log('Syntax check only. Native permissions and device behavior still require testing.');
+          JS
+
+      - name: Check Apple build tools
+        if: matrix.platform == 'iOS'
+        shell: bash
+        run: |
+          xcodebuild -version
+          xcrun --sdk iphonesimulator --show-sdk-version
+          swift --version
+
+      - name: Check Android build tools
+        if: matrix.platform == 'Android'
+        shell: bash
+        run: |
+          java -version
+          test -n "${ANDROID_HOME:-}"
+          test -d "$ANDROID_HOME/platforms"
+          test -d "$ANDROID_HOME/build-tools"
+          ls "$ANDROID_HOME/platforms"
+          ls "$ANDROID_HOME/build-tools"
+
+      - name: Record readiness result
+        if: success()
+        shell: bash
+        env:
+          TR_PLATFORM: ${{ matrix.platform }}
+        run: |
+          python3 - <<'PY'
+          import os
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
+              report.write('## TableRec ' + os.environ['TR_PLATFORM'] + ' readiness\n\n')
+              report.write('- Web documents and inline script syntax: passed.\n')
+              report.write('- Cloud build tools: available.\n')
+              report.write('- Next: add the native project and platform integrations.\n\n')
+              report.write('This workflow does not create an installable app or submit to a store.\n')
+          PY
