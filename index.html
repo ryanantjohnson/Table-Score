@@ -3809,22 +3809,36 @@ function syncRateRestaurantPicker(){
   }
 }
 
+function storedTableRecCoords(){
+  const rawLat=localStorage.getItem("ts_lat"),rawLon=localStorage.getItem("ts_lon");
+  if(rawLat===null||rawLon===null||rawLat.trim()===""||rawLon.trim()==="")return null;
+  const latitude=Number(rawLat),longitude=Number(rawLon);
+  if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
+  return {latitude,longitude};
+}
 function currentTableScoreCoords(){
-  if(tableScoreLocation &&
-     Number.isFinite(Number(tableScoreLocation.latitude)) &&
-     Number.isFinite(Number(tableScoreLocation.longitude))){
-    return {
-      latitude:Number(tableScoreLocation.latitude),
-      longitude:Number(tableScoreLocation.longitude)
-    };
+  if(localStorage.getItem("ts_location_mode")==="manual")return storedTableRecCoords();
+  if(tableScoreLocation&&Number.isFinite(tableScoreLocation.latitude)&&Number.isFinite(tableScoreLocation.longitude)){
+    return {latitude:tableScoreLocation.latitude,longitude:tableScoreLocation.longitude};
   }
+  return storedTableRecCoords();
+}
 
-  const lat=Number(localStorage.getItem("ts_lat"));
-  const lon=Number(localStorage.getItem("ts_lon"));
-  if(Number.isFinite(lat)&&Number.isFinite(lon)){
-    return {latitude:lat,longitude:lon};
-  }
-  return null;
+let tableRecBrowseCoordsRequest=null;
+function getTableRecBrowseCoords(){
+  if(tableRecBrowseCoordsRequest)return tableRecBrowseCoordsRequest;
+  if(!navigator.geolocation)return Promise.reject(new Error("Location is unavailable. Choose a browsing area in Settings."));
+  tableRecBrowseCoordsRequest=new Promise((resolve,reject)=>{
+    navigator.geolocation.getCurrentPosition(pos=>{
+      acceptTableScorePosition(pos);
+      resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude});
+    },err=>{
+      reject(new Error(err?.code===1
+        ? "Location access is blocked. Allow location for this browser, or choose a browsing area in Settings."
+        : "Could not get your current location. Try again or choose a browsing area in Settings."));
+    },{enableHighAccuracy:false,maximumAge:60000,timeout:8000});
+  }).finally(()=>{tableRecBrowseCoordsRequest=null;});
+  return tableRecBrowseCoordsRequest;
 }
 
 async function getFreshTableScoreCoords(){
@@ -7842,16 +7856,11 @@ let tableScoreLocation=null;
 let tableScoreLocationWatchId=null;
 
 function restoreStoredTableScoreLocation(){
-  const lat=Number(localStorage.getItem("ts_lat"));
-  const lon=Number(localStorage.getItem("ts_lon"));
+  const coords=storedTableRecCoords();
+  if(!coords)return false;
+  if(tableScoreLocation?.capturedAt>0)return true;
   const accuracy=Number(localStorage.getItem("ts_location_accuracy"));
-  if(!Number.isFinite(lat)||!Number.isFinite(lon))return false;
-  tableScoreLocation={
-    latitude:lat,
-    longitude:lon,
-    accuracy:Number.isFinite(accuracy)&&accuracy>0?accuracy:null,
-    capturedAt:0
-  };
+  tableScoreLocation={...coords,accuracy:Number.isFinite(accuracy)&&accuracy>0?accuracy:null,capturedAt:0};
   locationEnabled=true;
   return true;
 }
@@ -7859,6 +7868,7 @@ function restoreStoredTableScoreLocation(){
 let tableRecLocationResumeBusy=false;
 
 async function resumeGrantedTableScoreLocation(){
+  if(localStorage.getItem("ts_location_mode")==="manual")return;
   const hadStoredLocation=restoreStoredTableScoreLocation();
   if(!("geolocation" in navigator)||tableRecLocationResumeBusy)return;
 
@@ -7901,7 +7911,7 @@ function renderLocationStatus(){
   if(!status||!btn)return;
 
   if(tableScoreLocation){
-    status.textContent="Live location is on."+locationAccuracyLabel(tableScoreLocation.accuracy);
+    status.textContent=(tableScoreLocation.capturedAt>0?"Location is on.":"Using your last saved location.")+locationAccuracyLabel(tableScoreLocation.accuracy);
     btn.textContent="Refresh";
   }else{
     status.textContent="Location has not been enabled on this device.";
@@ -10336,14 +10346,15 @@ async function loadWhereEatPool(){
   let coords=currentTableScoreCoords();
 
   if(!manualMode){
-    // Reuse the last valid device location. A fresh GPS request is reserved for
-    // explicit My Location/Refresh actions and Verified Visit submission.
-    if(!coords){
-      throw new Error("Location is not enabled yet. Use My Current Location once, then RUN IT again.");
+    const fresh=tableScoreLocation?.capturedAt>0&&Date.now()-tableScoreLocation.capturedAt<=60000;
+    if(!fresh){
+      status.textContent="Getting your current location...";
+      coords=await getTableRecBrowseCoords();
     }
   }else if(!coords){
-    throw new Error("Choose a browsing area before using RUN IT.");
+    throw new Error("Choose a browsing area in Settings before using RUN IT.");
   }
+  status.textContent="Searching restaurants near your selected location...";
 
   const {data,error}=await db.functions.invoke("where-to-eat",{body:{
     latitude:coords.latitude,
@@ -10547,7 +10558,7 @@ async function spinWhereToEat(){
     // Restaurants with no provider price data stay eligible rather than silently disappearing.
     let pool=all.filter(r=>{
       const p=whereEatPriceLevel(r);
-      return p!==null && whereEatPrices.has(p);
+      return p===null || whereEatPrices.has(p);
     });
     if(!pool.length)throw new Error("No restaurants matched those price points in this radius.");
 
@@ -10955,7 +10966,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.18";
+const TABLESCORE_VERSION="5.58.19";
 const TABLESCORE_BUILD_LABEL="TableRec - Safety Sheets Return to Settings";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
