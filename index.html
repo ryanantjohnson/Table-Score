@@ -2685,11 +2685,10 @@ html body .comment-item > .comment-delete{
       <div class="section-title">Set a New Password</div>
       <button class="tr-close-control secondary" style="width:auto;padding:8px 12px" onclick="closePasswordRecovery()">Close</button>
     </div>
-    <p class="muted" style="font-size:12px;line-height:1.45">Your email link has been verified. For added protection, enter your current password, then choose a different new password.</p>
-    <div class="field"><input id="recoveryCurrentPassword" type="password" autocomplete="current-password" placeholder="Current password"></div>
+    <p class="muted" style="font-size:12px;line-height:1.45">Your email link has been verified. Choose a new password for your account. You do not need your old password.</p>
     <div class="field"><input id="recoveryNewPassword" type="password" autocomplete="new-password" placeholder="New password"></div>
     <div class="field"><input id="recoveryConfirmPassword" type="password" autocomplete="new-password" placeholder="Confirm new password"></div>
-    <div class="muted" style="font-size:11px;line-height:1.4;margin:6px 0 10px">8+ characters with an uppercase letter, number, and special character. Your new password must be different from your current password.</div>
+    <div class="muted" style="font-size:11px;line-height:1.4;margin:6px 0 10px">8+ characters with an uppercase letter, number, and special character.</div>
     <button id="recoverySavePasswordBtn" class="primary" onclick="finishPasswordRecovery()">Save New Password</button>
   </div>
 </div>
@@ -5098,7 +5097,7 @@ async function forgotPassword(){
   if(!email)return alert("Enter your email first, then tap Forgot password?");
   const redirectTo=window.location.origin+window.location.pathname;
   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
-  if(error)return alert("Could not send the reset email: "+error.message);
+  if(error)return alert(passwordResetEmailError(error));
   alert("Password reset email sent. Open the link in that email, then return to TableRec to choose a new password.");
 }
 
@@ -5113,39 +5112,41 @@ function closePasswordRecovery(){
 }
 
 async function finishPasswordRecovery(){
-  const currentPassword=document.getElementById("recoveryCurrentPassword")?.value||"";
   const p1=document.getElementById("recoveryNewPassword").value;
   const p2=document.getElementById("recoveryConfirmPassword").value;
-  if(!currentPassword)return alert("Enter your current password.");
   if(!validAccountPassword(p1))return alert("Password must be at least 8 characters and include 1 uppercase letter, 1 number, and 1 special character.");
   if(p1!==p2)return alert("Those passwords do not match.");
-  if(p1===currentPassword)return alert("Your new password must be different from your current password.");
-
   const btn=document.getElementById("recoverySavePasswordBtn");
+  if(btn?.disabled)return;
   if(btn){btn.disabled=true;btn.textContent="Updating...";}
-
   try{
-    const {error}=await db.auth.updateUser({
-      password:p1,
-      current_password:currentPassword
-    });
+    // Supabase authenticates this request with the session from the verified email link.
+    const {error}=await db.auth.updateUser({password:p1});
     if(error)throw error;
-
-    document.getElementById("recoveryCurrentPassword").value="";
     document.getElementById("recoveryNewPassword").value="";
     document.getElementById("recoveryConfirmPassword").value="";
     closePasswordRecovery();
-    alert("Password changed successfully. Your previous password can no longer be used.");
+    alert("Password changed successfully. Use your new password the next time you sign in.");
   }catch(err){
     const msg=String(err?.message||"");
-    if(/current.password|invalid.*password|password.*incorrect|credentials/i.test(msg)){
-      alert("Your current password was not accepted. Your password has not been changed.");
+    if(err?.code==="same_password"||/same.*password|different.*password/i.test(msg)){
+      alert("Choose a new password that is different from your previous password.");
+    }else if(/session.*missing|session.*expired|jwt.*expired|token.*expired/i.test(msg)){
+      alert("Your reset session has expired. Request a new reset email and open its link to try again.");
     }else{
       alert("Could not update your password: "+(msg||"Please try again."));
     }
   }finally{
     if(btn){btn.disabled=false;btn.textContent="Save New Password";}
   }
+}
+
+function passwordResetEmailError(error){
+  const msg=String(error?.message||"");
+  if(error?.status===429||/rate.limit|too many requests/i.test(msg)){
+    return "Password reset emails are temporarily limited. Please wait before requesting another email. If you already received a reset email, open its link. Contact tablerechelp@gmail.com if you still need help.";
+  }
+  return "Could not send the reset email: "+(msg||"Please try again.");
 }
 
 async function changeUsername(){
@@ -5215,7 +5216,7 @@ async function sendSettingsPasswordReset(){
   const {error}=await db.auth.resetPasswordForEmail(email,{redirectTo});
   if(error){
     updateSettingsPasswordResetUI();
-    return alert("Could not send the secure reset email: "+error.message);
+    return alert(passwordResetEmailError(error));
   }
 
   settingsPasswordResetCooldownUntil=Date.now()+60000;
@@ -10954,7 +10955,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.17";
+const TABLESCORE_VERSION="5.58.18";
 const TABLESCORE_BUILD_LABEL="TableRec - Safety Sheets Return to Settings";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
