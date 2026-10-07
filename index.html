@@ -2786,7 +2786,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
                 onclick="openActiveRatingRestaurantLocation()">View Restaurant Map</button>
         <button id="ratingDetailRestaurantAction" class="secondary hidden"
                 style="width:auto;padding:7px 11px;margin-top:7px;font-size:11px"
-                onclick="if(activeRatingRestaurantId){const restaurantId=activeRatingRestaurantId;closeRatingDetail();openRestaurantById(restaurantId)}">View Restaurant</button>
+                onclick="openRestaurantFromRating()">View Restaurant</button>
       </div>
     </div>
 
@@ -3243,6 +3243,7 @@ function tableRecPushOrigin(){
   }
 }
 function tableRecBack(){
+  if(tableRecActiveScreenId()==="restaurant"&&restoreRatingAfterRestaurant())return true;
   const prev=tableRecNavStack.pop();
   if(!prev)return false;
   tableRecSuppressNavCapture=true;
@@ -3388,6 +3389,7 @@ function tableRecOpenModalFluid(modal){
 function showScreen(id,options={}){
   const screen=document.getElementById(id);
   if(!screen)return;
+  if(id!=="restaurant"&&ratingRestaurantReturn){ratingRestaurantReturn=null;closeRatingDetail();}
   const fromId=tableRecActiveScreenId();
   if(!options.restore&&!tableRecSuppressNavCapture&&fromId&&fromId!==id&&tableRecIsDrillScreen(id)){
     tableRecPushOrigin();
@@ -3857,7 +3859,38 @@ function openRestaurantPageLocation(){
   openRatingRestaurantLocation(selectedRestaurantId);
 }
 
+let ratingRestaurantReturn=null;
+async function openRestaurantFromRating(){
+  if(!activeRatingRestaurantId||!activeRatingDetailId)return;
+  const modal=document.getElementById("ratingDetailModal");
+  const origin=tableRecSnapshot();
+  if(document.body.classList.contains("modal-scroll-locked"))origin.scrollY=modalScrollLockY;
+  const saved={ratingId:activeRatingDetailId,origin,stackLength:tableRecNavStack.length,
+    scroll:[modal,...modal.querySelectorAll(".sheet,.tr-modal-scroll")].map(el=>({el,top:el.scrollTop}))};
+  ratingRestaurantReturn=saved;
+  stopRatingCommentLiveSync();hideMentionPortal();
+  modal.classList.add("hidden");unlockBackgroundScroll();
+  try{await openRestaurantById(activeRatingRestaurantId,{fromRating:true});}
+  finally{if(ratingRestaurantReturn===saved&&tableRecActiveScreenId()!=="restaurant")restoreRatingAfterRestaurant();}
+}
+function restoreRatingAfterRestaurant(){
+  const saved=ratingRestaurantReturn;
+  if(!saved)return false;
+  ratingRestaurantReturn=null;
+  tableRecNavStack.length=Math.min(tableRecNavStack.length,saved.stackLength);
+  showScreen(saved.origin.screen,{restore:true});
+  window.scrollTo(0,saved.origin.scrollY||0);
+  if(activeRatingDetailId!==saved.ratingId)return true;
+  const modal=document.getElementById("ratingDetailModal");
+  lockBackgroundScroll();modal.classList.remove("hidden","rating-detail-entering");
+  saved.scroll.forEach(({el,top})=>{el.scrollTop=top});
+  requestAnimationFrame(()=>saved.scroll.forEach(({el,top})=>{el.scrollTop=top}));
+  startRatingCommentLiveSync(saved.ratingId);
+  return true;
+}
+
 function returnFromRestaurant(){
+  if(restoreRatingAfterRestaurant())return;
   if(restoreRestaurantFinderAfterDrill())return;
   const target=restaurantReturnScreen||"home";
   showScreen(target,{restore:true});
@@ -3866,7 +3899,8 @@ function returnFromRestaurant(){
   }
 }
 
-async function openRestaurantById(id){
+async function openRestaurantById(id,{fromRating=false}={}){
+  if(!fromRating&&ratingRestaurantReturn){ratingRestaurantReturn=null;closeRatingDetail();}
   const activeScreen=document.querySelector("section.screen.active");
   const sourceId=activeScreen?.id;
   if(sourceId && sourceId!=="restaurant"){
@@ -6082,6 +6116,7 @@ async function openRatingDetail(ratingId){
 }
 
 function closeRatingDetail(){
+  ratingRestaurantReturn=null;
   stopRatingCommentLiveSync();
   hideMentionPortal();
   const modal=document.getElementById("ratingDetailModal");
@@ -11196,10 +11231,10 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.23";
+const TABLESCORE_VERSION="5.58.24";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Food Backdrop and Single Launch Logo";
+const TABLESCORE_BUILD_LABEL="TableRec - Return to Rating from Restaurant";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
