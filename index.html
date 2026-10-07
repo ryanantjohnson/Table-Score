@@ -2144,6 +2144,21 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 .tr-launch-food span:nth-child(11){left:47%;top:80%;transform:rotate(13deg)}
 .tr-launch-food span:nth-child(12){right:8%;top:88%}
 .tr-launch-word{animation-delay:0s!important}
+#home .home-people-search{display:flex;align-items:center;gap:10px;width:100%;margin:12px 0 16px;padding:8px 12px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink)}
+#home .home-people-search input{flex:1;min-width:0;width:100%;margin:0;padding:8px 0;border:0;box-shadow:none;background:transparent;color:var(--ink);font-size:16px}
+#home .home-people-search input::placeholder{color:var(--muted);opacity:1}
+#home .home-people-search button{width:auto;padding:8px 10px;margin:0;background:transparent;border:0;box-shadow:none;color:var(--ink);font-size:13px}
+/* Bundle: readable predictions and a permanently reachable Run It action. */
+.restaurant-predictions,.restaurant-prediction{background:var(--card);color:var(--ink)}
+.restaurant-prediction{border-color:var(--line)}
+.restaurant-prediction-name{color:var(--ink)}
+.restaurant-prediction-meta{color:var(--muted)}
+.restaurant-prediction:active{background:var(--card2)}
+.where-run-footer{flex:0 0 auto;padding:12px 16px max(12px,env(safe-area-inset-bottom));background:var(--card);border-top:1px solid var(--line)}
+.where-run-footer #whereEatSpinBtn{width:100%;margin:0;min-height:48px}
+.where-eat-sheet .tr-modal-scroll{min-height:0;flex:1 1 auto}
+.where-eat-sheet.where-result-focus{padding-bottom:0}
+.where-eat-sheet.where-result-focus #whereEatSpinBtn{margin-bottom:0}
 </style>
 </head>
 <body class="booting">
@@ -2211,7 +2226,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
   <section id="home" class="screen active">
     <div class="home-social-head">
       <div><div class="kicker">TableRec Social</div><div class="home-social-title">What's on the table?</div></div>
-      <button class="home-people-btn" onclick="openPeopleFinder()">Find People</button>
+      </div>
+    <form class="home-people-search" role="search" aria-label="Find people" onsubmit="event.preventDefault();openHomePeopleSearch()">
+      <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      <input id="homePeopleSearch" type="search" placeholder="Find people" aria-label="Find people by name or username" autocomplete="off" autocapitalize="none">
+      <button type="submit" aria-label="Search people">Search</button>
+    </form>
+    <div class="home-people-head-end" style="display:none">
     </div>
 
     <div class="card tr-home-following" style="margin-top:10px">
@@ -3244,6 +3265,7 @@ function tableRecPushOrigin(){
 }
 function tableRecBack(){
   if(tableRecActiveScreenId()==="restaurant"&&restoreRatingAfterRestaurant())return true;
+  if(["restaurant","rate"].includes(tableRecActiveScreenId())&&restoreRestaurantFinderAfterDrill())return true;
   const prev=tableRecNavStack.pop();
   if(!prev)return false;
   tableRecSuppressNavCapture=true;
@@ -4263,6 +4285,12 @@ function showLocationDiagnostic(){
 
 let restaurantFinderMode="search";
 let restaurantFinderReturnMode=null;
+let restaurantFinderReturnState=null;
+function captureRestaurantFinderReturn(){
+  const finder=document.getElementById("nearbyRestaurantModal");
+  restaurantFinderReturnState={screen:document.querySelector(".screen.active")?.id||"rate",stackLength:tableRecNavStack.length,scroll:finder?.querySelector(".tr-modal-scroll")?.scrollTop||0,center:restaurantMap?.getCenter()?.toJSON(),zoom:restaurantMap?.getZoom()};
+  restaurantFinderReturnMode=restaurantFinderMode;
+}
 
 let exploreRestaurantMap=null;
 let exploreRestaurantMapMarkers=[];
@@ -4590,6 +4618,8 @@ let restaurantPredictionSeq=0;
 let restaurantPredictionRows=[];
 
 function hideRestaurantPredictions(){
+  clearTimeout(restaurantPredictionTimer);
+  restaurantPredictionSeq++;
   const list=document.getElementById("restaurantPredictionList");
   if(list){list.classList.add("hidden");list.innerHTML="";}
   restaurantPredictionRows=[];
@@ -4597,6 +4627,7 @@ function hideRestaurantPredictions(){
 
 function queueRestaurantPredictions(){
   clearTimeout(restaurantPredictionTimer);
+  restaurantPredictionSeq++;
   const input=document.getElementById("globalRestaurantSearch");
   const q=(input?.value||"").trim();
 
@@ -4628,7 +4659,7 @@ async function loadRestaurantPredictions(query){
     if(data?.error)throw new Error(data.error);
     if(seq!==restaurantPredictionSeq)return;
 
-    restaurantPredictionRows=(Array.isArray(data?.restaurants)?data.restaurants:[]).slice(0,7);
+    restaurantPredictionRows=[...(Array.isArray(data?.areas)?data.areas:[]),...(Array.isArray(data?.restaurants)?data.restaurants:[])].slice(0,7);
 
     if(!restaurantPredictionRows.length){
       hideRestaurantPredictions();
@@ -4637,10 +4668,10 @@ async function loadRestaurantPredictions(query){
 
     list.innerHTML=restaurantPredictionRows.map((r,i)=>`
       <button type="button" class="restaurant-prediction" onclick="chooseRestaurantPrediction(${i})">
-        <span style="font-size:18px;line-height:1">🍴</span>
+        <span style="font-size:18px;line-height:1">${r.kind==="area"?"📍":"🍴"}</span>
         <span style="min-width:0">
           <div class="restaurant-prediction-name">${esc(r.name||"Restaurant")}</div>
-          <div class="restaurant-prediction-meta">${esc(restaurantTypeLabel(r))}${r.address?` · ${esc(r.address)}`:""}</div>
+          <div class="restaurant-prediction-meta">${r.kind==="area"?"Browse restaurants in this city":esc(restaurantTypeLabel(r))}${r.address?` · ${esc(r.address)}`:""}</div>
         </span>
       </button>`).join("");
     list.classList.remove("hidden");
@@ -4654,6 +4685,12 @@ let restaurantActionPlace=null;
 function chooseRestaurantPrediction(index){
   const r=restaurantPredictionRows[index];
   if(!r)return;
+  if(r.kind==="area"){
+    const input=document.getElementById("globalRestaurantSearch");
+    if(input)input.value="Restaurants in "+[r.name,r.address].filter(Boolean).join(", ");
+    void searchRestaurantsAnywhere();
+    return;
+  }
   // Keep the search query/results available so Close can return to them.
   openRestaurantAction(r);
 }
@@ -4683,6 +4720,9 @@ function restoreRestaurantFinderAfterDrill(){
   restaurantFinderReturnMode=null;
   const finder=document.getElementById("nearbyRestaurantModal");
   if(!finder)return false;
+  const state=restaurantFinderReturnState;
+  restaurantFinderReturnState=null;
+  if(state){tableRecNavStack.length=Math.min(tableRecNavStack.length,state.stackLength);showScreen(state.screen,{restore:true});}
   restaurantFinderMode=mode;
   finder.classList.remove("hidden");
   lockBackgroundScroll();
@@ -4693,6 +4733,10 @@ function restoreRestaurantFinderAfterDrill(){
       void refreshRestaurantActionSaveButton();
     }
   }
+  requestAnimationFrame(()=>{
+    if(state){const scroller=finder.querySelector(".tr-modal-scroll");if(scroller)scroller.scrollTop=state.scroll;}
+    if(mode==="map"&&restaurantMap){google.maps.event.trigger(restaurantMap,"resize");if(state?.center)restaurantMap.setCenter(state.center);if(state?.zoom!=null)restaurantMap.setZoom(state.zoom);}
+  });
   return true;
 }
 async function tableRecRestaurantForPlace(place,createIfMissing=false){
@@ -4852,7 +4896,7 @@ async function openRestaurantActionTableRec(){
   try{
     const restaurant=await restaurantActionTableRecRestaurant(true);
     if(!restaurant?.id)throw new Error("Could not identify this restaurant.");
-    restaurantFinderReturnMode=restaurantFinderMode;
+    captureRestaurantFinderReturn();
     document.getElementById("restaurantActionModal")?.classList.add("hidden");
     document.getElementById("nearbyRestaurantModal")?.classList.add("hidden");
     unlockBackgroundScroll();
@@ -4864,7 +4908,7 @@ async function openRestaurantActionTableRec(){
 }
 function rateRestaurantAction(){
   const r=restaurantActionPlace;if(!r)return;
-  restaurantFinderReturnMode=restaurantFinderMode;
+  captureRestaurantFinderReturn();
   selectedRestaurantId=null;selectedGoogleRestaurant={...r};selectedRestaurantName=r.name||"Restaurant";
   syncRateRestaurantPicker();
   document.getElementById("restaurantActionModal")?.classList.add("hidden");
@@ -4907,7 +4951,7 @@ async function searchRestaurantsAnywhere(){
   try{
     const coords=currentTableScoreCoords();
     const body={mode:"search",query};
-    if(coords){
+    if(coords&&!/^Restaurants in /i.test(query)){
       body.latitude=coords.latitude;
       body.longitude=coords.longitude;
     }
@@ -5151,7 +5195,7 @@ async function searchRestaurantMapArea(){
         },
         zIndex:100+i
       });
-      marker.addListener("click",()=>showMapRestaurant(i,marker));
+      marker.addListener("click",()=>showMapRestaurant(r,marker));
       restaurantMapMarkers.push(marker);
     });
     if(!nearbyGoogleRestaurants.length&&selection)selection.innerHTML='<div class="map-selection"><div class="map-selection-name">No restaurants found here</div><div class="map-selection-meta">Move the map and tap Search This Area again.</div></div>';
@@ -5159,8 +5203,8 @@ async function searchRestaurantMapArea(){
   finally{if(btn){btn.disabled=false;btn.textContent="Search This Area"}}
 }
 
-function showMapRestaurant(i,marker){
-  const r=nearbyGoogleRestaurants[i];if(!r)return;
+function showMapRestaurant(r,marker){
+  if(!r)return;
   mapSelectedRestaurant=r;
   restaurantMapInfoWindow?.setContent(`<div style="color:#111;max-width:220px"><strong>${esc(r.name||"Restaurant")}</strong><br><span style="font-size:11px">${esc(r.address||restaurantTypeLabel(r))}</span></div>`);
   restaurantMapInfoWindow?.open({map:restaurantMap,anchor:marker});
@@ -8526,7 +8570,7 @@ async function searchRestaurantCleanupMatches(){
   try{
     const coords=currentTableScoreCoords();
     const body={mode:"search",query};
-    if(coords){
+    if(coords&&!/^Restaurants in /i.test(query)){
       body.latitude=coords.latitude;
       body.longitude=coords.longitude;
     }
@@ -9341,6 +9385,18 @@ function peopleRowMarkup(u,{showMutual=false}={}){
   </div>`;
 }
 
+let homePeopleSearchTimer=null;
+function queueHomePeopleSearch(){
+  clearTimeout(homePeopleSearchTimer);
+  if((document.getElementById("homePeopleSearch")?.value||"").trim().length>=2)homePeopleSearchTimer=setTimeout(openHomePeopleSearch,500);
+}
+function openHomePeopleSearch(){
+  clearTimeout(homePeopleSearchTimer);
+  const q=document.getElementById("homePeopleSearch")?.value||"";
+  openPeopleFinder();
+  const input=document.getElementById("peopleSearch");
+  if(input){input.value=q;queuePeopleSearch();}
+}
 function openPeopleFinder(){
   const modal=document.getElementById("peopleFinderModal");
   if(!modal)return;
@@ -10601,7 +10657,8 @@ function tableRecMilesBetween(lat1,lon1,lat2,lon2){
     Math.cos(toRad(aLat))*Math.cos(toRad(bLat))*Math.sin(dLon/2)**2;
   return 3958.7613*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));
 }
-async function loadWhereEatPool(){
+let whereEatSearchCache=new Map();
+async function loadWhereEatPool(cuisine=""){
   const status=document.getElementById("whereEatStatus");
   status.textContent="Searching the full area...";
 
@@ -10619,10 +10676,14 @@ async function loadWhereEatPool(){
   }
   status.textContent="Searching restaurants near your selected location...";
 
+  const cacheKey=[coords.latitude.toFixed(3),coords.longitude.toFixed(3),whereEatRadius,cuisine].join(":");
+  const saved=whereEatSearchCache.get(cacheKey);
+  if(saved&&Date.now()-saved.at<300000)return saved.rows;
   const {data,error}=await db.functions.invoke("where-to-eat",{body:{
     latitude:coords.latitude,
     longitude:coords.longitude,
-    radiusMiles:whereEatRadius
+    radiusMiles:whereEatRadius,
+    cuisine
   }});
   if(error)throw error;
   if(data?.error)throw new Error(data.error);
@@ -10635,6 +10696,7 @@ async function loadWhereEatPool(){
     .filter(r=>Number.isFinite(Number(r.distance_miles)) && Number(r.distance_miles)<=Number(whereEatRadius)+0.05);
 
   if(!rows.length)throw new Error("No restaurants found in that radius.");
+  whereEatSearchCache.set(cacheKey,{at:Date.now(),rows});
   return rows;
 }
 function renderWhereEatPick(r,cuisineLabel){
@@ -10805,7 +10867,14 @@ function chooseFreshWherePick(pool){
   if(!source.length)source=concepts;
   // Final fallback preserves functionality in extremely small markets.
   if(!source.length)source=pool;
-  return source[Math.floor(Math.random()*source.length)];
+  const weights=source.map(r=>{
+    const text=[r.primary_type,...(r.types||[])].join(" ");
+    const quick=/fast_food_restaurant/.test(text)||/\b(mcdonald|burger king|wendy|taco bell|subway|whataburger|jack in the box|sonic drive|chick-fil-a|popeyes|raising cane)\b/i.test(r.name||"");
+    return quick?0.22:r.dine_in===true?1.5:r.dine_in===false?0.4:1;
+  });
+  let ticket=Math.random()*weights.reduce((a,b)=>a+b,0);
+  for(let i=0;i<source.length;i++){ticket-=weights[i];if(ticket<0)return source[i];}
+  return source[source.length-1];
 }
 
 async function spinWhereToEat(){
@@ -10814,7 +10883,7 @@ async function spinWhereToEat(){
   btn.disabled=true;
   btn.textContent="RUNNING...";
   try{
-    const all=await loadWhereEatPool();
+    const all=await loadWhereEatPool(whereEatMode==="cuisine"?whereEatCuisine:"");
     if(!all.length)throw new Error("No restaurants found in that radius.");
 
     // If Google provides a price level, honor the user's selected levels.
@@ -10835,7 +10904,11 @@ async function spinWhereToEat(){
         const chosen=available[Math.floor(Math.random()*available.length)];
         cuisineLabel=chosen.label;
         await animateWhereCuisine(cuisineLabel);
-        pool=chosen.rows;
+        try{
+          const expanded=await loadWhereEatPool(chosen.key);
+          const eligible=expanded.filter(r=>{const p=whereEatPriceLevel(r);return (p===null||whereEatPrices.has(p))&&whereEatMatchesCuisine(r,chosen.key);});
+          pool=eligible.length?eligible:chosen.rows;
+        }catch{pool=chosen.rows;}
       }
     }
     if(!pool.length)throw new Error("No matches for those choices. Try a larger radius, another cuisine, or more price points.");
@@ -10852,8 +10925,8 @@ async function spinWhereToEat(){
     requestAnimationFrame(()=>{
       const result=document.getElementById("whereEatResult");
       if(sheet&&result){
-        const top=Math.max(0,result.offsetTop-10);
-        sheet.scrollTo({top,behavior:"smooth"});
+        const scroller=sheet.querySelector(".tr-modal-scroll");
+        if(scroller)scroller.scrollTo({top:scroller.scrollTop+result.getBoundingClientRect().top-scroller.getBoundingClientRect().top-10,behavior:"smooth"});
       }
     });
   }catch(err){
@@ -11231,7 +11304,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.24";
+const TABLESCORE_VERSION="5.58.25";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Return to Rating from Restaurant";
@@ -11547,8 +11620,8 @@ if(document.readyState==="loading"){
 
     <div id="whereEatStatus" class="muted" style="font-size:11px;line-height:1.4;margin:10px 0"></div>
     <div id="whereEatResult"></div>
-    <button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">RUN IT</button>
     </div>
+    <div class="where-run-footer"><button id="whereEatSpinBtn" class="primary" onclick="spinWhereToEat()">RUN IT</button></div>
   </div>
 </div>
 
