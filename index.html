@@ -2125,12 +2125,32 @@ FROM, OUT OF THE USE OR INABILITY TO USE THE FONT SOFTWARE OR FROM
 OTHER DEALINGS IN THE FONT SOFTWARE.
 
 */
+
+/* V5.58.23: one launch logo with a quiet food backdrop. */
+#trLaunch{overflow:hidden}
+.tr-launch-inner,.tr-launch-version{z-index:1}
+.tr-launch-food{position:absolute;inset:0;pointer-events:none;overflow:hidden}
+.tr-launch-food span{position:absolute;font-family:"Apple Color Emoji","Segoe UI Emoji",sans-serif;font-size:clamp(28px,8vw,46px);opacity:.25;filter:saturate(.75);transform:rotate(-14deg)}
+.tr-launch-food span:nth-child(1){left:9%;top:12%}
+.tr-launch-food span:nth-child(2){left:43%;top:8%;transform:rotate(18deg)}
+.tr-launch-food span:nth-child(3){right:9%;top:18%}
+.tr-launch-food span:nth-child(4){left:18%;top:29%;transform:rotate(16deg)}
+.tr-launch-food span:nth-child(5){right:20%;top:33%}
+.tr-launch-food span:nth-child(6){left:3%;top:49%;transform:rotate(22deg)}
+.tr-launch-food span:nth-child(7){right:3%;top:54%;transform:rotate(-22deg)}
+.tr-launch-food span:nth-child(8){left:17%;top:68%}
+.tr-launch-food span:nth-child(9){right:20%;top:72%;transform:rotate(19deg)}
+.tr-launch-food span:nth-child(10){left:8%;top:84%}
+.tr-launch-food span:nth-child(11){left:47%;top:80%;transform:rotate(13deg)}
+.tr-launch-food span:nth-child(12){right:8%;top:88%}
+.tr-launch-word{animation-delay:0s!important}
 </style>
 </head>
 <body class="booting">
 <div id="trLaunch" aria-label="TableRec opening screen">
+  <div class="tr-launch-food" aria-hidden="true"><span>&#127828;</span><span>&#127829;</span><span>&#127790;</span><span>&#127843;</span><span>&#127836;</span><span>&#127839;</span><span>&#127846;</span><span>&#9749;</span><span>&#127849;</span><span>&#129374;</span><span>&#127837;</span><span>&#127830;</span></div>
   <div class="tr-launch-inner">
-    <div class="tr-launch-mark" role="img" aria-label="TableRec TR icon"></div>
+    
     <div class="tr-launch-word"><span class="tr-brand-wordmark" role="img" aria-label="TableRec"></span></div>
     <div class="tr-launch-values">FOOD. PEOPLE. OPINIONS. FUN.</div>
     <div class="tr-launch-dots" aria-hidden="true"><i></i><i></i><i></i></div>
@@ -11176,10 +11196,10 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.22";
+const TABLESCORE_VERSION="5.58.23";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Matching Brand and Readable Typography";
+const TABLESCORE_BUILD_LABEL="TableRec - Food Backdrop and Single Launch Logo";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
