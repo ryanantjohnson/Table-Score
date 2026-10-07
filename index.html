@@ -2229,9 +2229,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </div>
     <form class="home-people-search" role="search" aria-label="Find people" onsubmit="event.preventDefault();openHomePeopleSearch()">
       <svg aria-hidden="true" viewBox="0 0 24 24" width="22" height="22"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m16 16 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-      <input id="homePeopleSearch" type="search" placeholder="Find people" aria-label="Find people by name or username" autocomplete="off" autocapitalize="none">
+      <input id="homePeopleSearch" type="search" placeholder="Find people" aria-label="Find people by name or username" autocomplete="off" autocapitalize="none" oninput="queueHomePeopleSearch()">
       <button type="submit" aria-label="Search people">Search</button>
     </form>
+    <div id="homePeopleResults" class="card hidden" aria-live="polite" style="margin-bottom:16px"></div>
     <div class="home-people-head-end" style="display:none">
     </div>
 
@@ -3118,6 +3119,27 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 </div>
 
 <script>
+function tableRecRequestDeadline(task,ms=30000,message="The connection took too long. Please try again."){
+  let timer;
+  return Promise.race([Promise.resolve(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms);})]).finally(()=>clearTimeout(timer));
+}
+async function tableRecInvokeRestaurant(name,options){
+  const controller=new AbortController();
+  const ms=name==="where-to-eat"?45000:30000;
+  let timer;
+  try{
+    const result=await Promise.race([
+      db.functions.invoke(name,{...options,signal:controller.signal}),
+      new Promise((_,reject)=>{timer=setTimeout(()=>{controller.abort();reject(new Error("Restaurant search took too long. Please try again."));},ms);})
+    ]);
+    if(result.error){
+      let message="Restaurant search could not connect. Please try again.";
+      try{const response=await tableRecRequestDeadline(result.error.context?.json?.(),3000);if(response?.error)message=response.error;}catch{}
+      throw new Error(message);
+    }
+    return result;
+  }finally{clearTimeout(timer);}
+}
 const SUPABASE_URL="https://jyojnjkpwhwzgarfpepm.supabase.co";
 const SUPABASE_PUBLISHABLE_KEY="sb_publishable_bFyMfzpmPsBnQ2JpCeXVUQ_J-aKri3f";
 const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_PUBLISHABLE_KEY,{
@@ -4055,7 +4077,8 @@ function getTableRecBrowseCoords(){
         ? "Location access is blocked. Allow location for this browser, or choose a browsing area in Settings."
         : "Could not get your current location. Try again or choose a browsing area in Settings."));
     },{enableHighAccuracy:false,maximumAge:60000,timeout:8000});
-  }).finally(()=>{tableRecBrowseCoordsRequest=null;});
+  });
+  tableRecBrowseCoordsRequest=tableRecRequestDeadline(tableRecBrowseCoordsRequest,11000,"Location took too long. Allow location or choose a browsing area in Settings.").finally(()=>{tableRecBrowseCoordsRequest=null;});
   return tableRecBrowseCoordsRequest;
 }
 
@@ -4372,7 +4395,7 @@ async function searchExploreMapArea(){
   if(btn){btn.disabled=true;btn.textContent="Searching..."}
 
   try{
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{
       body:{
         mode:"nearby",
         latitude:center.lat(),
@@ -4654,7 +4677,7 @@ async function loadRestaurantPredictions(query){
     }
 
     // Reuse the hardened Google Places Edge Function already used by TableRec.
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{body});
     if(error)throw error;
     if(data?.error)throw new Error(data.error);
     if(seq!==restaurantPredictionSeq)return;
@@ -4956,7 +4979,7 @@ async function searchRestaurantsAnywhere(){
       body.longitude=coords.longitude;
     }
 
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{body});
     if(error)throw error;
     if(data?.error)throw new Error(data.error);
 
@@ -5008,7 +5031,7 @@ async function loadNearbyRestaurants(forceFresh=false){
       }
     }
 
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{
       body:{
         mode:"nearby",
         latitude:coords.latitude,
@@ -5166,7 +5189,7 @@ async function searchRestaurantMapArea(){
   const btn=document.querySelector("#restaurantMapPanel .primary");
   if(btn){btn.disabled=true;btn.textContent="Searching..."}
   try{
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:24140}});
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:24140}});
     if(error)throw error;if(data?.error)throw new Error(data.error);
     nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
     clearRestaurantMapMarkers();mapSelectedRestaurant=null;
@@ -8575,7 +8598,7 @@ async function searchRestaurantCleanupMatches(){
       body.longitude=coords.longitude;
     }
 
-    const {data,error}=await db.functions.invoke("nearby-restaurants",{body});
+    const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{body});
     if(error)throw error;
     if(data?.error)throw new Error(data.error);
 
@@ -9386,9 +9409,28 @@ function peopleRowMarkup(u,{showMutual=false}={}){
 }
 
 let homePeopleSearchTimer=null;
+let homePeopleSearchSequence=0;
 function queueHomePeopleSearch(){
   clearTimeout(homePeopleSearchTimer);
-  if((document.getElementById("homePeopleSearch")?.value||"").trim().length>=2)homePeopleSearchTimer=setTimeout(openHomePeopleSearch,500);
+  const seq=++homePeopleSearchSequence;
+  const q=(document.getElementById("homePeopleSearch")?.value||"").trim().replace(/^@/,"");
+  const out=document.getElementById("homePeopleResults");
+  if(!out)return;
+  if(q.length<2){out.classList.add("hidden");out.innerHTML="";return;}
+  out.classList.remove("hidden");
+  out.innerHTML='<div class="muted">Finding people...</div>';
+  homePeopleSearchTimer=setTimeout(()=>searchHomePeople(q,seq),220);
+}
+async function searchHomePeople(q,seq){
+  const out=document.getElementById("homePeopleResults");
+  try{
+    if(!currentUser){if(seq===homePeopleSearchSequence)out.innerHTML='<div class="muted">Sign in to find people.</div>';return;}
+    let {data,error}=await tableRecRequestDeadline(db.rpc("search_people_predictive",{p_query:q,p_limit:8}),12000);
+    if(error){const fallback=await tableRecRequestDeadline(db.rpc("search_people_by_username",{p_query:q.toLowerCase()}),12000);data=fallback.data;error=fallback.error;}
+    if(seq!==homePeopleSearchSequence)return;
+    if(error)throw error;
+    out.innerHTML=data?.length?data.slice(0,8).map(u=>peopleRowMarkup(u)).join(""):'<div class="muted">No people found. Try another name or username.</div>';
+  }catch(err){if(seq===homePeopleSearchSequence)out.innerHTML='<div class="muted">People search could not load. Please try again.</div>';}
 }
 function openHomePeopleSearch(){
   clearTimeout(homePeopleSearchTimer);
@@ -10679,7 +10721,7 @@ async function loadWhereEatPool(cuisine=""){
   const cacheKey=[coords.latitude.toFixed(3),coords.longitude.toFixed(3),whereEatRadius,cuisine].join(":");
   const saved=whereEatSearchCache.get(cacheKey);
   if(saved&&Date.now()-saved.at<300000)return saved.rows;
-  const {data,error}=await db.functions.invoke("where-to-eat",{body:{
+  const {data,error}=await tableRecInvokeRestaurant("where-to-eat",{body:{
     latitude:coords.latitude,
     longitude:coords.longitude,
     radiusMiles:whereEatRadius,
@@ -11304,7 +11346,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.25";
+const TABLESCORE_VERSION="5.58.26";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Return to Rating from Restaurant";
