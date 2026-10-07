@@ -2159,6 +2159,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 .where-eat-sheet .tr-modal-scroll{min-height:0;flex:1 1 auto}
 .where-eat-sheet.where-result-focus{padding-bottom:0}
 .where-eat-sheet.where-result-focus #whereEatSpinBtn{margin-bottom:0}
+/* V5.58.27 - verification windows and notification header stay inside the viewport. */
+:is(#chefsTableModal,#chefsTableAdminModal){z-index:21000!important;place-items:center!important}
+:is(#chefsTableModal,#chefsTableAdminModal)>.sheet{background:var(--sheetBg);color:var(--ink);max-height:88dvh;overflow-y:auto;overscroll-behavior:contain}
+:is(#chefsTableModal,#chefsTableAdminModal) .modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:-20px;background:var(--sheetBg);padding:12px 0;z-index:2}
+:is(#chefsTableModal,#chefsTableAdminModal,#notificationsModal) .tr-close-control{position:static!important;inset:auto!important;transform:none!important;width:auto!important;min-height:44px;height:auto!important;padding:9px 14px!important;flex-shrink:0}
+#notificationsModal .notifications-sheet>.section-head{position:sticky;top:-20px;background:var(--sheetBg);padding:10px 0;z-index:2;align-items:center}
+#homePeopleSuggestions .row{flex-wrap:wrap}
 </style>
 </head>
 <body class="booting">
@@ -2233,6 +2240,10 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <button type="submit" aria-label="Search people">Search</button>
     </form>
     <div id="homePeopleResults" class="card hidden" aria-live="polite" style="margin-bottom:16px"></div>
+    <div id="homePeopleSuggestionsWrap" class="card hidden" style="margin-bottom:16px">
+      <div class="section-head"><div class="section-title" style="font-size:18px">Suggested Friends</div><button class="secondary" style="width:auto;padding:8px 12px" onclick="openPeopleFinder()">See More</button></div>
+      <div id="homePeopleSuggestions" class="list" style="margin-top:10px"></div>
+    </div>
     <div class="home-people-head-end" style="display:none">
     </div>
 
@@ -6191,6 +6202,7 @@ function closeRatingDetail(){
   modal.classList.remove("tr-enter","rating-detail-entering");
   activeRatingDetailId=null;
   activeRatingRestaurantId=null;
+  notificationCommentTarget=null;
   unlockBackgroundScroll();
 }
 
@@ -6241,7 +6253,7 @@ async function loadRatingComments(ratingId){
     list.innerHTML=comments.map(c=>{
       const p=peopleMap.get(c.user_id);
       const own=!!currentUser&&c.user_id===currentUser.id;
-      return `<div class="comment-item">
+      return `<div id="rating-comment-${esc(c.id)}" class="comment-item" tabindex="-1">
         <button onclick="closeRatingDetail();${own?"showScreen('profile')":`openPublicProfile('${c.user_id}')`}" style="padding:0;border:0;background:none">${avatarMarkup(p,32)}</button>
         <div class="comment-body">
           <div style="display:flex;align-items:center;gap:6px">
@@ -6274,6 +6286,16 @@ async function loadRatingComments(ratingId){
     composer.innerHTML='<button class="secondary" style="margin-top:10px" onclick="closeRatingDetail();openAccount()">Sign in to comment</button>';
   }
 
+  if(notificationCommentTarget?.ratingId===ratingId){
+    const target=notificationCommentTarget;
+    notificationCommentTarget=null;
+    const comment=target.commentId?document.getElementById("rating-comment-"+target.commentId):null;
+    (comment||list).scrollIntoView({behavior:"smooth",block:"center"});
+    if(comment)comment.focus({preventScroll:true});
+    else if(target.commentId&&!comments?.some(c=>c.id===target.commentId)){
+      list.insertAdjacentHTML("afterbegin",'<div class="muted" style="padding:8px 0">The linked comment is unavailable or outside the loaded comments. You can still view the rating and its discussion.</div>');
+    }
+  }
   // Engagement is enhancement-only. Comments are already rendered above.
   void hydrateRatingEngagement([ratingId]).catch(err=>console.warn("rating engagement hydration:",err));
   void hydrateCommentDigs((comments||[]).map(c=>c.id)).catch(err=>console.warn("comment dig hydration:",err));
@@ -6777,6 +6799,7 @@ function renderHomeEngagement(){
 
 
 async function loadFollowingFeed(){
+  void loadPeopleSuggestions(true);
   const el=document.getElementById("followingFeed");
   if(!el)return;
   if(!currentUser){
@@ -9443,6 +9466,7 @@ function openPeopleFinder(){
   const modal=document.getElementById("peopleFinderModal");
   if(!modal)return;
   modal.classList.remove("hidden");
+  void loadPeopleSuggestions();
   setTimeout(()=>document.getElementById("peopleSearch")?.focus(),120);
 }
 function closePeopleFinder(){
@@ -9517,9 +9541,9 @@ async function searchPeople(explicit=false){
 }
 
 
-async function loadPeopleSuggestions(){
-  const wrap=document.getElementById("peopleSuggestionsWrap");
-  const out=document.getElementById("peopleSuggestions");
+async function loadPeopleSuggestions(home=false){
+  const wrap=document.getElementById(home?"homePeopleSuggestionsWrap":"peopleSuggestionsWrap");
+  const out=document.getElementById(home?"homePeopleSuggestions":"peopleSuggestions");
   if(!wrap||!out)return;
 
   if(!currentUser||!profile?.username){
@@ -9542,7 +9566,7 @@ async function loadPeopleSuggestions(){
     return;
   }
 
-  out.innerHTML=data.map(u=>peopleRowMarkup(u,{showMutual:true})).join("");
+  out.innerHTML=data.slice(0,home?3:8).map(u=>peopleRowMarkup(u,{showMutual:true})).join("");
 }
 
 async function toggleFollow(userId,btn){
@@ -10253,6 +10277,9 @@ let tableScoreNotifications=[];
 let notificationPollTimer=null;
 let notificationsInitialized=false;
 
+function notificationDisplayText(value){
+  return String(value||"").replace(/New Chef['’]s Table application/gi,"New verification request").replace(/submitted an application for the Chef['’]s Table/gi,"submitted a verification request").replace(/Chef['’]s Table/gi,"Verified").replace(/TableScore/g,"TableRec");
+}
 function notificationIcon(type){
   if(type==="first_round_granted") return '<span aria-hidden="true" style="font-weight:950">1</span>';
   if(type==="chefs_table_approved") return '<span aria-hidden="true" style="font-weight:950;color:var(--gold)">V</span>';
@@ -10362,8 +10389,8 @@ function renderNotifications(){
       <div style="display:flex;gap:9px;align-items:flex-start">
         <div style="font-size:21px">${notificationIcon(n.type)}</div>
         <div style="min-width:0;flex:1">
-          <div class="notification-title">${esc(n.title||"TableRec")}</div>
-          <div class="notification-body">${esc(n.body||"")}</div>
+          <div class="notification-title">${esc(notificationDisplayText(n.title||"TableRec"))}</div>
+          <div class="notification-body">${esc(notificationDisplayText(n.body))}</div>
           <div class="notification-time">${notificationAge(n.created_at)}</div>
         </div>
       </div>
@@ -10408,53 +10435,58 @@ function closeNotifications(){
   unlockBackgroundScroll();
 }
 
+let notificationCommentTarget=null;
 async function openNotification(id){
+  if(!currentUser)return openAccount();
   const n=tableScoreNotifications.find(x=>x.id===id);
-  if(!n)return;
+  if(!n)return alert("This notification is no longer available.");
+  // Marking read must never block opening the notification's destination.
   if(!n.is_read){
-    const {error}=await db.from("notifications").update({is_read:true}).eq("id",id).eq("user_id",currentUser.id);
-    if(!error){
-      n.is_read=true;
-      updateNotificationBadge();
-      renderNotifications();
+    try{
+      const {error}=await db.from("notifications").update({is_read:true}).eq("id",id).eq("user_id",currentUser.id);
+      if(!error){n.is_read=true;updateNotificationBadge();renderNotifications();}
+    }catch(err){console.warn("Notification read state:",err);}
+  }
+  const type=String(n.type||"").toLowerCase().replace(/[-\s]+/g,"_");
+  const meta=n.metadata||{};
+  closeNotifications();
+  try{
+    if(type==="chefs_table_application"){
+      if(isOGAccount())await openChefsTableAdmin(meta.application_id||null);
+      else{showScreen("profile");openSettings();await loadChefsTableStatus();document.getElementById("chefsTableApplyCard")?.scrollIntoView({block:"nearest"});}
+      return;
     }
-  }
-
-  const notificationType=String(n.type||"").toLowerCase().replace(/[-\s]+/g,"_");
-  if(["follow_request","followrequest"].includes(notificationType)){
-    closeNotifications();
-    await showFollowRequests();
-    return;
-  }
-
-  // Public-account follows are accepted immediately. Any notification whose
-  // purpose is "you have a new follower" opens the Followers list so the owner
-  // can immediately see who followed them and open that person's profile.
-  if([
-    "new_follower","new_follow","follow","follower",
-    "follow_accepted","followaccepted","follow_accept","followed_you"
-  ].includes(notificationType)){
-    closeNotifications();
-    await openConnectionsFor(currentUser.id,"followers","Your");
-    return;
-  }
-
-  if(n.type==="comment_mention"&&n?.metadata?.rating_id){
-    const ratingId=n.metadata.rating_id;
-    closeNotifications();
-    await openRatingDetail(ratingId);
-    setTimeout(()=>{
-      document.getElementById("ratingDetailComments")?.scrollIntoView({behavior:"smooth",block:"center"});
-    },180);
-    return;
-  }
-
-  const rewardSlug=n?.metadata?.reward_slug||null;
-  if(n.type==="secret_reward"&&rewardSlug){
-    closeNotifications();
-    showScreen("profile");
-    setTimeout(()=>openOwnBadgeFolder(rewardSlug),120);
-  }
+    if(["follow_request","followrequest"].includes(type)){await showFollowRequests();return;}
+    if(["follow_accepted","followaccepted","follow_accept"].includes(type)){
+      const target=meta.following_id;
+      if(target&&target!==currentUser.id)await openPublicProfile(target);
+      else await openConnectionsFor(currentUser.id,"following","Your");
+      return;
+    }
+    if(["new_follower","new_follow","follow","follower","followed_you"].includes(type)){
+      const target=meta.follower_id;
+      if(target&&target!==currentUser.id)await openPublicProfile(target);
+      else await openConnectionsFor(currentUser.id,"followers","Your");
+      return;
+    }
+    if(meta.rating_id){
+      const comments=!!meta.comment_id||["rating_comment","comment_mention","comment_dig"].includes(type);
+      notificationCommentTarget=comments?{ratingId:meta.rating_id,commentId:meta.comment_id||null}:null;
+      await openRatingDetail(meta.rating_id);
+      return;
+    }
+    if(type==="secret_reward"||meta.reward_slug){
+      showScreen("profile");await openOwnBadgeFolder(meta.reward_slug||"");return;
+    }
+    if(["first_round_granted","chefs_table_approved","account_mark_revoked"].includes(type)||meta.mark_type){
+      showScreen("profile");renderProfile();openSettings();document.getElementById("accountMarksSettingsCard")?.scrollIntoView({block:"nearest"});return;
+    }
+    if(meta.report_id&&isOGAccount()){await trOpenModeration();return;}
+    const target=meta.actor_id||meta.author_id||meta.applicant_user_id||meta.profile_id;
+    if(target){if(target===currentUser.id)showScreen("profile");else await openPublicProfile(target);return;}
+    // Informational and future notification types always have a readable action.
+    alert(notificationDisplayText(n.title||"TableRec")+"\n\n"+notificationDisplayText(n.body||"No additional details are available."));
+  }catch(err){console.error("Notification destination:",err);alert("This item could not open. It may no longer be available. Please try again.");}
 }
 
 async function markAllNotificationsRead(){
@@ -10504,7 +10536,8 @@ async function requestBrowserNotifications(){
 function showBrowserNotification(n){
   if(!("Notification" in window) || Notification.permission!=="granted")return;
   try{
-    new Notification(n.title||"TableRec",{body:n.body||"",tag:"tablescore-"+n.id});
+    const notice=new Notification(notificationDisplayText(n.title||"TableRec"),{body:notificationDisplayText(n.body),tag:"tablescore-"+n.id});
+    notice.onclick=()=>{window.focus();notice.close();void openNotification(n.id);};
   }catch(e){
     console.warn("Browser notification unavailable:",e);
   }
@@ -11314,28 +11347,34 @@ async function loadChefsTableStatus(){
     status.textContent="This verification request was not approved.";
   }
 }
-async function openChefsTableAdmin(){
+async function openChefsTableAdmin(applicationId=null){
   if(!isOGAccount())return;
   const modal=document.getElementById("chefsTableAdminModal");
   const list=document.getElementById("chefsTableAdminList");
   modal.classList.remove("hidden");
-  list.innerHTML='<div class="muted">Loadingâ¦</div>';
+  list.innerHTML='<div class="muted">Loading...</div>';
+  try{
   const {data,error}=await db.rpc("get_chefs_table_applications");
   if(error){console.error(error);list.innerHTML='<div class="muted">Could not load applications.</div>';return;}
   if(!data?.length){list.innerHTML='<div class="muted">No applications waiting.</div>';return;}
-  list.innerHTML=data.map(a=>`<div class="card" style="margin-bottom:10px">
-    <strong>${escapeHtml(a.creator_name||"Creator")}</strong>
-    <div class="muted" style="font-size:11px;margin-top:4px">${escapeHtml(a.platform||"")} - ${escapeHtml(a.profile_url||"")}</div>
-    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.market||"")} - ${Number(a.followers||0).toLocaleString()} followers</div>
-    <div style="font-size:12px;margin-top:7px">${escapeHtml(a.notes||"")}</div>
-    <div style="font-size:12px;margin-top:8px">Verification code: <strong>${escapeHtml(a.verification_code)}</strong></div>
-    <div class="muted" style="font-size:10px;margin-top:3px">Status: ${escapeHtml(a.status)}</div>
+  list.innerHTML=data.map(a=>`<div id="verification-request-${esc(a.id)}" class="card" tabindex="-1" style="margin-bottom:10px">
+    <strong>${esc(a.creator_name||"Creator")}</strong>
+    <div class="muted" style="font-size:11px;margin-top:4px">${esc(a.platform||"")} - ${esc(a.profile_url||"")}</div>
+    <div style="font-size:12px;margin-top:7px">${esc(a.market||"")} - ${Number(a.followers||0).toLocaleString()} followers</div>
+    <div style="font-size:12px;margin-top:7px">${esc(a.notes||"")}</div>
+    <div style="font-size:12px;margin-top:8px">Verification code: <strong>${esc(a.verification_code)}</strong></div>
+    <div class="muted" style="font-size:10px;margin-top:3px">Status: ${esc(a.status)}</div>
     <div class="mark-admin-actions">
       <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','verify')">Confirm Identity</button>
       <button class="mark-admin-btn active" onclick="reviewChefApplication('${a.id}','approve')">Grant Verified</button>
       <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','deny')">Deny</button>
     </div>
   </div>`).join("");
+  if(applicationId){
+    const card=document.getElementById("verification-request-"+applicationId);
+    if(card){card.scrollIntoView({block:"nearest"});card.focus({preventScroll:true});}
+  }
+  }catch(err){console.error("Verification requests:",err);list.innerHTML='<div class="muted">Could not load verification requests. Close and try again.</div>';}
 }
 async function reviewChefApplication(id,action){
   if(!isOGAccount())return;
@@ -11346,7 +11385,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.26";
+const TABLESCORE_VERSION="5.58.27";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Return to Rating from Restaurant";
@@ -11403,7 +11442,7 @@ function renderMarkAdminControls(targetUserId,marks=[]){
   const f=document.getElementById("grantFirstRoundBtn");
   const hasT=marks.includes("chefs_table");
   const hasF=marks.includes("first_round");
-  t.textContent=hasT?"Revoke Chef's Table":"Grant Verified";
+  t.textContent=hasT?"Revoke Verified":"Grant Verified";
   f.textContent=hasF?"Revoke First Round":"Grant First Round";
   t.classList.toggle("active",hasT);
   f.classList.toggle("active",hasF);
@@ -11571,13 +11610,13 @@ if(document.readyState==="loading"){
 
 
 <div id="chefsTableModal" class="modal hidden">
-  <div class="modal-card" style="max-height:88vh;overflow:auto">
+  <div class="sheet" style="max-height:88dvh;overflow:auto">
     <div class="modal-head">
       <div>
         <div class="section-title">Request Verification</div>
         <div class="muted" style="font-size:11px;margin-top:3px">Verification is required before approval.</div>
       </div>
-      <button class="tr-close-control icon-btn" onclick="closeChefsTableApplication()">â</button>
+      <button class="tr-close-control icon-btn" onclick="closeChefsTableApplication()" aria-label="Close verification request">Close</button>
     </div>
     <label>Creator / public name</label>
     <input id="ctCreatorName" placeholder="Name people know you by">
@@ -11595,14 +11634,14 @@ if(document.readyState==="loading"){
     <label>Approximate followers</label>
     <input id="ctFollowers" type="number" min="0" inputmode="numeric" placeholder="Optional">
     <label>Tell us about your food content</label>
-    <textarea id="ctNotes" rows="4" placeholder="What do you cover and why should you have a seat at the Chef's Table?"></textarea>
+    <textarea id="ctNotes" rows="4" placeholder="Tell us about your public work and why your account should be Verified."></textarea>
     <button class="primary" style="width:100%;margin-top:12px" onclick="submitChefsTableApplication()">Submit Application</button>
   </div>
 </div>
 
 
 <div id="chefsTableAdminModal" class="modal hidden">
-  <div class="modal-card" style="max-height:88vh;overflow:auto">
+  <div class="sheet" style="max-height:88dvh;overflow:auto">
     <div class="modal-head">
       <div class="section-title">Verification Requests</div>
       <button class="tr-close-control icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
@@ -11693,13 +11732,13 @@ if(document.readyState==="loading"){
 </div>
 
 <div id="notificationsModal" class="modal hidden" onclick="if(event.target===this)closeNotifications()">
-  <button class="tr-close-control secondary notifications-floating-close" onclick="closeNotifications()">Close</button>
   <div class="sheet notifications-sheet">
     <div class="section-head">
       <div>
         <div class="section-title">Notifications</div>
         <div class="muted" style="font-size:10px;margin-top:2px">Your TableRec activity and account distinctions.</div>
       </div>
+      <button class="tr-close-control secondary" onclick="closeNotifications()">Close</button>
     </div>
     <div id="notificationsList" class="notification-list"></div>
   </div>
