@@ -2166,6 +2166,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 :is(#chefsTableModal,#chefsTableAdminModal,#notificationsModal) .tr-close-control{position:static!important;inset:auto!important;transform:none!important;width:auto!important;min-height:44px;height:auto!important;padding:9px 14px!important;flex-shrink:0}
 #notificationsModal .notifications-sheet>.section-head{position:sticky;top:-20px;background:var(--sheetBg);padding:10px 0;z-index:2;align-items:center}
 #homePeopleSuggestions .row{flex-wrap:wrap}
+/* V5.58.28 - signup fields scroll independently of the always-reachable action. */
+#accountModal{height:var(--tr-account-viewport-height,100dvh);top:var(--tr-account-viewport-top,0px);bottom:auto;box-sizing:border-box;overflow:hidden;place-items:center!important}
+#accountModal>.account-sheet{display:flex;flex-direction:column;min-height:0;max-height:100%;overflow:hidden;padding:0!important;background:var(--sheetBg);color:var(--ink)}
+.account-scroll{min-height:0;overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;padding:18px;scroll-padding-block:16px;flex:1 1 auto}
+.account-action-footer{flex:0 0 auto;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--sheetBg);border-top:1px solid var(--line)}
+.account-action-footer .account-primary{margin:0;min-height:48px}
+@media(max-height:500px){#accountModal{padding:6px}.account-scroll{padding:12px 16px}.account-scroll .account-head{margin-bottom:8px}.account-action-footer{padding:8px 16px}.account-scroll .account-tagline{display:none}}
 </style>
 </head>
 <body class="booting">
@@ -3084,6 +3091,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 <div id="accountModal" class="modal hidden">
   <div class="sheet account-sheet">
+    <div class="account-scroll">
     <div class="account-head">
       <div class="account-brand"><span class="tr-brand-wordmark" role="img" aria-label="TableRec"></span></div>
       <div class="account-tagline">Rate it. Remember it. Find your next favorite.</div>
@@ -3116,7 +3124,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <div id="accountLegalConsent" class="account-signup-only hidden tr-legal-consent">
       <label><input id="acctLegalAccepted" type="checkbox"> <span>I am at least 13 and meet the age requirements in the Terms. I agree to the <a href="legal.html#terms" target="_blank" rel="noopener">Terms of Service &amp; Community Rules</a> and acknowledge the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
     </div>
-    <button id="accountPrimaryBtn" class="primary account-primary" onclick="submitAccountMode()">Sign In</button>
 
     <div class="account-switch">
       <span id="accountSwitchPrompt">New to TableRec?</span>
@@ -3126,10 +3133,26 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <button class="secondary account-guest" onclick="closeAccount()">Continue as Guest</button>
     <div class="account-privacy-note">Guests can browse. An account is required to rate, save, follow, comment, or react.</div>
     <div class="tr-account-legal"><a href="legal.html#privacy" target="_blank" rel="noopener">Privacy</a> &middot; <a href="legal.html#terms" target="_blank" rel="noopener">Terms</a> &middot; <a href="mailto:tablerechelp@gmail.com">Support</a></div>
+    </div>
+    <div class="account-action-footer">
+      <button id="accountPrimaryBtn" class="primary account-primary" onclick="submitAccountMode()">Sign In</button>
+    </div>
   </div>
 </div>
 
 <script>
+function tableRecSyncAccountViewport(){
+  const modal=document.getElementById("accountModal");
+  if(!modal)return;
+  const viewport=window.visualViewport;
+  const height=viewport?.height||window.innerHeight;
+  if(Number.isFinite(height)&&height>0)modal.style.setProperty("--tr-account-viewport-height",height+"px");
+  modal.style.setProperty("--tr-account-viewport-top",(viewport?.offsetTop||0)+"px");
+}
+window.visualViewport?.addEventListener("resize",tableRecSyncAccountViewport);
+window.visualViewport?.addEventListener("scroll",tableRecSyncAccountViewport);
+window.addEventListener("resize",tableRecSyncAccountViewport);
+
 function tableRecRequestDeadline(task,ms=30000,message="The connection took too long. Please try again."){
   let timer;
   return Promise.race([Promise.resolve(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms);})]).finally(()=>clearTimeout(timer));
@@ -5310,6 +5333,7 @@ function openAccount(cb){
   setAccountMode("signin");
   const legalCheck=document.getElementById("acctLegalAccepted");if(legalCheck)legalCheck.checked=false;
   document.getElementById("accountModal").classList.remove("hidden");
+  tableRecSyncAccountViewport();
   setTimeout(()=>document.getElementById("acctEmail")?.focus(),80);
 }
 
@@ -9692,7 +9716,7 @@ async function findOrCreateRestaurant(name){
       place_linked_at:new Date().toISOString()
     };
 
-    // If this real Google place already exists, refresh its metadata and reuse it.
+    // Rating an existing place must not require privileged metadata updates.
     const {data:byPlace,error:placeError}=await db.from("restaurants")
       .select("id,name")
       .eq("google_place_id",place.google_place_id)
@@ -9700,59 +9724,12 @@ async function findOrCreateRestaurant(name){
     if(placeError)throw new Error("[restaurant lookup: Google Place ID] "+(placeError.message||"Unknown error"));
 
     if(byPlace){
-      const {data:updated,error:updateError}=await db.rpc("link_restaurant_google_place",{
-        p_restaurant_id:byPlace.id,
-        p_google_place_id:place.google_place_id,
-        p_address:realFields.address,
-        p_formatted_address:realFields.formatted_address,
-        p_city:realFields.city,
-        p_state_region:realFields.state_region,
-        p_postal_code:realFields.postal_code,
-        p_latitude:realFields.latitude,
-        p_longitude:realFields.longitude,
-        p_google_primary_type:realFields.google_primary_type,
-        p_google_primary_type_name:realFields.google_primary_type_name,
-        p_google_maps_url:realFields.google_maps_url
-      });
-      if(updateError)throw new Error("[restaurant link: existing Google restaurant] "+(updateError.message||"Unknown error"));
-      const row=Array.isArray(updated)?updated[0]:updated;
-      return row||byPlace;
+      return byPlace;
     }
 
-    // If an older manually-created TableRec row has the same exact name,
-    // attach the Google identity instead of creating a duplicate.
-    const {data:legacyRows,error:legacyError}=await db.from("restaurants")
-      .select("id,name,city,google_place_id")
-      .ilike("name",clean)
-      .is("google_place_id",null)
-      .limit(10);
-    if(legacyError)throw new Error("[restaurant lookup: legacy match] "+(legacyError.message||"Unknown error"));
-
-    const legacy=(legacyRows||[]).find(r=>{
-      if(!place.city)return true;
-      return !r.city || String(r.city).trim().toLowerCase()===String(place.city).trim().toLowerCase();
-    });
-
-    if(legacy){
-      const {data:linked,error:linkError}=await db.rpc("link_restaurant_google_place",{
-        p_restaurant_id:legacy.id,
-        p_google_place_id:place.google_place_id,
-        p_address:realFields.address,
-        p_formatted_address:realFields.formatted_address,
-        p_city:realFields.city,
-        p_state_region:realFields.state_region,
-        p_postal_code:realFields.postal_code,
-        p_latitude:realFields.latitude,
-        p_longitude:realFields.longitude,
-        p_google_primary_type:realFields.google_primary_type,
-        p_google_primary_type_name:realFields.google_primary_type_name,
-        p_google_maps_url:realFields.google_maps_url
-      });
-      if(linkError)throw new Error("[restaurant link: legacy restaurant] "+(linkError.message||"Unknown error"));
-      const row=Array.isArray(linked)?linked[0]:linked;
-      return row||legacy;
-    }
-
+    // Only the authenticated creation RPC resolves a new Google identity.
+    // A name/city similarity is not sufficient proof to relink a legacy row.
+    // Existing legacy ratings are untouched; linking remains an admin workflow.
     const {data:createdRows,error:createError}=await db.rpc("create_google_restaurant",{
       p_name:clean,
       p_google_place_id:place.google_place_id,
@@ -11385,10 +11362,10 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.27";
+const TABLESCORE_VERSION="5.58.28";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Return to Rating from Restaurant";
+const TABLESCORE_BUILD_LABEL="TableRec - Rating Access and Mobile Signup";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
