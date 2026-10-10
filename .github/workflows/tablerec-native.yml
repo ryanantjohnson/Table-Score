@@ -2,6 +2,11 @@ name: TableRec Native Builds
 
 on:
   workflow_dispatch:
+    inputs:
+      build_play_bundle:
+        description: 'Build signed Android AAB for Google Play (requires signing secrets)'
+        type: boolean
+        default: false
   push:
     branches: [main]
     paths:
@@ -284,6 +289,74 @@ jobs:
           print('Android system launch screen uses approved orange and app icon.')
           PYTHON
 
+
+      - name: Build and sign Google Play bundle
+        if: matrix.platform == 'Android' && github.event_name == 'workflow_dispatch' && inputs.build_play_bundle
+        working-directory: native/android
+        shell: bash
+        env:
+          TR_KEYSTORE_BASE64: ${{ secrets.TABLEREC_UPLOAD_KEYSTORE_BASE64 }}
+          TR_STORE_PASSWORD: ${{ secrets.TABLEREC_UPLOAD_STORE_PASSWORD }}
+          TR_KEY_PASSWORD: ${{ secrets.TABLEREC_UPLOAD_KEY_PASSWORD }}
+          TR_KEY_ALIAS: ${{ secrets.TABLEREC_UPLOAD_KEY_ALIAS }}
+          TR_RUN_NUMBER: ${{ github.run_number }}
+        run: |
+          set -euo pipefail
+          for variable in TR_KEYSTORE_BASE64 TR_STORE_PASSWORD TR_KEY_PASSWORD TR_KEY_ALIAS; do
+            if [ -z "${!variable}" ]; then
+              echo "Missing signing secret for $variable. Configure repository Actions secrets first."
+              exit 1
+            fi
+          done
+          umask 077
+          TR_KEYSTORE_PATH="$RUNNER_TEMP/tablerec-upload.jks"
+          export TR_KEYSTORE_PATH
+          trap 'rm -f "$TR_KEYSTORE_PATH"' EXIT
+          python3 - <<'PYTHON'
+          import base64, os
+          from pathlib import Path
+          Path(os.environ['TR_KEYSTORE_PATH']).write_bytes(base64.b64decode(os.environ['TR_KEYSTORE_BASE64'], validate=True))
+          # A growing version code allows later uploads of this workflow's bundles.
+          path = Path('app/build.gradle')
+          source = path.read_text()
+          import re
+          code = 1000 + int(os.environ['TR_RUN_NUMBER'])
+          source, count = re.subn(r'(?m)^(\s*)versionCode\s+\d+\s*$', lambda m: m[1] + 'versionCode ' + str(code), source)
+          if count != 1:
+              raise RuntimeError('Expected exactly one Android versionCode.')
+          path.write_text(source)
+          print('Android version code:', code)
+          PYTHON
+          chmod +x gradlew
+          ./gradlew --no-daemon bundleRelease
+          mkdir -p ../play-release
+          cp app/build/outputs/bundle/release/app-release.aab ../play-release/TableRec-Google-Play.aab
+          jarsigner -keystore "$TR_KEYSTORE_PATH" \
+            -storepass:env TR_STORE_PASSWORD -keypass:env TR_KEY_PASSWORD \
+            -sigalg SHA256withRSA -digestalg SHA-256 \
+            ../play-release/TableRec-Google-Play.aab "$TR_KEY_ALIAS"
+          jarsigner -verify ../play-release/TableRec-Google-Play.aab
+          python3 - <<'PYTHON'
+          import zipfile
+          with zipfile.ZipFile('../play-release/TableRec-Google-Play.aab') as bundle:
+              names = bundle.namelist()
+              assert 'BundleConfig.pb' in names
+              assert 'base/manifest/AndroidManifest.xml' in names
+              assert any(n.startswith('META-INF/') and n.endswith('.RSA') for n in names)
+          print('Signed Android App Bundle prepared. Google Play will validate it on upload.')
+          PYTHON
+          keytool -exportcert -rfc -keystore "$TR_KEYSTORE_PATH" \
+            -storepass:env TR_STORE_PASSWORD -alias "$TR_KEY_ALIAS" \
+            -file ../play-release/TableRec-Upload-Certificate.pem
+
+      - name: Save signed Google Play bundle
+        if: matrix.platform == 'Android' && github.event_name == 'workflow_dispatch' && inputs.build_play_bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: TableRec-Google-Play-Bundle
+          path: native/play-release/*
+          retention-days: 30
+          if-no-files-found: error
 
       - name: Build Android debug APK
         if: matrix.platform == 'Android'
