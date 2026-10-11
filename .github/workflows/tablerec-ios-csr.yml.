@@ -1,0 +1,85 @@
+name: TableRec iOS Signing Request
+
+# Save as .github/workflows/tablerec-ios-csr.yml.
+# Creates a new CSR and its password-encrypted private key.
+# No Apple API access is needed. Nothing is submitted to Apple.
+# Required Actions secret: TABLEREC_IOS_CERTIFICATE_PASSWORD.
+# Download and keep BOTH files from the SAME run.
+# The encrypted private key must later be saved as an Actions secret;
+# never commit a private key or password to this public repository.
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tablerec-ios-signing-request
+  cancel-in-progress: false
+
+jobs:
+  signing-request:
+    name: Create Apple signing request
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Generate CSR and encrypted private key
+        shell: bash
+        env:
+          TR_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
+        run: |
+          set -euo pipefail
+          umask 077
+          if [[ ${#TR_PASSWORD} -lt 16 ]]; then
+            echo 'Set TABLEREC_IOS_CERTIFICATE_PASSWORD to a strong saved password of at least 16 characters.'
+            exit 1
+          fi
+          TR_DIRECTORY="$RUNNER_TEMP/tablerec-signing"
+          mkdir -p "$TR_DIRECTORY/output"
+          trap 'rm -f "$TR_DIRECTORY/private-key.pem" "$TR_DIRECTORY/verified-public.pem" "$TR_DIRECTORY/csr-public.pem"' EXIT
+          openssl genpkey -algorithm RSA -pkeyopt rsa_keygen_bits:2048 \
+            -out "$TR_DIRECTORY/private-key.pem" 2>/dev/null
+          openssl req -new -sha256 -key "$TR_DIRECTORY/private-key.pem" \
+            -subj '/CN=Ryan Anthony Johnson/emailAddress=ryanantjohnson@gmail.com/C=US' \
+            -out "$TR_DIRECTORY/output/TableRec.certSigningRequest"
+          openssl pkcs8 -topk8 -v2 aes-256-cbc -v2prf hmacWithSHA256 -iter 600000 \
+            -in "$TR_DIRECTORY/private-key.pem" -passout env:TR_PASSWORD \
+            -out "$TR_DIRECTORY/output/TableRec-encrypted-private-key.txt"
+          openssl req -in "$TR_DIRECTORY/output/TableRec.certSigningRequest" -verify -noout
+          openssl pkey -in "$TR_DIRECTORY/output/TableRec-encrypted-private-key.txt" \
+            -passin env:TR_PASSWORD -pubout -out "$TR_DIRECTORY/verified-public.pem"
+          openssl req -in "$TR_DIRECTORY/output/TableRec.certSigningRequest" \
+            -pubkey -noout > "$TR_DIRECTORY/csr-public.pem"
+          cmp "$TR_DIRECTORY/verified-public.pem" "$TR_DIRECTORY/csr-public.pem"
+          echo 'CSR signature and matching encrypted private key verified.'
+
+      - name: Save signing request files
+        uses: actions/upload-artifact@v4
+        with:
+          name: TableRec-Signing-Request-${{ github.run_id }}
+          path: ${{ runner.temp }}/tablerec-signing/output/*
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Explain next step
+        shell: bash
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<'TEXT'
+          ## TableRec signing request ready
+
+          Download the artifact from this run and extract its ZIP in Files.
+
+          Upload **TableRec.certSigningRequest** to Apple Developer when creating the Apple Distribution certificate.
+
+          Keep **TableRec-encrypted-private-key.txt** and the saved certificate password. Both are required to use the certificate Apple issues. Do not send either to chat or commit either to the repository.
+
+          Every run creates a different key. Use the CSR and encrypted private key from the same run. Save them before the seven-day artifact retention expires.
+
+          This workflow creates files only. It does not create an Apple certificate, sign a build, or publish an app.
+          TEXT
+
+      - name: Remove temporary files
+        if: always()
+        shell: bash
+        run: rm -rf "$RUNNER_TEMP/tablerec-signing"
