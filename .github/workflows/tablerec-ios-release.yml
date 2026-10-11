@@ -1,0 +1,392 @@
+name: TableRec iOS Release
+
+# Add this as .github/workflows/tablerec-ios-release.yml.
+# Leave the existing tablerec-native.yml in place.
+# Default: unsigned physical-device archive for a build check only.
+# Signing requires three repository Actions secrets:
+# TABLEREC_IOS_CERTIFICATE_BASE64 (Apple Distribution .p12, including private key)
+# TABLEREC_IOS_CERTIFICATE_PASSWORD
+# TABLEREC_IOS_PROFILE_BASE64 (matching App Store .mobileprovision)
+# Upload additionally requires:
+# TABLEREC_APPLE_KEY_ID
+# TABLEREC_APPLE_ISSUER_ID
+# TABLEREC_APPLE_PRIVATE_KEY (full .p8 text, including BEGIN/END lines)
+# Never put secret values in this file or commit them to the repository.
+
+on:
+  workflow_dispatch:
+    inputs:
+      signed_release:
+        description: Build a signed App Store IPA (requires signing secrets)
+        type: boolean
+        default: false
+      upload_to_apple:
+        description: Upload signed IPA to App Store Connect (requires API secrets)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tablerec-ios-release
+  cancel-in-progress: false
+
+jobs:
+  ios:
+    name: Build TableRec for iPhone
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        shell: bash
+    env:
+      TR_TEAM_ID: X9NC4BRLJ7
+      TR_BUNDLE_ID: com.ryanantjohnson.tablerec
+      TR_VERSION: '1.0'
+      TR_BUILD_NUMBER: ${{ github.run_number }}.${{ github.run_attempt }}
+
+    steps:
+      - name: Check options and required secrets
+        env:
+          TR_SIGNED: ${{ inputs.signed_release }}
+          TR_UPLOAD: ${{ inputs.upload_to_apple }}
+          TR_CERT: ${{ secrets.TABLEREC_IOS_CERTIFICATE_BASE64 }}
+          TR_CERT_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
+          TR_PROFILE: ${{ secrets.TABLEREC_IOS_PROFILE_BASE64 }}
+          TR_KEY_ID: ${{ secrets.TABLEREC_APPLE_KEY_ID }}
+          TR_ISSUER: ${{ secrets.TABLEREC_APPLE_ISSUER_ID }}
+          TR_KEY: ${{ secrets.TABLEREC_APPLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ "$TR_UPLOAD" == true && "$TR_SIGNED" != true ]]; then
+            echo 'Enable signed_release before enabling upload_to_apple.'
+            exit 1
+          fi
+          if [[ "$TR_SIGNED" == true ]]; then
+            for variable in TR_CERT TR_CERT_PASSWORD TR_PROFILE; do
+              if [[ -z "${!variable}" ]]; then
+                echo "Missing signing secret: $variable. Complete signing setup first."
+                exit 1
+              fi
+            done
+          fi
+          if [[ "$TR_UPLOAD" == true ]]; then
+            for variable in TR_KEY_ID TR_ISSUER TR_KEY; do
+              if [[ -z "${!variable}" ]]; then
+                echo "Missing Apple upload secret: $variable. Complete API setup first."
+                exit 1
+              fi
+            done
+          fi
+
+      - name: Read repository
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - name: Prepare Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Check Xcode version
+        run: |
+          xcodebuild -version
+          python3 - <<'PY'
+          import subprocess
+          version = subprocess.check_output(['xcodebuild', '-version'], text=True)
+          major = int(version.splitlines()[0].split()[1].split('.')[0])
+          if major < 26:
+              raise SystemExit('Xcode 26 or newer is required for this iOS release.')
+          PY
+
+      - name: Install native dependencies and bundle web pages
+        working-directory: native
+        run: |
+          set -euo pipefail
+          if [[ -f package-lock.json ]]; then
+            npm ci --no-audit --no-fund
+          else
+            npm install --no-audit --no-fund
+          fi
+          node prepare-web.mjs
+
+      - name: Generate iOS project
+        working-directory: native
+        run: |
+          set -euo pipefail
+          if [[ ! -d ios ]]; then
+            npx cap add ios --packagemanager CocoaPods
+          fi
+          npx cap sync ios
+
+      - name: Prepare approved icon and splash
+        working-directory: native
+        run: |
+          set -euo pipefail
+          npm install --prefix build/branding-tools --no-save --no-package-lock --no-audit --no-fund sharp@0.34.5 @capacitor/assets@3.0.5
+          node <<'JS'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const sharp = require(path.resolve('build/branding-tools/node_modules/sharp'));
+          async function main() {
+            const html = fs.readFileSync('../index.html', 'utf8');
+            const extract = name => {
+              const match = html.match(new RegExp('--tr-' + name + ':url\\("data:image/webp;base64,([A-Za-z0-9+/=]+)"\\)'));
+              if (!match) throw Error('Missing approved embedded asset: ' + name);
+              return Buffer.from(match[1], 'base64');
+            };
+            const orange = '#f36f21';
+            fs.mkdirSync('assets', {recursive: true});
+            await sharp(extract('icon')).resize(1024,1024).flatten({background:orange}).png().toFile('assets/icon-only.png');
+            const mark = await sharp(extract('mark')).resize(620,620).png().toBuffer();
+            const wordmark = await sharp(extract('wordmark')).resize({width:1000}).png().toBuffer();
+            const splash = await sharp({create:{width:2732,height:2732,channels:3,background:orange}})
+              .composite([{input:mark,left:1056,top:846},{input:wordmark,left:866,top:1520}]).png().toBuffer();
+            fs.writeFileSync('assets/splash.png', splash);
+            fs.writeFileSync('assets/splash-dark.png', splash);
+            const icon = await sharp('assets/icon-only.png').metadata();
+            if (icon.width !== 1024 || icon.height !== 1024 || icon.hasAlpha) throw Error('Invalid iOS icon');
+          }
+          main().catch(error => { console.error(error); process.exit(1); });
+          JS
+          node build/branding-tools/node_modules/@capacitor/assets/bin/capacitor-assets generate --ios --iconBackgroundColor '#f36f21' --iconBackgroundColorDark '#f36f21' --splashBackgroundColor '#f36f21' --splashBackgroundColorDark '#f36f21'
+
+      - name: Configure foreground location explanation
+        working-directory: native
+        run: |
+          python3 - <<'PY'
+          import plistlib
+          import os
+          from pathlib import Path
+          path = Path('ios/App/App/Info.plist')
+          info = plistlib.loads(path.read_bytes())
+          info['CFBundleShortVersionString'] = os.environ['TR_VERSION']
+          info['CFBundleVersion'] = os.environ['TR_BUILD_NUMBER']
+          info['NSLocationWhenInUseUsageDescription'] = (
+              'TableRec uses your location while you use the app to find nearby '
+              'restaurants, choose RUN IT suggestions, and verify restaurant visits. '
+              'You can browse a selected area without sharing your location.'
+          )
+          if any(key in info for key in ['NSLocationAlwaysUsageDescription', 'NSLocationAlwaysAndWhenInUseUsageDescription']):
+              raise SystemExit('Unexpected always-location permission; review before building.')
+          if 'location' in info.get('UIBackgroundModes', []):
+              raise SystemExit('Unexpected background location mode; review before building.')
+          path.write_bytes(plistlib.dumps(info, sort_keys=False))
+          PY
+          plutil -lint ios/App/App/Info.plist
+
+      - name: Install distribution signing material
+        if: inputs.signed_release
+        env:
+          TR_CERT: ${{ secrets.TABLEREC_IOS_CERTIFICATE_BASE64 }}
+          TR_CERT_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
+          TR_PROFILE: ${{ secrets.TABLEREC_IOS_PROFILE_BASE64 }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PY'
+          import base64, os
+          from pathlib import Path
+          directory = Path(os.environ['RUNNER_TEMP'])
+          for variable, filename in [('TR_CERT','tablerec.p12'), ('TR_PROFILE','tablerec.mobileprovision')]:
+              value = ''.join(os.environ[variable].split())
+              (directory / filename).write_bytes(base64.b64decode(value, validate=True))
+          PY
+          TR_KEYCHAIN_PASSWORD=$(openssl rand -hex 32)
+          echo "::add-mask::$TR_KEYCHAIN_PASSWORD"
+          TR_KEYCHAIN_PATH="$RUNNER_TEMP/tablerec-signing.keychain-db"
+          security create-keychain -p "$TR_KEYCHAIN_PASSWORD" "$TR_KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$TR_KEYCHAIN_PATH"
+          security unlock-keychain -p "$TR_KEYCHAIN_PASSWORD" "$TR_KEYCHAIN_PATH"
+          security import "$RUNNER_TEMP/tablerec.p12" -P "$TR_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$TR_KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -k "$TR_KEYCHAIN_PASSWORD" "$TR_KEYCHAIN_PATH" >/dev/null
+          security list-keychains -d user -s "$TR_KEYCHAIN_PATH" "$HOME/Library/Keychains/login.keychain-db"
+          security cms -D -i "$RUNNER_TEMP/tablerec.mobileprovision" > "$RUNNER_TEMP/tablerec-profile.plist"
+          python3 - <<'PY'
+          import datetime, os, plistlib, shutil, subprocess, hashlib
+          from pathlib import Path
+          directory = Path(os.environ['RUNNER_TEMP'])
+          profile = plistlib.loads((directory / 'tablerec-profile.plist').read_bytes())
+          team, bundle = os.environ['TR_TEAM_ID'], os.environ['TR_BUNDLE_ID']
+          entitlements = profile['Entitlements']
+          if profile.get('TeamIdentifier') != [team]:
+              raise SystemExit('Signing profile belongs to a different team.')
+          if entitlements.get('application-identifier') != team + '.' + bundle:
+              raise SystemExit('Signing profile does not match TableRec bundle ID.')
+          if entitlements.get('get-task-allow') or profile.get('ProvisionedDevices') or profile.get('ProvisionsAllDevices'):
+              raise SystemExit('Expected an App Store distribution profile.')
+          if profile['ExpirationDate'] <= datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None):
+              raise SystemExit('Signing profile has expired.')
+          identities = subprocess.check_output(['security','find-identity','-v','-p','codesigning',str(directory/'tablerec-signing.keychain-db')], text=True)
+          fingerprints = [hashlib.sha1(cert).hexdigest().upper() for cert in profile['DeveloperCertificates']]
+          if not any(fingerprint in identities for fingerprint in fingerprints):
+              raise SystemExit('Profile and installed signing certificate do not match.')
+          uuid = profile['UUID']
+          for root in [Path.home()/'Library/MobileDevice/Provisioning Profiles', Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
+              root.mkdir(parents=True, exist_ok=True)
+              shutil.copyfile(directory/'tablerec.mobileprovision', root/(uuid+'.mobileprovision'))
+          with open(os.environ['GITHUB_ENV'],'a') as output:
+              output.write('TR_PROFILE_UUID='+uuid+'\n')
+          options = {'method':'app-store-connect','destination':'export','teamID':team,
+                     'signingStyle':'manual','signingCertificate':'Apple Distribution',
+                     'provisioningProfiles':{bundle:uuid}, 'manageAppVersionAndBuildNumber':False}
+          (directory/'tablerec-export.plist').write_bytes(plistlib.dumps(options))
+          PY
+
+      - name: Configure app target
+        working-directory: native
+        env:
+          TR_SIGNED: ${{ inputs.signed_release }}
+        run: |
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          app = project.targets.find { |target| target.name == 'App' }
+          abort 'Missing App target' unless app
+          app.build_configurations.each do |config|
+            settings = config.build_settings
+            settings['PRODUCT_BUNDLE_IDENTIFIER'] = ENV.fetch('TR_BUNDLE_ID')
+            settings['DEVELOPMENT_TEAM'] = ENV.fetch('TR_TEAM_ID')
+            settings['MARKETING_VERSION'] = ENV.fetch('TR_VERSION')
+            settings['CURRENT_PROJECT_VERSION'] = ENV.fetch('TR_BUILD_NUMBER')
+            settings['TARGETED_DEVICE_FAMILY'] = '1'
+            if ENV['TR_SIGNED'] == 'true'
+              settings['CODE_SIGN_STYLE'] = 'Manual'
+              settings['CODE_SIGN_IDENTITY'] = 'Apple Distribution'
+              settings['PROVISIONING_PROFILE_SPECIFIER'] = ENV.fetch('TR_PROFILE_UUID')
+            end
+          end
+          project.save
+          RUBY
+
+      - name: Archive for physical iPhone
+        working-directory: native
+        env:
+          TR_SIGNED: ${{ inputs.signed_release }}
+        run: |
+          set -euo pipefail
+          TR_SIGN_ARGS=()
+          if [[ "$TR_SIGNED" != true ]]; then
+            TR_SIGN_ARGS+=(CODE_SIGNING_ALLOWED=NO)
+          fi
+          xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
+            -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
+            -archivePath build/TableRec.xcarchive \
+            "${TR_SIGN_ARGS[@]}" archive
+          python3 - <<'PY'
+          import os, plistlib
+          from pathlib import Path
+          path = Path('build/TableRec.xcarchive/Products/Applications/App.app/Info.plist')
+          info = plistlib.loads(path.read_bytes())
+          expected = {'CFBundleIdentifier':os.environ['TR_BUNDLE_ID'],
+                      'CFBundleShortVersionString':os.environ['TR_VERSION'],
+                      'CFBundleVersion':os.environ['TR_BUILD_NUMBER']}
+          for key, value in expected.items():
+              if info.get(key) != value:
+                  raise SystemExit('Unexpected archive metadata: '+key)
+          if info.get('UIDeviceFamily') != [1]:
+              raise SystemExit('Expected an iPhone-only app.')
+          print('Archive bundle ID, version, build number and iPhone target verified.')
+          PY
+
+      - name: Export signed App Store IPA
+        if: inputs.signed_release
+        working-directory: native
+        run: |
+          set -euo pipefail
+          xcodebuild -exportArchive -archivePath build/TableRec.xcarchive \
+            -exportOptionsPlist "$RUNNER_TEMP/tablerec-export.plist" \
+            -exportPath build/release
+          mkdir -p release-artifacts
+          python3 - <<'PY'
+          from pathlib import Path
+          import shutil
+          files = list(Path('build/release').glob('*.ipa'))
+          if len(files) != 1:
+              raise SystemExit('Expected exactly one exported IPA.')
+          shutil.copyfile(files[0], 'release-artifacts/TableRec.ipa')
+          PY
+          codesign --verify --deep --strict build/TableRec.xcarchive/Products/Applications/App.app
+
+      - name: Save signed IPA
+        if: inputs.signed_release
+        uses: actions/upload-artifact@v4
+        with:
+          name: TableRec-iOS-Release-${{ github.run_id }}-${{ github.run_attempt }}
+          path: native/release-artifacts/TableRec.ipa
+          retention-days: 7
+          if-no-files-found: error
+
+      - name: Validate and upload to Apple
+        if: inputs.upload_to_apple
+        env:
+          TR_KEY_ID: ${{ secrets.TABLEREC_APPLE_KEY_ID }}
+          TR_ISSUER: ${{ secrets.TABLEREC_APPLE_ISSUER_ID }}
+          TR_KEY: ${{ secrets.TABLEREC_APPLE_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          umask 077
+          python3 - <<'PY'
+          import os, re
+          from pathlib import Path
+          key_id = os.environ['TR_KEY_ID'].strip()
+          if not re.fullmatch(r'[A-Z0-9]{10}', key_id):
+              raise SystemExit('Invalid Apple Key ID.')
+          key = os.environ['TR_KEY'].strip() + '\n'
+          if not key.startswith('-----BEGIN PRIVATE KEY-----') or '-----END PRIVATE KEY-----' not in key:
+              raise SystemExit('Apple private key secret must contain the complete .p8 text.')
+          folder = Path.home()/'.appstoreconnect/private_keys'
+          folder.mkdir(parents=True, exist_ok=True)
+          path = folder/('AuthKey_'+key_id+'.p8')
+          path.write_text(key)
+          path.chmod(0o600)
+          PY
+          xcrun altool --validate-app -f native/release-artifacts/TableRec.ipa -t ios \
+            --apiKey "$TR_KEY_ID" --apiIssuer "$TR_ISSUER"
+          xcrun altool --upload-app -f native/release-artifacts/TableRec.ipa -t ios \
+            --apiKey "$TR_KEY_ID" --apiIssuer "$TR_ISSUER"
+
+      - name: Record result
+        env:
+          TR_SIGNED: ${{ inputs.signed_release }}
+          TR_UPLOAD: ${{ inputs.upload_to_apple }}
+        run: |
+          python3 - <<'PY'
+          import os
+          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as report:
+              report.write('## TableRec iOS build passed\n\n')
+              report.write('Version '+os.environ['TR_VERSION']+', build '+os.environ['TR_BUILD_NUMBER']+'.\n\n')
+              if os.environ['TR_SIGNED'] == 'true':
+                  report.write('Signed App Store IPA saved in the run artifacts.\n\n')
+              else:
+                  report.write('Unsigned physical-iPhone archive compiled successfully. It cannot be installed or uploaded. Complete signing setup before running signed_release.\n\n')
+              if os.environ['TR_UPLOAD'] == 'true':
+                  report.write('Upload command completed. Apple processing must finish before the build appears in TestFlight. This workflow does not submit for App Review or publish the app.\n\n')
+              report.write('Real-device testing of authentication, photos and location remains required.\n')
+          PY
+
+      - name: Remove temporary signing material
+        if: always()
+        run: |
+          if [[ -f "$RUNNER_TEMP/tablerec-signing.keychain-db" ]]; then
+            security delete-keychain "$RUNNER_TEMP/tablerec-signing.keychain-db" || true
+          fi
+          python3 - <<'PY'
+          import os, plistlib
+          from pathlib import Path
+          directory = Path(os.environ['RUNNER_TEMP'])
+          profile = directory/'tablerec-profile.plist'
+          if profile.exists():
+              uuid = plistlib.loads(profile.read_bytes()).get('UUID')
+              if uuid:
+                  for root in [Path.home()/'Library/MobileDevice/Provisioning Profiles', Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
+                      (root/(uuid+'.mobileprovision')).unlink(missing_ok=True)
+          for filename in ['tablerec.p12','tablerec.mobileprovision','tablerec-profile.plist','tablerec-export.plist']:
+              (directory/filename).unlink(missing_ok=True)
+          folder = Path.home()/'.appstoreconnect/private_keys'
+          if folder.exists():
+              for path in folder.glob('AuthKey_*.p8'):
+                  path.unlink()
+          PY
