@@ -14,6 +14,132 @@ try{if(localStorage.getItem("tr_display_mode")==="dark"){
   document.querySelector('meta[name="theme-color"]').setAttribute("content","#100d0b");
 }}catch(e){}
 </script>
+<script>
+// Native bundles have a local origin. Keep the Maps key website-restricted by
+// rendering only the map surface on the existing HTTPS site, without auth data.
+const TABLE_REC_MAP_SURFACE = 'https://ryanantjohnson.github.io/Table-Score/map-surface.html';
+function tableRecUsesNativeMaps(){
+  return window.Capacitor?.isNativePlatform?.() || location.protocol === 'capacitor:' ||
+    (location.hostname === 'localhost' && ['http:','https:'].includes(location.protocol));
+}
+function tableRecNativeMaps(){
+  if(window.google?.maps?.tableRecNativeBridge)return window.google.maps;
+  let nextId=0;
+  const channels=new Map();
+  const surfaceOrigin=new URL(TABLE_REC_MAP_SURFACE).origin;
+  const point=p=>({lat:Number(typeof p.lat==='function'?p.lat():p.lat),lng:Number(typeof p.lng==='function'?p.lng():p.lng)});
+  const latLng=p=>({lat:()=>p.lat,lng:()=>p.lng});
+  window.addEventListener('message',event=>{
+    if(event.origin!==surfaceOrigin)return;
+    const msg=event.data, channel=channels.get(msg?.channel);
+    if(!channel || event.source!==channel.frame.contentWindow || msg.type!=='tablerec-map')return;
+    channel.receive(msg);
+  });
+  class NativeMap{
+    constructor(host,options={}){
+      host._tableRecMap?.dispose();
+      host._tableRecMap=this;
+      this.host=host;this.options=options;this.center=point(options.center||{lat:30.2672,lng:-97.7431});
+      this.zoom=options.zoom||13;this.markers=new Map();this.queue=[];this.pending=new Map();
+      this.channel=crypto.randomUUID();this.loaded=false;this.failed=false;
+      this.frame=document.createElement('iframe');
+      this.frame.title='Restaurant map';this.frame.style.cssText='display:block;width:100%;height:100%;border:0';
+      this.frame.referrerPolicy='strict-origin-when-cross-origin';
+      this.frame.src=TABLE_REC_MAP_SURFACE+'#'+this.channel;
+      this.ready=new Promise((resolve,reject)=>{this.resolve=resolve;this.reject=reject;});
+      // Each caller awaits ready; attach a handler to avoid early unhandled rejection.
+      this.ready.catch(()=>{});
+      this.timer=setTimeout(()=>this.fail('The map connection took too long. Close and reopen the map to retry.'),15000);
+      channels.set(this.channel,this);host.replaceChildren(this.frame);
+    }
+    send(command,payload={}){
+      if(this.failed)return;
+      const msg={type:'tablerec-map',channel:this.channel,command,...payload};
+      if(this.loaded)this.frame.contentWindow.postMessage(msg,surfaceOrigin);
+      else this.queue.push(msg);
+    }
+    receive(msg){
+      if(msg.event==='loaded'){
+        this.loaded=true;
+        this.send('init',{options:{...this.options,center:this.center}});
+        for(const m of this.queue)this.frame.contentWindow.postMessage(m,surfaceOrigin);
+        this.queue=[];
+      }else if(msg.event==='ready'){
+        clearTimeout(this.timer);this.resolve(this);
+      }else if(msg.event==='state'){
+        if(msg.center)this.center=msg.center;
+        if(Number.isFinite(msg.zoom))this.zoom=msg.zoom;
+        if(msg.requestId)this.finishRequest(msg.requestId,msg);
+      }else if(msg.event==='markerClick'){
+        this.markers.get(msg.id)?.listeners.forEach(fn=>fn());
+      }else if(msg.event==='geocoded')this.finishRequest(msg.requestId,msg);
+      else if(msg.event==='error')this.fail(msg.message||'Google Maps could not load.');
+    }
+    finishRequest(id,msg){
+      const p=this.pending.get(id);if(!p)return;
+      clearTimeout(p.timer);this.pending.delete(id);
+      if(msg.error)p.reject(new Error(msg.error));else p.resolve(msg);
+    }
+    fail(message){
+      if(this.failed)return;
+      this.failed=true;clearTimeout(this.timer);this.reject(new Error(message));
+      for(const p of this.pending.values()){clearTimeout(p.timer);p.reject(new Error(message));}
+      this.pending.clear();
+      this.host.replaceChildren();
+      const div=document.createElement('div');div.className='empty';div.style.padding='24px';
+      div.textContent='Map unavailable. '+message;this.host.append(div);
+    }
+    request(command,payload={}){
+      return this.ready.then(()=>new Promise((resolve,reject)=>{
+        const requestId=String(++nextId);
+        const timer=setTimeout(()=>{this.pending.delete(requestId);reject(new Error('The map took too long to respond.'));},10000);
+        this.pending.set(requestId,{resolve,reject,timer});this.send(command,{...payload,requestId});
+      }));
+    }
+    async syncState(){await this.request('state');}
+    getCenter(){return latLng(this.center);}
+    getZoom(){return this.zoom;}
+    setCenter(center){this.center=point(center);this.send('center',{center:this.center});}
+    setZoom(zoom){this.zoom=zoom;this.send('zoom',{zoom});}
+    dispose(){
+      this.fail('Map closed.');channels.delete(this.channel);this.frame.remove();
+    }
+  }
+  class NativeMarker{
+    constructor(options){
+      this.id=String(++nextId);this.options={...options};this.listeners=[];this.map=null;
+      if(options.map)this.setMap(options.map);
+    }
+    setMap(map){
+      if(this.map){this.map.send('removeMarker',{id:this.id});this.map.markers.delete(this.id);}
+      this.map=map;if(!map)return;
+      map.markers.set(this.id,this);
+      const {map:unused,...options}=this.options;
+      map.send('marker',{id:this.id,options:{...options,position:point(options.position)}});
+    }
+    setPosition(position){this.options.position=point(position);this.map?.send('markerPosition',{id:this.id,position:this.options.position});}
+    addListener(name,fn){if(name==='click')this.listeners.push(fn);return {remove:()=>{this.listeners=this.listeners.filter(f=>f!==fn);}};}
+  }
+  class NativeInfoWindow{
+    setContent(content){this.content=content;}
+    open({map,anchor}){map.send('info',{id:anchor?.id,content:this.content||''});}
+  }
+  class NativeGeocoder{
+    async geocode(options){
+      const host=document.createElement('div');host.style.cssText='position:fixed;width:1px;height:1px;left:-10000px;top:0';
+      document.body.append(host);const map=new NativeMap(host,{geocoderOnly:true});
+      try{const data=await map.request('geocode',{options});return {results:data.results};}
+      finally{map.dispose();host.remove();}
+    }
+  }
+  const maps={tableRecNativeBridge:true,Map:NativeMap,Marker:NativeMarker,InfoWindow:NativeInfoWindow,Geocoder:NativeGeocoder,
+    Size:class{constructor(width,height){this.width=width;this.height=height;}},
+    Point:class{constructor(x,y){this.x=x;this.y=y;}},
+    event:{trigger:(map,event)=>{if(event==='resize')map.send('resize');}}};
+  window.google={maps};return maps;
+}
+
+</script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 :root{--bg:#fff8f0;--card:#fffdf9;--card2:#f8eee3;--ink:#202326;--muted:#75675d;--line:#ead9c7;--gold:#d95416;--gold2:#d95416;--green:#477d51;--red:#bd4542;--accentText:#fff;--navBg:rgba(255,248,240,.95);--topBg:rgba(255,248,240,.92);--sheetBg:#fffdf9;--inputBg:#fffaf5;--chipBg:#f8eee3;--shadow:0 10px 28px rgba(94,53,25,.09);--heroSoft:linear-gradient(135deg,rgba(243,111,33,.16),rgba(243,111,33,.03));color-scheme:light;}
@@ -2173,6 +2299,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 .account-action-footer{flex:0 0 auto;padding:12px 18px calc(12px + env(safe-area-inset-bottom));background:var(--sheetBg);border-top:1px solid var(--line)}
 .account-action-footer .account-primary{margin:0;min-height:48px}
 @media(max-height:500px){#accountModal{padding:6px}.account-scroll{padding:12px 16px}.account-scroll .account-head{margin-bottom:8px}.account-action-footer{padding:8px 16px}.account-scroll .account-tagline{display:none}}
+
+/* V5.58.29: consistent people controls and clearance above fixed navigation. */
+.app{padding-bottom:calc(var(--tr-nav-height,calc(98px + env(safe-area-inset-bottom,0px))) + 24px)!important}
+.people-row{display:grid!important;grid-template-columns:40px minmax(0,1fr) 112px;gap:10px;align-items:center}
+.people-row>button:first-child{width:40px}
+.people-row .row-name,.people-row .row-meta{overflow-wrap:anywhere}
+.people-follow-btn{width:112px!important;min-width:0!important;min-height:44px;padding:9px 12px!important;justify-self:end}
+#homePeopleSuggestions .people-row{grid-template-columns:40px minmax(0,1fr)}
+#homePeopleSuggestions .people-follow-btn{grid-column:1/-1;width:100%!important;justify-self:stretch}
+@media(max-width:350px){.people-row{grid-template-columns:40px minmax(0,1fr)}.people-follow-btn{grid-column:1/-1;width:100%!important}}
 </style>
 </head>
 <body class="booting">
@@ -4357,7 +4493,7 @@ let exploreMapSelectedRestaurant=null;
 let exploreUserLocationMarker=null;
 
 function tableScoreUserLocationIcon(){
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="#B9FF2C" stroke="#0b0d0e" stroke-width="3"/><circle cx="17" cy="17" r="5" fill="#0b0d0e"/><circle cx="17" cy="17" r="2" fill="#ffffff"/></svg>`;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="34" height="34" viewBox="0 0 34 34"><circle cx="17" cy="17" r="14" fill="#f36f21" stroke="#0b0d0e" stroke-width="3"/><circle cx="17" cy="17" r="5" fill="#0b0d0e"/><circle cx="17" cy="17" r="2" fill="#ffffff"/></svg>`;
   return {url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(svg),scaledSize:new google.maps.Size(34,34),anchor:new google.maps.Point(17,17)};
 }
 
@@ -4391,6 +4527,7 @@ async function initExploreDiscoveryMap(){
     }
     const c=coords||{latitude:30.2672,longitude:-97.7431};
 
+    if(exploreRestaurantMap?.failed)exploreRestaurantMap=null;
     if(!exploreRestaurantMap){
       exploreRestaurantMap=new google.maps.Map(host,{
         center:{lat:+c.latitude,lng:+c.longitude},
@@ -4406,6 +4543,7 @@ async function initExploreDiscoveryMap(){
       google.maps.event.trigger(exploreRestaurantMap,"resize");
     }
 
+    await exploreRestaurantMap.ready;
     setTimeout(()=>google.maps.event.trigger(exploreRestaurantMap,"resize"),120);
     if(coords)setExploreUserLocationMarker(coords);
 
@@ -4424,11 +4562,13 @@ async function initExploreDiscoveryMap(){
 async function searchExploreMapArea(){
   if(!exploreRestaurantMap)return initExploreDiscoveryMap();
 
-  const center=exploreRestaurantMap.getCenter();
+  let center=exploreRestaurantMap.getCenter();
   const btn=document.getElementById("exploreSearchAreaBtn");
   if(btn){btn.disabled=true;btn.textContent="Searching..."}
 
   try{
+    await exploreRestaurantMap.syncState?.();
+    center=exploreRestaurantMap.getCenter();
     const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{
       body:{
         mode:"nearby",
@@ -4451,9 +4591,9 @@ async function searchExploreMapArea(){
       if(!Number.isFinite(+r.latitude)||!Number.isFinite(+r.longitude))return;
 
       const restaurantIconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
-        <circle cx="15" cy="15" r="13" fill="#15191c" stroke="#B9FF2C" stroke-width="2"/>
-        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="15" cy="15" r="13" fill="#f36f21" stroke="#202326" stroke-width="2"/>
+        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#fff8f0" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#fff8f0" stroke-width="1.8" stroke-linecap="round"/>
       </svg>`;
 
       const marker=new google.maps.Marker({
@@ -5146,6 +5286,7 @@ function getTableScoreMapsBrowserKey(){
 }
 
 function loadGoogleMaps(){
+  if(tableRecUsesNativeMaps())return Promise.resolve(tableRecNativeMaps());
   if(window.google?.maps)return Promise.resolve(window.google.maps);
   if(googleMapsLoaderPromise)return googleMapsLoaderPromise;
 
@@ -5194,12 +5335,14 @@ async function initRestaurantMap(){
     let coords=currentTableScoreCoords();
     if(!coords){try{coords=await getFreshTableScoreCoords()}catch(e){}}
     const c=coords||{latitude:30.2672,longitude:-97.7431};
+    if(restaurantMap?.failed)restaurantMap=null;
     if(!restaurantMap){
       restaurantMap=new google.maps.Map(host,{center:{lat:+c.latitude,lng:+c.longitude},zoom:13,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,clickableIcons:false,gestureHandling:"greedy"});
       restaurantMapInfoWindow=new google.maps.InfoWindow();
     }else{
       google.maps.event.trigger(restaurantMap,"resize");
     }
+    await restaurantMap.ready;
     setTimeout(()=>google.maps.event.trigger(restaurantMap,"resize"),120);
     if(coords)setRestaurantUserLocationMarker(coords);
     if(!restaurantMapMarkers.length)await searchRestaurantMapArea();
@@ -5219,10 +5362,12 @@ function clearRestaurantMapMarkers(){
 
 async function searchRestaurantMapArea(){
   if(!restaurantMap)return initRestaurantMap();
-  const center=restaurantMap.getCenter();
+  let center=restaurantMap.getCenter();
   const btn=document.querySelector("#restaurantMapPanel .primary");
   if(btn){btn.disabled=true;btn.textContent="Searching..."}
   try{
+    await restaurantMap.syncState?.();
+    center=restaurantMap.getCenter();
     const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{body:{mode:"nearby",latitude:center.lat(),longitude:center.lng(),radiusMeters:24140}});
     if(error)throw error;if(data?.error)throw new Error(data.error);
     nearbyGoogleRestaurants=Array.isArray(data?.restaurants)?data.restaurants:[];
@@ -5232,9 +5377,9 @@ async function searchRestaurantMapArea(){
     nearbyGoogleRestaurants.forEach((r,i)=>{
       if(!Number.isFinite(+r.latitude)||!Number.isFinite(+r.longitude))return;
       const restaurantIconSvg=`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" viewBox="0 0 30 30">
-        <circle cx="15" cy="15" r="13" fill="#15191c" stroke="#B9FF2C" stroke-width="2"/>
-        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
-        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#B9FF2C" stroke-width="1.8" stroke-linecap="round"/>
+        <circle cx="15" cy="15" r="13" fill="#f36f21" stroke="#202326" stroke-width="2"/>
+        <path d="M10 7v7M8 7v4c0 1.7.9 3 2 3s2-1.3 2-3V7M10 14v9" fill="none" stroke="#fff8f0" stroke-width="1.8" stroke-linecap="round"/>
+        <path d="M19 7c-2 0-3 2.4-3 5.4 0 2.1.8 3.6 2 4.2V23M19 7v16" fill="none" stroke="#fff8f0" stroke-width="1.8" stroke-linecap="round"/>
       </svg>`;
       const marker=new google.maps.Marker({
         map:restaurantMap,
@@ -8455,9 +8600,11 @@ async function renderRatingRestaurantMap(){
     ratingRestaurantMapMarker=new google.maps.Marker({
       map:ratingRestaurantMapInstance,
       position:center,
-      title:r.name||"Restaurant"
+      title:r.name||"Restaurant",
+      icon:{url:"data:image/svg+xml;charset=UTF-8,"+encodeURIComponent(`<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30"><circle cx="15" cy="15" r="13" fill="#f36f21" stroke="#202326" stroke-width="2"/><circle cx="15" cy="15" r="5" fill="#fff8f0"/></svg>`),scaledSize:new google.maps.Size(30,30),anchor:new google.maps.Point(15,15)}
     });
 
+    await ratingRestaurantMapInstance.ready;
     setTimeout(()=>google.maps.event.trigger(ratingRestaurantMapInstance,"resize"),120);
   }catch(err){
     console.error("rating map render:",err);
@@ -9442,7 +9589,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
   const isPending=pendingFollowingIds.has(u.id);
   const display=u.display_name||u.username||"TableRec User";
   const mutualCount=Number(u.mutual_count||0);
-  return `<div class="row" style="gap:10px">
+  return `<div class="row people-row">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
     <div style="min-width:0;flex:1">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
@@ -9451,7 +9598,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
         ${showMutual&&mutualCount>0?`<div class="people-mutual"><span class="people-mutual-dot"></span>${mutualCount} mutual connection${mutualCount===1?"":"s"}</div>`:""}
       </button>
     </div>
-    <button class="${isFollowing||isPending?"secondary":"primary"}" style="width:auto;min-width:92px;padding:9px 12px" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
+    <button class="people-follow-btn ${isFollowing||isPending?"secondary":"primary"}" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
   </div>`;
 }
 
@@ -9603,7 +9750,7 @@ async function toggleFollow(userId,btn){
     followingIds.delete(userId);
     pendingFollowingIds.delete(userId);
     btn.textContent="Follow";
-    btn.className="primary";
+    btn.classList.remove("secondary");btn.classList.add("primary");
   }else{
     const target=await getPublicProfileSafe(userId);
     if(!target){btn.disabled=false;return alert("Could not load that profile. Please try again.");}
@@ -9613,19 +9760,16 @@ async function toggleFollow(userId,btn){
     if(status==="pending"){
       pendingFollowingIds.add(userId);
       btn.textContent="Requested";
-      btn.className="secondary";
+      btn.classList.remove("primary");btn.classList.add("secondary");
     }else{
       followingIds.add(userId);
       btn.textContent="Following";
-      btn.className="secondary";
+      btn.classList.remove("primary");btn.classList.add("secondary");
     }
   }
 
   followingCount=followingIds.size;
   document.getElementById("profileFollowing").textContent=followingCount;
-  btn.style.width="auto";
-  btn.style.minWidth="92px";
-  btn.style.padding="9px 12px";
   btn.disabled=false;
   loadFollowingFeed();
   loadPeopleSuggestions();
@@ -11362,10 +11506,10 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.28";
+const TABLESCORE_VERSION="5.58.29";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Rating Access and Mobile Signup";
+const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -11827,6 +11971,19 @@ async function trReviewReport(id,action,all,button){
   await trOpenModeration(all);
 }
 
+</script>
+
+<script>
+function tableRecSyncNavClearance(){
+  const nav=document.querySelector('.nav');
+  if(nav)document.documentElement.style.setProperty('--tr-nav-height',Math.ceil(nav.getBoundingClientRect().height)+'px');
+}
+window.addEventListener('DOMContentLoaded',()=>{
+  tableRecSyncNavClearance();
+  const nav=document.querySelector('.nav');
+  if(nav&&window.ResizeObserver)new ResizeObserver(tableRecSyncNavClearance).observe(nav);
+});
+window.addEventListener('resize',tableRecSyncNavClearance);
 </script>
 </body>
 </html>
