@@ -28,7 +28,7 @@ function tableRecNativeMaps(){
   const channels=new Map();
   const surfaceOrigin=new URL(TABLE_REC_MAP_SURFACE).origin;
   const point=p=>({lat:Number(typeof p.lat==='function'?p.lat():p.lat),lng:Number(typeof p.lng==='function'?p.lng():p.lng)});
-  const latLng=p=>({lat:()=>p.lat,lng:()=>p.lng});
+  const latLng=p=>({lat:()=>p.lat,lng:()=>p.lng,toJSON:()=>({lat:p.lat,lng:p.lng})});
   window.addEventListener('message',event=>{
     if(event.origin!==surfaceOrigin)return;
     const msg=event.data, channel=channels.get(msg?.channel);
@@ -11506,7 +11506,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.29";
+const TABLESCORE_VERSION="5.58.30";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
