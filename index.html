@@ -3939,7 +3939,7 @@ async function getPublicProfilesSafe(userIds=[]){
   if(!ids.length)return [];
 
   const rows=await Promise.all(ids.map(async id=>{
-    if(currentUser&&id===currentUser.id&&profile){
+    if(currentUser&&id===currentUser.id&&profile?.display_name&&profile?.username&&profile.id===id){
       return {
         id,
         display_name:profile.display_name||null,
@@ -5826,7 +5826,7 @@ async function refreshUserData(){
   if(sErr)console.error("saved restaurants:",sErr);
 
   const privateProfile=Array.isArray(privateRows)?privateRows[0]:privateRows;
-  profile=p?{...p,...(privateProfile||{})}:null;
+  if(!pErr)profile=p?{...p,...(privateProfile||{})}:null;
   if(profile)setTimeout(()=>trRequireProfileName(),0);
   myRatings=r||[];
   savedRestaurants=saved||[];
@@ -11540,7 +11540,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.33";
+const TABLESCORE_VERSION="5.58.34";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
@@ -12025,7 +12025,13 @@ window.addEventListener('resize',tableRecSyncNavClearance);
 </script>
 
 <style>
-#trRefreshIndicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:10050;border:2px solid var(--orange,#ec6117);border-radius:24px;background:var(--card,#fffaf1);color:var(--ink,#202020);padding:10px 18px;font-weight:900;pointer-events:none;box-shadow:0 3px 12px #0002}
+#trRefreshIndicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:10050;width:42px;height:42px;display:flex;align-items:center;justify-content:center;background:var(--card,#fffaf1);border-radius:50%;pointer-events:none;box-shadow:0 2px 10px #0002}
+#trRefreshIndicator.hidden{display:none}
+.tr-refresh-wheel{display:block;width:24px;height:24px;border:3px solid #edc7a6;border-top-color:#e55b12;border-right-color:#e55b12;border-radius:50%}
+#trRefreshIndicator.refreshing .tr-refresh-wheel{animation:tr-refresh-spin .75s linear infinite}
+.tr-refresh-label{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@keyframes tr-refresh-spin{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){#trRefreshIndicator.refreshing .tr-refresh-wheel{animation:none}}
 #trProfileNameModal .sheet{max-height:85dvh;overflow:auto}
 #trProfilePhotoModal{z-index:10060;background:#000d;position:fixed;inset:0;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;align-items:center;justify-content:center}
 #trProfilePhotoModal.hidden{display:none}
@@ -12101,26 +12107,40 @@ function trCityHtml(value){
 async function trResolveZipCity(zip){
  if(trZipCityPending.has(zip))return trZipCityPending.get(zip);
  const promise=(async()=>{
- let label="City unavailable";
+ let label=null;
  try{
   let cached=null;try{cached=JSON.parse(localStorage.getItem("tr_city_"+zip)||"null")}catch(e){}
-  if(cached?.label&&Date.now()-cached.at<2592000000)label=cached.label;
-  else{
-   await loadGoogleMaps();const response=await new google.maps.Geocoder().geocode({address:zip,componentRestrictions:{country:"US",postalCode:zip}});
-   const results=response?.results||[];
-   for(const r of results){const components=r.address_components||[],find=t=>components.find(x=>(x.types||[]).includes(t));
+  if(cached?.label&&cached.label!=="City unavailable"&&Date.now()-cached.at<2592000000)label=cached.label;
+  if(!label){
+   // Postal lookups do not need a Maps iframe or a location permission.
+   try{
+    const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),6000);
+    try{
+     const response=await fetch("https://api.zippopotam.us/us/"+zip,{signal:controller.signal,credentials:"omit",referrerPolicy:"no-referrer"});
+     if(response.ok){const data=await response.json();const place=data.places?.[0];
+      if(data["post code"]===zip&&data["country abbreviation"]==="US"&&place?.["place name"]&&place?.["state abbreviation"])label=place["place name"]+", "+place["state abbreviation"];
+     }
+    }finally{clearTimeout(timer);}
+   }catch(e){console.warn("Postal city lookup:",e);}
+  }
+  if(!label){
+   await loadGoogleMaps();const response=await new google.maps.Geocoder().geocode({address:zip+", USA",componentRestrictions:{country:"US",postalCode:zip}});
+   for(const r of response?.results||[]){const components=r.address_components||[],find=t=>components.find(x=>(x.types||[]).includes(t));
     if(find("postal_code")?.long_name!==zip)continue;
     const city=find("locality")||find("postal_town")||find("sublocality"),state=find("administrative_area_level_1");
     if(city){label=city.long_name+(state?", "+state.short_name:"");break;}
    }
-   if(label!=="City unavailable")try{localStorage.setItem("tr_city_"+zip,JSON.stringify({label,at:Date.now()}))}catch(e){}
   }
  }catch(e){console.warn("ZIP city lookup:",e);}
- trZipCityCache.set(zip,label);
- document.querySelectorAll(`[data-tr-zip="${zip}"]`).forEach(el=>{el.textContent=label;});
- return label;
- })();trZipCityPending.set(zip,promise);return promise;
+ if(label){trZipCityCache.set(zip,label);try{localStorage.setItem("tr_city_"+zip,JSON.stringify({label,at:Date.now()}))}catch(e){}}
+ // A failed network request must not be cached as the person's city.
+ const shown=label||"ZIP "+zip;
+ document.querySelectorAll(`[data-tr-zip="${zip}"]`).forEach(el=>{el.textContent=shown;});
+ return shown;
+ })();trZipCityPending.set(zip,promise);
+ try{return await promise;}finally{trZipCityPending.delete(zip);}
 }
+
 let trPullGesture=null,trRefreshing=false;
 function trRefreshEligible(target){
  if(document.querySelector('.modal:not(.hidden),.photo-lightbox:not(.hidden),#trProfilePhotoModal:not(.hidden)'))return false;
@@ -12130,37 +12150,65 @@ function trRefreshEligible(target){
  for(let el=target;el&&el!==document.body;el=el.parentElement){if(el.scrollHeight>el.clientHeight+2&&el.scrollTop>1)return false;}
  return true;
 }
+function trSetPullOffset(distance,animate=false){
+ const page=document.querySelector(".app");if(!page)return;
+ const reduce=window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches;
+ page.style.transition=animate&&!reduce?"transform .35s cubic-bezier(.22,.85,.3,1)":"none";
+ page.style.transform=`translate3d(0,${Math.max(0,distance)}px,0)`;
+ page.style.willChange="transform";
+}
+function trUpdateRefreshIndicator(message,rotation=0){
+ const indicator=document.getElementById("trRefreshIndicator");
+ indicator.innerHTML='<span class="tr-refresh-wheel" aria-hidden="true"></span><span class="tr-refresh-label"></span>';
+ indicator.querySelector(".tr-refresh-label").textContent=message;
+ indicator.querySelector(".tr-refresh-wheel").style.transform=`rotate(${rotation}deg)`;
+ indicator.classList.remove("hidden");
+}
+function trResetPull(){
+ trSetPullOffset(0,true);
+ setTimeout(()=>{
+  if(trPullGesture||trRefreshing)return;
+  const page=document.querySelector(".app");if(page){page.style.transition="";page.style.transform="";page.style.willChange="";}
+  const indicator=document.getElementById("trRefreshIndicator");indicator.classList.add("hidden");indicator.classList.remove("refreshing");
+ },360);
+}
 async function trRefreshVisibleScreen(){
  if(trRefreshing)return;
  trRefreshing=true;const indicator=document.getElementById("trRefreshIndicator"),screen=document.querySelector(".screen.active")?.id;
- indicator.textContent="Refreshing...";indicator.classList.remove("hidden");
+ const started=Date.now();trSetPullOffset(64,true);trUpdateRefreshIndicator("Refreshing");indicator.classList.add("refreshing");
  try{
   if(localStorage.getItem("ts_location_mode")!=="manual"&&localStorage.getItem("ts_location_enabled")==="1")await getCurrentBrowseCoords();
   if(screen==="publicProfile"&&viewedProfile?.id)await openPublicProfile(viewedProfile.id);
   else if(screen==="discover"||screen==="explore"){await loadRestaurantStats();if(screen==="explore")await initExploreDiscoveryMap();}
   else await refreshUserData();
-  indicator.textContent="Updated";
- }catch(e){indicator.textContent="Could not refresh. Try again.";console.warn("Pull to refresh:",e);}
- finally{setTimeout(()=>{indicator.classList.add("hidden");trRefreshing=false;},700);}
+  trUpdateRefreshIndicator("Updated");
+ }catch(e){trUpdateRefreshIndicator("Could not refresh. Try again.");console.warn("Pull to refresh:",e);}
+ finally{
+  await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));
+  trRefreshing=false;trResetPull();
+ }
 }
 document.addEventListener("touchstart",e=>{
- const t=e.touches?.[0];trPullGesture=null;
+ const t=e.touches?.[0];if(trPullGesture&&!trRefreshing)trResetPull();trPullGesture=null;
  if(trRefreshing||e.touches.length!==1||!t||t.clientX<35||!trRefreshEligible(e.target))return;
  trPullGesture={x:t.clientX,y:t.clientY,distance:0,active:false};
 },{passive:true});
 document.addEventListener("touchmove",e=>{
- if(!trPullGesture)return;const t=e.touches?.[0];if(!t||e.touches.length!==1){trPullGesture=null;document.getElementById("trRefreshIndicator").classList.add("hidden");return;}
+ if(!trPullGesture)return;const t=e.touches?.[0];
+ if(!t||e.touches.length!==1){trPullGesture=null;trResetPull();return;}
  const dx=Math.abs(t.clientX-trPullGesture.x),dy=t.clientY-trPullGesture.y;
- if(dy<0||dx>Math.max(18,dy)){trPullGesture=null;document.getElementById("trRefreshIndicator").classList.add("hidden");return;}
+ if(dy<0||dx>Math.max(18,dy)){trPullGesture=null;trResetPull();return;}
  if(dy<12)return;
  trPullGesture.active=true;trPullGesture.distance=dy;if(e.cancelable)e.preventDefault();
- const indicator=document.getElementById("trRefreshIndicator");indicator.textContent=dy>=85?"Release to refresh":"Pull to refresh";indicator.classList.remove("hidden");
+ const offset=Math.min(112,dy*.55);trSetPullOffset(offset);
+ trUpdateRefreshIndicator(dy>=85?"Release to refresh":"Pull to refresh",dy*2.5);
 },{passive:false});
 document.addEventListener("touchend",()=>{
  const gesture=trPullGesture;trPullGesture=null;if(!gesture)return;
- if(gesture.active&&gesture.distance>=85)void trRefreshVisibleScreen();else document.getElementById("trRefreshIndicator").classList.add("hidden");
+ if(gesture.active&&gesture.distance>=85)void trRefreshVisibleScreen();else trResetPull();
 },{passive:true});
-document.addEventListener("touchcancel",()=>{trPullGesture=null;if(!trRefreshing)document.getElementById("trRefreshIndicator").classList.add("hidden");},{passive:true});
+document.addEventListener("touchcancel",()=>{trPullGesture=null;if(!trRefreshing)trResetPull();},{passive:true});
+
 </script>
 
 </body>
