@@ -2612,7 +2612,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div id="publicProfileHeroBg" class="profile-hero-bg"></div>
       <div class="profile-hero-shade"></div>
       <div class="profile-hero-content">
-        <div id="publicProfileAvatar" class="profileavatar" style="cursor:default">T</div>
+        <button type="button" id="publicProfileAvatar" class="profileavatar" onclick="trExpandPublicAvatar()" aria-label="Expand profile photo" style="cursor:pointer">T</button>
         <div id="publicProfileName" style="font-family:Georgia,serif;font-size:26px;margin-top:12px">TableRec User</div>
         <div id="publicProfileUsername" style="color:var(--gold);font-size:13px;font-weight:800;margin-top:4px"></div>
         <div id="publicProfileTitle" class="profile-title">Table Regular</div>
@@ -2890,7 +2890,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
         <button id="settingsPasswordResetBtn" class="primary" style="margin-top:9px" onclick="sendSettingsPasswordReset()">Send Secure Reset Link</button>
       </div>
 
-      <button class="secondary" onclick="closeSettings();signOut()">Sign Out</button>
+      <button class="secondary" onclick="trEditProfileName()">Edit First and Last Name</button>
+      <button class="secondary" onclick="trSignOutAllDevices()">Sign Out All Devices</button>
 
       <div class="settings-row" style="display:block;margin-top:14px;border-top:1px solid var(--line);border-bottom:0;padding-top:16px">
         <div style="font-weight:950;color:var(--red)">Delete Account</div>
@@ -3237,7 +3238,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
     <p id="accountModeCopy" class="muted account-mode-copy">Welcome back. Sign in with your email and password.</p>
 
     <div id="accountSignupFields" class="account-signup-only hidden">
-      <div class="field"><label>Name</label><input id="acctName" autocomplete="name" placeholder="Your name"></div>
+      <div class="field"><label>First name</label><input id="acctFirstName" autocomplete="given-name" maxlength="60" placeholder="First name"></div><div class="field"><label>Last name</label><input id="acctLastName" autocomplete="family-name" maxlength="80" placeholder="Last name"></div>
       <div class="field"><label>Username</label><input id="acctUsername" autocomplete="username" autocapitalize="none" spellcheck="false" placeholder="Choose a unique username"></div>
     </div>
 
@@ -3512,6 +3513,8 @@ function tableRecCloseGestureTarget(target){
   if(!target)return;
   if(target.kind==="modal"){
     const id=target.el.id;
+    if(id==="trProfileNameModal"&&!trNameComplete())return;
+    if(id==="trProfilePhotoModal")return trCloseProfilePhoto();
     if(id==="ratingDetailModal")return closeRatingDetail();
     if(id==="restaurantActionModal")return closeRestaurantAction();
     if(id==="nearbyRestaurantModal")return closeNearbyRestaurantPicker();
@@ -3686,7 +3689,7 @@ async function saveCity(){
 }
 
 function updateArea(){
-  document.getElementById("topLocation").innerHTML="&#128205; "+esc(area||"Set location");
+  document.getElementById("topLocation").innerHTML="&#128205; "+trCityHtml(area||"Set location");
   document.getElementById("locationCard").classList.toggle("hidden",!!area);
   renderProfile();
 }
@@ -5486,7 +5489,10 @@ async function signUp(){
   if(!document.getElementById("acctLegalAccepted")?.checked){
     return alert("Confirm the age requirements, agree to the Terms, and acknowledge the Privacy Policy before creating an account.");
   }
-  const name=document.getElementById("acctName").value.trim();
+  const first_name=document.getElementById("acctFirstName").value.trim();
+  const last_name=document.getElementById("acctLastName").value.trim();
+  const name=first_name+" "+last_name;
+  if(!trValidName(first_name,60)||!trValidName(last_name,80))return alert("Enter your first and last name.");
   const username=document.getElementById("acctUsername").value.trim().toLowerCase();
   const email=document.getElementById("acctEmail").value.trim();
   const password=document.getElementById("acctPassword").value;
@@ -5507,7 +5513,7 @@ async function signUp(){
     email,
     password,
     options:{
-      data:{display_name:name,username},
+      data:{display_name:name,first_name,last_name,username},
       emailRedirectTo:"https://ryanantjohnson.github.io/Table-Score/"
     }
   });
@@ -5768,6 +5774,7 @@ function maybeOpenVerifiedDeleteFlow(){
 }
 
 async function signOut(){
+  document.getElementById("trProfileNameModal")?.classList.add("hidden");
   clearInterval(tableRecSocialSyncTimer);
   tableRecSocialSyncTimer=null;
   await db.auth.signOut();
@@ -5807,7 +5814,7 @@ async function refreshUserData(){
   }
 
   const [{data:p,error:pErr},{data:privateRows,error:privateErr},{data:r,error:rErr},{data:saved,error:sErr}]=await Promise.all([
-    db.from("profiles").select("id,display_name,home_city,created_at,username,is_private,avatar_url,selected_title,active_account_mark,active_title,background_url").eq("id",currentUser.id).maybeSingle(),
+    db.from("profiles").select("id,display_name,first_name,last_name,home_city,created_at,username,is_private,avatar_url,selected_title,active_account_mark,active_title,background_url").eq("id",currentUser.id).maybeSingle(),
     db.rpc("get_my_private_profile_fields"),
     db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false}),
     db.from("saved_restaurants").select("restaurant_id,created_at,restaurants(id,name,cuisine,city,state_region)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
@@ -5820,6 +5827,7 @@ async function refreshUserData(){
 
   const privateProfile=Array.isArray(privateRows)?privateRows[0]:privateRows;
   profile=p?{...p,...(privateProfile||{})}:null;
+  if(profile)setTimeout(()=>trRequireProfileName(),0);
   myRatings=r||[];
   savedRestaurants=saved||[];
   savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
@@ -6873,7 +6881,7 @@ function suggestedDinerMarkup(u,pct,shared){
      <div class="home-diner-copy">
        <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
          <div class="home-diner-name">${esc(display)}</div>
-         <div class="home-diner-user">@${esc(u.username||"")}${u.home_city?" - "+esc(u.home_city):""}</div>
+         <div class="home-diner-user">@${esc(u.username||"")}${u.home_city?" - "+trCityHtml(u.home_city):""}</div>
        </button>
      </div>
      <div><div class="home-diner-match">${Math.round(pct)}%</div><div class="home-diner-match-label">Taste Match</div></div>
@@ -7385,6 +7393,7 @@ async function openPublicProfile(userId){
   void loadPublicTasteMatch(userId,canSeePrivateContent);
 
   const av=document.getElementById("publicProfileAvatar");
+  av.disabled=!p.avatar_url;
   if(p.avatar_url){
     av.textContent="";
     av.style.backgroundImage=`url("${p.avatar_url}")`;
@@ -7404,7 +7413,7 @@ async function openPublicProfile(userId){
   const publicTitleEl=document.getElementById("publicProfileTitle"); if(publicTitleEl)publicTitleEl.textContent=p.active_title||"Table Regular";
   const publicBadgeSlugs=await loadPublicBadges(userId);
   const publicBadgesEl=document.getElementById("publicProfileBadges");if(publicBadgesEl)publicBadgesEl.innerHTML=publicBadgeSlugs.map(badgeMarkup).join("");
-  document.getElementById("publicProfileArea").textContent=p.home_city||"TableRec member";
+  document.getElementById("publicProfileArea").innerHTML=p.home_city?trCityHtml(p.home_city):"TableRec member";
   document.getElementById("publicRatingsCount").textContent=canSeePrivateContent?viewedProfileRatings.length:"-";
   document.getElementById("publicPlacesCount").textContent=canSeePrivateContent?new Set(viewedProfileRatings.map(r=>r.restaurant_id)).size:"-";
   document.getElementById("publicFollowersCount").textContent=(followers||[]).length;
@@ -7748,7 +7757,7 @@ function renderProfile(){
   renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
   const profileTitleEl=document.getElementById("profileTitle"); if(profileTitleEl)profileTitleEl.textContent=profile?.active_title||"Table Regular";
-  document.getElementById("profileArea").textContent=(area?area+" \u00b7 ":"")+(currentUser?"TableRec member":"Browse freely \u00b7 Account required to rate");
+  document.getElementById("profileArea").innerHTML=(area?trCityHtml(area)+" &middot; ":"")+(currentUser?"TableRec member":"Browse freely &middot; Account required to rate");
   document.getElementById("profileRatings").textContent=currentUser?myRatings.length:0;
   document.getElementById("profileRestaurants").textContent=currentUser?new Set(myRatings.map(e=>e.restaurant_id)).size:0;
   document.getElementById("profileFollowers").textContent=currentUser?followerCount:0;
@@ -8903,7 +8912,7 @@ function openSettings(){
   if(currentUser.id===TABLESCORE_OG_USER_ID)refreshRestaurantCleanupSummary();
   renderTitlePicker();
   document.getElementById("privateAccountToggle").checked=!!profile?.is_private;
-  document.getElementById("settingsArea").textContent=profile?.home_city||area||"Not set";
+  document.getElementById("settingsArea").innerHTML=trCityHtml(profile?.home_city||area||"Not set");
   document.getElementById("settingsUsername").textContent=profile?.username?"Current: @"+profile.username:"No username set";
   const birthInput=document.getElementById("settingsBirthDate");
   if(birthInput)birthInput.value=profile?.birth_date||"";
@@ -9514,7 +9523,7 @@ async function openConnectionsFor(userId,type,ownerLabel="Profile"){
       <div class="connection-identity">
         <button onclick="openPublicProfileFromConnections('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left">
           <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
-          <div class="row-meta">${u.username?"@"+esc(u.username):"TableRec member"}${u.home_city?" - "+esc(u.home_city):""}</div>
+          <div class="row-meta">${u.username?"@"+esc(u.username):"TableRec member"}${u.home_city?" - "+trCityHtml(u.home_city):""}</div>
         </button>
       </div>
       ${isMe?"":`<button class="${isFollowing?"secondary":"primary"} connection-action" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":"Follow"}</button>`}
@@ -9601,7 +9610,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
     <div style="min-width:0;flex:1">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
         <div class="row-name" ${accountNameAttrs(u)}>${esc(display)}</div>
-        <div class="row-meta">@${esc(u.username||"")}${u.home_city?" - "+esc(u.home_city):""}</div>
+        <div class="row-meta">@${esc(u.username||"")}${u.home_city?" - "+trCityHtml(u.home_city):""}</div>
         ${showMutual&&mutualCount>0?`<div class="people-mutual"><span class="people-mutual-dot"></span>${mutualCount} mutual connection${mutualCount===1?"":"s"}</div>`:""}
       </button>
     </div>
@@ -11531,7 +11540,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.32";
+const TABLESCORE_VERSION="5.58.33";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
@@ -12014,5 +12023,145 @@ window.addEventListener('DOMContentLoaded',()=>{
 });
 window.addEventListener('resize',tableRecSyncNavClearance);
 </script>
+
+<style>
+#trRefreshIndicator{position:fixed;top:calc(env(safe-area-inset-top,0px) + 12px);left:50%;transform:translateX(-50%);z-index:10050;border:2px solid var(--orange,#ec6117);border-radius:24px;background:var(--card,#fffaf1);color:var(--ink,#202020);padding:10px 18px;font-weight:900;pointer-events:none;box-shadow:0 3px 12px #0002}
+#trProfileNameModal .sheet{max-height:85dvh;overflow:auto}
+#trProfilePhotoModal{z-index:10060;background:#000d;position:fixed;inset:0;padding:calc(env(safe-area-inset-top,0px) + 16px) 16px calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;align-items:center;justify-content:center}
+#trProfilePhotoModal.hidden{display:none}
+#trProfilePhotoModal img{width:100%;height:85dvh;object-fit:contain;display:block}
+#trProfilePhotoModal .tr-close-control{position:absolute;right:16px;top:calc(env(safe-area-inset-top,0px) + 12px);z-index:2;background:#fffaf1;color:#222;padding:12px 18px;border:2px solid #f77623;border-radius:18px;font-weight:900}
+</style>
+<div id="trRefreshIndicator" class="hidden" role="status" aria-live="polite">Pull to refresh</div>
+<div id="trProfileNameModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="trProfileNameTitle"><div class="sheet">
+<div class="modal-head"><div id="trProfileNameTitle" class="section-title">Complete Your Profile</div><button id="trProfileNameClose" class="tr-close-control secondary hidden" onclick="trCloseProfileName()">Close</button></div>
+<p>Your first and last name appear publicly with your username so people can recognize you. Enter the name you use socially. This does not grant a Verified badge.</p>
+<label for="trFirstName">First name</label><input id="trFirstName" autocomplete="given-name" maxlength="60">
+<label for="trLastName">Last name</label><input id="trLastName" autocomplete="family-name" maxlength="80">
+<label for="trNameUsername">Username</label><input id="trNameUsername" autocapitalize="none" spellcheck="false" maxlength="30">
+<div id="trNameStatus" role="status" class="muted"></div><button id="trSaveProfileName" class="primary" style="width:100%;margin-top:12px" onclick="trSaveProfileName()">Save Profile</button>
+<button class="secondary" style="margin-top:12px" onclick="signOut()">Sign Out</button></div></div>
+<div id="trProfilePhotoModal" class="hidden" role="dialog" aria-modal="true" aria-label="Profile photo" onclick="if(event.target===this)trCloseProfilePhoto()"><button class="tr-close-control" onclick="trCloseProfilePhoto()">Close</button><img id="trProfilePhotoImage" alt="Expanded profile photo"></div>
+<script>
+function trValidName(value,max){return typeof value==="string"&&value.trim().length>0&&value.trim().length<=max&&/\p{L}/u.test(value)&&!/[0-9<>]/.test(value);}
+function trNameComplete(){return !!profile&&trValidName(profile.first_name,60)&&trValidName(profile.last_name,80)&&/^[a-z0-9_]{3,30}$/.test(profile.username||"");}
+function trRequireProfileName(){
+ if(!currentUser||!profile||trNameComplete())return;
+ // Let account recovery finish before requiring profile completion.
+ if(["passwordRecoveryModal","deleteAccountVerifyModal"].some(id=>{const e=document.getElementById(id);return e&&!e.classList.contains("hidden")}))return;
+ trEditProfileName();
+}
+function trEditProfileName(){
+ if(!currentUser)return openAccount();
+ document.getElementById("trFirstName").value=profile?.first_name||"";
+ document.getElementById("trLastName").value=profile?.last_name||"";
+ document.getElementById("trNameUsername").value=profile?.username||"";
+ document.getElementById("trProfileNameTitle").textContent=trNameComplete()?"Edit Your Name":"Complete Your Profile";
+ document.getElementById("trProfileNameClose").classList.toggle("hidden",!trNameComplete());
+ document.getElementById("trNameStatus").textContent="";
+ document.getElementById("trProfileNameModal").classList.remove("hidden");
+ lockBackgroundScroll();
+}
+function trCloseProfileName(){if(!trNameComplete()&&currentUser)return;document.getElementById("trProfileNameModal").classList.add("hidden");unlockBackgroundScroll();}
+async function trSaveProfileName(){
+ if(!currentUser)return;
+ const first_name=document.getElementById("trFirstName").value.trim(),last_name=document.getElementById("trLastName").value.trim(),username=document.getElementById("trNameUsername").value.trim().toLowerCase();
+ const status=document.getElementById("trNameStatus"),button=document.getElementById("trSaveProfileName");
+ if(!trValidName(first_name,60)||!trValidName(last_name,80)){status.textContent="Enter your first and last name.";return;}
+ if(!/^[a-z0-9_]{3,30}$/.test(username)){status.textContent="Username must use 3–30 letters, numbers or underscores.";return;}
+ button.disabled=true;
+ try{
+ const {data,error}=await db.from("profiles").update({first_name,last_name,username}).eq("id",currentUser.id).select("id,first_name,last_name,display_name,username").single();
+ if(error)throw error;
+ profile={...profile,...data};trCloseProfileName();renderProfile();await loadFollowingFeed();
+ }catch(e){status.textContent=e?.code==="23505"?"That username is taken. Choose another.":"Could not save your profile. Please try again.";}
+ finally{button.disabled=false;}
+}
+async function trSignOutAllDevices(){
+ if(!confirm("Sign out of TableRec on every device, including this one?"))return;
+ const {error}=await db.auth.signOut({scope:"global"});
+ if(error)return alert("Could not sign out all devices. Please try again.");
+ currentUser=null;profile=null;document.getElementById("trProfileNameModal").classList.add("hidden");await refreshUserData();closeSettings();unlockBackgroundScroll();
+ alert("Signed out all devices. Previously issued access tokens may remain usable until they expire; verification actions now also check for a live session.");
+}
+function trExpandPublicAvatar(){
+ const url=viewedProfile?.avatar_url;if(!url)return;
+ const img=document.getElementById("trProfilePhotoImage");img.src=url;img.alt=(viewedProfile.display_name||"Member")+" profile photo";
+ document.getElementById("trProfilePhotoModal").classList.remove("hidden");lockBackgroundScroll();
+}
+function trCloseProfilePhoto(){document.getElementById("trProfilePhotoModal").classList.add("hidden");document.getElementById("trProfilePhotoImage").removeAttribute("src");unlockBackgroundScroll();}
+document.addEventListener("keydown",e=>{if(e.key==="Escape")trCloseProfilePhoto();});
+const trZipCityCache=new Map(),trZipCityPending=new Map();
+function trCityHtml(value){
+ const raw=String(value||"").trim();if(!/^\d{5}(?:-\d{4})?$/.test(raw))return esc(raw);
+ const zip=raw.slice(0,5);if(trZipCityCache.has(zip))return esc(trZipCityCache.get(zip));
+ void trResolveZipCity(zip);
+ return `<span data-tr-zip="${zip}">Locating city...</span>`;
+}
+async function trResolveZipCity(zip){
+ if(trZipCityPending.has(zip))return trZipCityPending.get(zip);
+ const promise=(async()=>{
+ let label="City unavailable";
+ try{
+  let cached=null;try{cached=JSON.parse(localStorage.getItem("tr_city_"+zip)||"null")}catch(e){}
+  if(cached?.label&&Date.now()-cached.at<2592000000)label=cached.label;
+  else{
+   await loadGoogleMaps();const response=await new google.maps.Geocoder().geocode({address:zip,componentRestrictions:{country:"US",postalCode:zip}});
+   const results=response?.results||[];
+   for(const r of results){const components=r.address_components||[],find=t=>components.find(x=>(x.types||[]).includes(t));
+    if(find("postal_code")?.long_name!==zip)continue;
+    const city=find("locality")||find("postal_town")||find("sublocality"),state=find("administrative_area_level_1");
+    if(city){label=city.long_name+(state?", "+state.short_name:"");break;}
+   }
+   if(label!=="City unavailable")try{localStorage.setItem("tr_city_"+zip,JSON.stringify({label,at:Date.now()}))}catch(e){}
+  }
+ }catch(e){console.warn("ZIP city lookup:",e);}
+ trZipCityCache.set(zip,label);
+ document.querySelectorAll(`[data-tr-zip="${zip}"]`).forEach(el=>{el.textContent=label;});
+ return label;
+ })();trZipCityPending.set(zip,promise);return promise;
+}
+let trPullGesture=null,trRefreshing=false;
+function trRefreshEligible(target){
+ if(document.querySelector('.modal:not(.hidden),.photo-lightbox:not(.hidden),#trProfilePhotoModal:not(.hidden)'))return false;
+ if(!["home","discover","explore","saved","profile","publicProfile"].includes(document.querySelector(".screen.active")?.id))return false;
+ if(target.closest('input,textarea,select,button,a,.nav,[id*="Map"],[id*="map"],iframe'))return false;
+ if((document.scrollingElement?.scrollTop||window.scrollY||0)>1)return false;
+ for(let el=target;el&&el!==document.body;el=el.parentElement){if(el.scrollHeight>el.clientHeight+2&&el.scrollTop>1)return false;}
+ return true;
+}
+async function trRefreshVisibleScreen(){
+ if(trRefreshing)return;
+ trRefreshing=true;const indicator=document.getElementById("trRefreshIndicator"),screen=document.querySelector(".screen.active")?.id;
+ indicator.textContent="Refreshing...";indicator.classList.remove("hidden");
+ try{
+  if(localStorage.getItem("ts_location_mode")!=="manual"&&localStorage.getItem("ts_location_enabled")==="1")await getCurrentBrowseCoords();
+  if(screen==="publicProfile"&&viewedProfile?.id)await openPublicProfile(viewedProfile.id);
+  else if(screen==="discover"||screen==="explore"){await loadRestaurantStats();if(screen==="explore")await initExploreDiscoveryMap();}
+  else await refreshUserData();
+  indicator.textContent="Updated";
+ }catch(e){indicator.textContent="Could not refresh. Try again.";console.warn("Pull to refresh:",e);}
+ finally{setTimeout(()=>{indicator.classList.add("hidden");trRefreshing=false;},700);}
+}
+document.addEventListener("touchstart",e=>{
+ const t=e.touches?.[0];trPullGesture=null;
+ if(trRefreshing||e.touches.length!==1||!t||t.clientX<35||!trRefreshEligible(e.target))return;
+ trPullGesture={x:t.clientX,y:t.clientY,distance:0,active:false};
+},{passive:true});
+document.addEventListener("touchmove",e=>{
+ if(!trPullGesture)return;const t=e.touches?.[0];if(!t||e.touches.length!==1){trPullGesture=null;document.getElementById("trRefreshIndicator").classList.add("hidden");return;}
+ const dx=Math.abs(t.clientX-trPullGesture.x),dy=t.clientY-trPullGesture.y;
+ if(dy<0||dx>Math.max(18,dy)){trPullGesture=null;document.getElementById("trRefreshIndicator").classList.add("hidden");return;}
+ if(dy<12)return;
+ trPullGesture.active=true;trPullGesture.distance=dy;if(e.cancelable)e.preventDefault();
+ const indicator=document.getElementById("trRefreshIndicator");indicator.textContent=dy>=85?"Release to refresh":"Pull to refresh";indicator.classList.remove("hidden");
+},{passive:false});
+document.addEventListener("touchend",()=>{
+ const gesture=trPullGesture;trPullGesture=null;if(!gesture)return;
+ if(gesture.active&&gesture.distance>=85)void trRefreshVisibleScreen();else document.getElementById("trRefreshIndicator").classList.add("hidden");
+},{passive:true});
+document.addEventListener("touchcancel",()=>{trPullGesture=null;if(!trRefreshing)document.getElementById("trRefreshIndicator").classList.add("hidden");},{passive:true});
+</script>
+
 </body>
 </html>
