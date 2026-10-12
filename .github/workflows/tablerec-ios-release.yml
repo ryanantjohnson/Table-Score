@@ -284,14 +284,14 @@ jobs:
           TR_SIGNED: ${{ inputs.signed_release }}
         run: |
           set -euo pipefail
-          TR_SIGN_ARGS=()
+          set --
           if [[ "$TR_SIGNED" != true ]]; then
-            TR_SIGN_ARGS+=(CODE_SIGNING_ALLOWED=NO)
+            set -- CODE_SIGNING_ALLOWED=NO
           fi
           xcodebuild -workspace ios/App/App.xcworkspace -scheme App \
             -configuration Release -sdk iphoneos -destination 'generic/platform=iOS' \
             -archivePath build/TableRec.xcarchive \
-            "${TR_SIGN_ARGS[@]}" archive
+            "$@" archive
           python3 - <<'PY'
           import os, plistlib
           from pathlib import Path
