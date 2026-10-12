@@ -4234,6 +4234,13 @@ function currentTableScoreCoords(){
   return storedTableRecCoords();
 }
 
+async function getCurrentBrowseCoords(){
+  const saved=currentTableScoreCoords();
+  if(localStorage.getItem("ts_location_mode")==="manual")return saved;
+  if(saved && tableScoreLocation?.capturedAt>0 && Date.now()-tableScoreLocation.capturedAt<30000)return saved;
+  try{return await getTableRecBrowseCoords();}catch(err){if(saved)return saved;throw err;}
+}
+
 let tableRecBrowseCoordsRequest=null;
 function getTableRecBrowseCoords(){
   if(tableRecBrowseCoordsRequest)return tableRecBrowseCoordsRequest;
@@ -4246,7 +4253,7 @@ function getTableRecBrowseCoords(){
       reject(new Error(err?.code===1
         ? "Location access is blocked. Allow location for this browser, or choose a browsing area in Settings."
         : "Could not get your current location. Try again or choose a browsing area in Settings."));
-    },{enableHighAccuracy:false,maximumAge:60000,timeout:8000});
+    },{enableHighAccuracy:true,maximumAge:0,timeout:8000});
   });
   tableRecBrowseCoordsRequest=tableRecRequestDeadline(tableRecBrowseCoordsRequest,11000,"Location took too long. Allow location or choose a browsing area in Settings.").finally(()=>{tableRecBrowseCoordsRequest=null;});
   return tableRecBrowseCoordsRequest;
@@ -4521,10 +4528,7 @@ async function initExploreDiscoveryMap(){
   try{
     await loadGoogleMaps();
 
-    let coords=currentTableScoreCoords();
-    if(!coords){
-      try{coords=await getFreshTableScoreCoords()}catch(e){}
-    }
+    let coords=await getCurrentBrowseCoords();
     const c=coords||{latitude:30.2672,longitude:-97.7431};
 
     if(exploreRestaurantMap?.failed)exploreRestaurantMap=null;
@@ -5178,32 +5182,11 @@ async function loadNearbyRestaurants(forceFresh=false){
   status.textContent=forceFresh?"Refreshing your location and nearby restaurants...":"Getting nearby restaurants...";
 
   try{
-    let coords=currentTableScoreCoords();
-    if(forceFresh || !coords){
-      if(forceFresh && "geolocation" in navigator){
-        coords=await new Promise((resolve,reject)=>{
-          navigator.geolocation.getCurrentPosition(
-            pos=>{
-              tableScoreLocation={
-                latitude:pos.coords.latitude,
-                longitude:pos.coords.longitude,
-                accuracy:pos.coords.accuracy,
-                capturedAt:Date.now()
-              };
-              locationEnabled=true;
-              localStorage.setItem("ts_location_enabled","1");
-              localStorage.setItem("ts_lat",String(pos.coords.latitude));
-              localStorage.setItem("ts_lon",String(pos.coords.longitude));
-              resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude});
-            },
-            reject,
-            {enableHighAccuracy:true,timeout:20000,maximumAge:0}
-          );
-        });
-      }else{
-        coords=await getFreshTableScoreCoords();
-      }
-    }
+    const manualMode=localStorage.getItem("ts_location_mode")==="manual";
+    let coords=forceFresh && !manualMode
+      ? await getTableRecBrowseCoords()
+      : await getCurrentBrowseCoords();
+    if(!coords)throw new Error("Choose a browsing area in Settings.");
 
     const {data,error}=await tableRecInvokeRestaurant("nearby-restaurants",{
       body:{
@@ -5332,8 +5315,7 @@ async function initRestaurantMap(){
   if(!host)return;
   try{
     await loadGoogleMaps();
-    let coords=currentTableScoreCoords();
-    if(!coords){try{coords=await getFreshTableScoreCoords()}catch(e){}}
+    let coords=await getCurrentBrowseCoords();
     const c=coords||{latitude:30.2672,longitude:-97.7431};
     if(restaurantMap?.failed)restaurantMap=null;
     if(!restaurantMap){
@@ -8441,7 +8423,31 @@ function renderLocationStatus(){
   }
 }
 
+let tableRecAutoAreaFix=null;
+let tableRecAutoAreaBusy=false;
+async function updateAutomaticBrowseArea(coords){
+  if(localStorage.getItem("ts_location_mode")==="manual" || tableRecAutoAreaBusy)return;
+  const prior=tableRecAutoAreaFix;
+  const moved=!prior || tableRecMilesBetween(prior.latitude,prior.longitude,coords.latitude,coords.longitude)>0.3;
+  if(!moved && Date.now()-prior.at<300000)return;
+  tableRecAutoAreaBusy=true;
+  try{
+    const label=await reverseGeocodeBrowseArea(coords.latitude,coords.longitude);
+    if(localStorage.getItem("ts_location_mode")==="manual")return;
+    const latest=tableScoreLocation;
+    if(!latest || tableRecMilesBetween(latest.latitude,latest.longitude,coords.latitude,coords.longitude)>0.3)return;
+    area=label||"Near you";
+    localStorage.setItem("ts_area",area);
+    tableRecAutoAreaFix={...coords,at:Date.now()};
+    updateArea();
+    renderExplore();
+    renderHomeRankings();
+  }catch(e){console.warn("Automatic location label:",e);}
+  finally{tableRecAutoAreaBusy=false;}
+}
+
 function acceptTableScorePosition(pos){
+  if(localStorage.getItem("ts_location_mode")==="manual")return;
   tableScoreLocation={
     latitude:pos.coords.latitude,
     longitude:pos.coords.longitude,
@@ -8458,6 +8464,7 @@ function acceptTableScorePosition(pos){
     sessionStorage.setItem("tablescore_location_ok","1");
   }catch(e){}
   renderLocationStatus();
+  void updateAutomaticBrowseArea(tableScoreLocation);
 }
 
 function tableScoreLocationError(err){
@@ -8473,7 +8480,7 @@ function tableScoreLocationError(err){
 }
 
 function startTableScoreLocationWatch(){
-  if(!("geolocation" in navigator))return;
+  if(localStorage.getItem("ts_location_mode")==="manual" || !("geolocation" in navigator))return;
   if(tableScoreLocationWatchId!==null){
     navigator.geolocation.clearWatch(tableScoreLocationWatchId);
     tableScoreLocationWatchId=null;
@@ -11506,7 +11513,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.30";
+const TABLESCORE_VERSION="5.58.31";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
