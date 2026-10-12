@@ -3,8 +3,9 @@ name: TableRec iOS Release
 # Add this as .github/workflows/tablerec-ios-release.yml.
 # Leave the existing tablerec-native.yml in place.
 # Default: unsigned physical-device archive for a build check only.
-# Signing requires three repository Actions secrets:
-# TABLEREC_IOS_CERTIFICATE_BASE64 (Apple Distribution .p12, including private key)
+# Signing requires four repository Actions secrets:
+# TABLEREC_IOS_DISTRIBUTION_CERTIFICATE_BASE64 (Apple Distribution .cer)
+# TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY (complete encrypted PEM text from CSR run)
 # TABLEREC_IOS_CERTIFICATE_PASSWORD
 # TABLEREC_IOS_PROFILE_BASE64 (matching App Store .mobileprovision)
 # Upload additionally requires:
@@ -51,7 +52,8 @@ jobs:
         env:
           TR_SIGNED: ${{ inputs.signed_release }}
           TR_UPLOAD: ${{ inputs.upload_to_apple }}
-          TR_CERT: ${{ secrets.TABLEREC_IOS_CERTIFICATE_BASE64 }}
+          TR_CERT: ${{ secrets.TABLEREC_IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          TR_ENCRYPTED_KEY: ${{ secrets.TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY }}
           TR_CERT_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
           TR_PROFILE: ${{ secrets.TABLEREC_IOS_PROFILE_BASE64 }}
           TR_KEY_ID: ${{ secrets.TABLEREC_APPLE_KEY_ID }}
@@ -64,7 +66,7 @@ jobs:
             exit 1
           fi
           if [[ "$TR_SIGNED" == true ]]; then
-            for variable in TR_CERT TR_CERT_PASSWORD TR_PROFILE; do
+            for variable in TR_CERT TR_ENCRYPTED_KEY TR_CERT_PASSWORD TR_PROFILE; do
               if [[ -z "${!variable}" ]]; then
                 echo "Missing signing secret: $variable. Complete signing setup first."
                 exit 1
@@ -180,7 +182,8 @@ jobs:
       - name: Install distribution signing material
         if: inputs.signed_release
         env:
-          TR_CERT: ${{ secrets.TABLEREC_IOS_CERTIFICATE_BASE64 }}
+          TR_CERT: ${{ secrets.TABLEREC_IOS_DISTRIBUTION_CERTIFICATE_BASE64 }}
+          TR_ENCRYPTED_KEY: ${{ secrets.TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY }}
           TR_CERT_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
           TR_PROFILE: ${{ secrets.TABLEREC_IOS_PROFILE_BASE64 }}
         run: |
@@ -190,10 +193,24 @@ jobs:
           import base64, os
           from pathlib import Path
           directory = Path(os.environ['RUNNER_TEMP'])
-          for variable, filename in [('TR_CERT','tablerec.p12'), ('TR_PROFILE','tablerec.mobileprovision')]:
+          for variable, filename in [('TR_CERT','tablerec-distribution.cer'), ('TR_PROFILE','tablerec.mobileprovision')]:
               value = ''.join(os.environ[variable].split())
               (directory / filename).write_bytes(base64.b64decode(value, validate=True))
           PY
+          python3 - <<'PY'
+          import os
+          from pathlib import Path
+          key = os.environ['TR_ENCRYPTED_KEY'].strip() + '\n'
+          if not key.startswith('-----BEGIN ENCRYPTED PRIVATE KEY-----') or not key.rstrip().endswith('-----END ENCRYPTED PRIVATE KEY-----'):
+              raise SystemExit('Encrypted private key secret must contain the complete file text.')
+          (Path(os.environ['RUNNER_TEMP'])/'tablerec-encrypted-private-key.pem').write_text(key)
+          PY
+          openssl x509 -inform DER -in "$RUNNER_TEMP/tablerec-distribution.cer" \
+            -out "$RUNNER_TEMP/tablerec-distribution.pem"
+          openssl pkcs12 -export -in "$RUNNER_TEMP/tablerec-distribution.pem" \
+            -inkey "$RUNNER_TEMP/tablerec-encrypted-private-key.pem" \
+            -passin env:TR_CERT_PASSWORD -passout env:TR_CERT_PASSWORD \
+            -out "$RUNNER_TEMP/tablerec.p12"
           TR_KEYCHAIN_PASSWORD=$(openssl rand -hex 32)
           echo "::add-mask::$TR_KEYCHAIN_PASSWORD"
           TR_KEYCHAIN_PATH="$RUNNER_TEMP/tablerec-signing.keychain-db"
@@ -383,7 +400,7 @@ jobs:
               if uuid:
                   for root in [Path.home()/'Library/MobileDevice/Provisioning Profiles', Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
                       (root/(uuid+'.mobileprovision')).unlink(missing_ok=True)
-          for filename in ['tablerec.p12','tablerec.mobileprovision','tablerec-profile.plist','tablerec-export.plist']:
+          for filename in ['tablerec.p12','tablerec-distribution.cer','tablerec-distribution.pem','tablerec-encrypted-private-key.pem','tablerec.mobileprovision','tablerec-profile.plist','tablerec-export.plist']:
               (directory/filename).unlink(missing_ok=True)
           folder = Path.home()/'.appstoreconnect/private_keys'
           if folder.exists():
