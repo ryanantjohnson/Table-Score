@@ -11445,7 +11445,9 @@ async function submitChefsTableApplication(){
   const market=document.getElementById("ctMarket").value.trim();
   const followers=parseInt(document.getElementById("ctFollowers").value||"0",10);
   const notes=document.getElementById("ctNotes").value.trim();
-  if(!creator_name||!profile_url)return alert("Add your creator name and public social profile.");
+  if(!creator_name)return alert("Add your public name.");
+  try{const url=new URL(profile_url);if(url.protocol!=="https:"||url.username||url.password)throw new Error();}catch(e){return alert("Add the full HTTPS link to your public profile, not just a handle.");}
+  if(notes.length<20)return alert("Describe your public work and why your account qualifies for verification.");
   const {data,error}=await db.rpc("submit_chefs_table_application",{
     p_creator_name:creator_name,p_platform:platform,p_profile_url:profile_url,
     p_market:market,p_followers:followers,p_notes:notes
@@ -11453,7 +11455,7 @@ async function submitChefsTableApplication(){
   if(error){console.error(error);return alert("Could not submit application.");}
   closeChefsTableApplication();
   await loadChefsTableStatus();
-  alert("Verification request submitted. Your verification code is "+data+". Add it temporarily to the bio of the public profile you submitted so TableRec can confirm you control that account.");
+  alert("Verification request submitted. Your verification code is "+data+". Requests expire after 14 days. Add it temporarily to the bio of the public profile you submitted so TableRec can confirm you control that account.");
 }
 async function loadChefsTableStatus(){
   if(!currentUser)return;
@@ -11468,13 +11470,14 @@ async function loadChefsTableStatus(){
   if(data.status==="pending_verification"){
     status.innerHTML=`Application received - <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
   }else if(data.status==="pending_review"){
-    status.textContent="Identity confirmed - Verification request awaiting TableRec review.";
+    status.textContent="Public profile control checked - your request still needs TableRec approval.";
   }else if(data.status==="approved"){
     status.textContent="Verified. TableRec has confirmed your account identity.";
   }else if(data.status==="denied"){
     status.textContent="This verification request was not approved.";
   }
 }
+let tableRecVerificationApplications=new Map();
 async function openChefsTableAdmin(applicationId=null){
   if(!isOGAccount())return;
   const modal=document.getElementById("chefsTableAdminModal");
@@ -11485,6 +11488,7 @@ async function openChefsTableAdmin(applicationId=null){
   const {data,error}=await db.rpc("get_chefs_table_applications");
   if(error){console.error(error);list.innerHTML='<div class="muted">Could not load applications.</div>';return;}
   if(!data?.length){list.innerHTML='<div class="muted">No applications waiting.</div>';return;}
+  tableRecVerificationApplications=new Map(data.map(a=>[a.id,a]));
   list.innerHTML=data.map(a=>`<div id="verification-request-${esc(a.id)}" class="card" tabindex="-1" style="margin-bottom:10px">
     <strong>${esc(a.creator_name||"Creator")}</strong>
     <div class="muted" style="font-size:11px;margin-top:4px">${esc(a.platform||"")} - ${esc(a.profile_url||"")}</div>
@@ -11492,9 +11496,12 @@ async function openChefsTableAdmin(applicationId=null){
     <div style="font-size:12px;margin-top:7px">${esc(a.notes||"")}</div>
     <div style="font-size:12px;margin-top:8px">Verification code: <strong>${esc(a.verification_code)}</strong></div>
     <div class="muted" style="font-size:10px;margin-top:3px">Status: ${esc(a.status)}</div>
+    <p class="muted" style="font-size:12px">Check the live public profile yourself. A screenshot, follower count or bio claim alone is not proof. Confirm both control of the profile and that its public identity matches this applicant.</p>
+    ${/^https:\/\//i.test(a.profile_url||"")?`<a href="${esc(a.profile_url)}" target="_blank" rel="noopener noreferrer">Open public profile</a>`:""}
+    <div style="font-size:12px;margin-top:7px">Prior identity review: ${esc(a.identity_review_notes||"Not completed")}</div>
     <div class="mark-admin-actions">
-      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','verify')">Confirm Identity</button>
-      <button class="mark-admin-btn active" onclick="reviewChefApplication('${a.id}','approve')">Grant Verified</button>
+      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','verify')" ${a.status!=="pending_verification"?"disabled":""}>Review Profile Control</button>
+      <button class="mark-admin-btn active" onclick="reviewChefApplication('${a.id}','approve')" ${a.status!=="pending_review"||!a.identity_checked_by?"disabled":""}>Review and Approve</button>
       <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','deny')">Deny</button>
     </div>
   </div>`).join("");
@@ -11506,14 +11513,25 @@ async function openChefsTableAdmin(applicationId=null){
 }
 async function reviewChefApplication(id,action){
   if(!isOGAccount())return;
-  if(action==="approve"&&!confirm("Approve this account as Verified and grant the golden fork?"))return;
-  const {data,error}=await db.rpc("review_chefs_table_application",{p_application_id:id,p_action:action});
+  const application=tableRecVerificationApplications.get(id);
+  if(!application)return;
+  let observedCode=null,notes=null;
+  if(action==="verify"){
+    observedCode=prompt("Open the applicant's live public profile. Enter the verification code you actually see in its bio. Do not copy it from this review page.");
+    if(observedCode===null)return;
+    notes=prompt("Record the public profile you checked and how its identity matches this applicant (at least 20 characters).");
+  }else if(action==="approve"){
+    notes=prompt("Record the independent evidence of this person's public work and eligibility. Follower counts alone do not qualify (at least 20 characters).");
+  }
+  if(action!=="deny" && (!notes||notes.trim().length<20))return alert("Approval requires a written evidence review of at least 20 characters.");
+  if(!confirm(`${action==="approve"?"Approve Verified for":action==="verify"?"Record profile-control review for":"Deny verification for"} ${application.creator_name}?`))return;
+  const {data,error}=await db.rpc("review_verification_application",{p_application_id:id,p_action:action,p_observed_code:observedCode?.trim()||null,p_review_notes:notes?.trim()||null});
   if(error){console.error(error);return alert("Review action failed.");}
-  if(!data)return alert("Action was not authorized or the application is not ready.");
+  if(!data)return alert("Review was not accepted. Check the code, complete profile-control review first, and make sure the request has not expired.");
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.31";
+const TABLESCORE_VERSION="5.58.32";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
@@ -11570,7 +11588,7 @@ function renderMarkAdminControls(targetUserId,marks=[]){
   const f=document.getElementById("grantFirstRoundBtn");
   const hasT=marks.includes("chefs_table");
   const hasF=marks.includes("first_round");
-  t.textContent=hasT?"Revoke Verified":"Grant Verified";
+  t.textContent=hasT?"Revoke Verified":"Review Verification";
   f.textContent=hasF?"Revoke First Round":"Grant First Round";
   t.classList.toggle("active",hasT);
   f.classList.toggle("active",hasF);
@@ -11580,6 +11598,10 @@ async function toggleManagedMark(kind){
   if(!isOGAccount()||!viewedProfile)return;
   if(!["chefs_table","first_round"].includes(kind))return;
   const has=viewedManagedMarks.includes(kind);
+  if(kind==="chefs_table"&&!has){
+    alert("Verified can only be granted after reviewing an application and its identity evidence. This profile shortcut cannot grant it.");
+    return openChefsTableAdmin();
+  }
   const action=has?"revoke":"grant";
   const label=markLabel(kind);
   if(!confirm(`${has?"Revoke":"Grant"} ${label} ${has?"from":"to"} @${viewedProfile.username||"this account"}?`))return;
@@ -11742,7 +11764,7 @@ if(document.readyState==="loading"){
     <div class="modal-head">
       <div>
         <div class="section-title">Request Verification</div>
-        <div class="muted" style="font-size:11px;margin-top:3px">Verification is required before approval.</div>
+        <div class="muted" style="font-size:11px;margin-top:3px">A live public profile check and separate eligibility review are required. Requests do not automatically grant a badge.</div>
       </div>
       <button class="tr-close-control icon-btn" onclick="closeChefsTableApplication()" aria-label="Close verification request">Close</button>
     </div>
@@ -11755,8 +11777,8 @@ if(document.readyState==="loading"){
       <option value="YouTube">YouTube</option>
       <option value="Other">Other</option>
     </select>
-    <label>Public profile URL or handle</label>
-    <input id="ctProfileUrl" placeholder="@handle or profile link">
+    <label>Full public profile URL</label>
+    <input id="ctProfileUrl" placeholder="https://www.instagram.com/yourhandle/">
     <label>Primary city / market</label>
     <input id="ctMarket" placeholder="Austin, TX">
     <label>Approximate followers</label>
