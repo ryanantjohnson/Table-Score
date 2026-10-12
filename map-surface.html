@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="referrer" content="strict-origin-when-cross-origin"><title>TableRec Map</title>
+<style>html,body,#map{height:100%;width:100%;margin:0;background:#fff8f0}body{font:14px system-ui;color:#202326}.ts-map-label{background:#fffdf9;padding:3px 6px;border-radius:5px;font-weight:700}#error{padding:24px}</style></head><body><div id="map"></div>
+<script>
+const channel=location.hash.slice(1);
+const allowedParents=new Set(['capacitor://localhost','http://localhost','https://localhost','https://ryanantjohnson.github.io']);
+let parentOrigin=null,map=null,info=null;
+const markers=new Map();
+function emit(event,extra={}){parent.postMessage({type:'tablerec-map',channel,event,...extra},parentOrigin?.startsWith('capacitor:')?'*':(parentOrigin||'*'));}
+function state(requestId){const center=map?.getCenter();emit('state',{requestId,center:center?{lat:center.lat(),lng:center.lng()}:null,zoom:map?.getZoom()});}
+function fail(message){document.getElementById('map').replaceChildren();const div=document.createElement('div');div.id='error';div.textContent=message;document.getElementById('map').append(div);emit('error',{message});}
+window.gm_authFailure=()=>fail('Google Maps authorization failed. Check the website key restrictions.');
+window.addEventListener('message',async event=>{
+  const msg=event.data;
+  if(event.source!==parent || !allowedParents.has(event.origin) || msg?.type!=='tablerec-map' || msg.channel!==channel)return;
+  if(parentOrigin && parentOrigin!==event.origin)return;
+  parentOrigin=event.origin;
+  try{
+    if(msg.command==='init'){
+      if(!msg.options.geocoderOnly){
+        map=new google.maps.Map(document.getElementById('map'),msg.options);
+        info=new google.maps.InfoWindow();map.addListener('idle',()=>state());
+      }
+      emit('ready');
+    }else if(msg.command==='state')state(msg.requestId);
+    else if(msg.command==='center')map.setCenter(msg.center);
+    else if(msg.command==='zoom')map.setZoom(msg.zoom);
+    else if(msg.command==='resize')google.maps.event.trigger(map,'resize');
+    else if(msg.command==='marker'){
+      const options={...msg.options,map};
+      if(options.icon){options.icon={...options.icon};
+        const i=options.icon;
+        if(i.scaledSize)i.scaledSize=new google.maps.Size(i.scaledSize.width,i.scaledSize.height);
+        for(const k of ['anchor','labelOrigin'])if(i[k])i[k]=new google.maps.Point(i[k].x,i[k].y);
+      }
+      markers.get(msg.id)?.setMap(null);
+      const marker=new google.maps.Marker(options);markers.set(msg.id,marker);
+      marker.addListener('click',()=>emit('markerClick',{id:msg.id}));
+    }else if(msg.command==='removeMarker'){markers.get(msg.id)?.setMap(null);markers.delete(msg.id);}
+    else if(msg.command==='markerPosition')markers.get(msg.id)?.setPosition(msg.position);
+    else if(msg.command==='info'){info.setContent(msg.content);info.open({map,anchor:markers.get(msg.id)});}
+    else if(msg.command==='geocode'){
+      try{
+        const response=await new google.maps.Geocoder().geocode(msg.options);
+        // Return only address components; Maps objects are not structured-clone safe.
+        emit('geocoded',{requestId:msg.requestId,results:(response.results||[]).map(r=>({address_components:r.address_components}))});
+      }catch(error){emit('geocoded',{requestId:msg.requestId,error:'Could not resolve this location.'});}
+    }
+  }catch(error){fail('Google Maps could not display this area. Please reopen the map.');}
+});
+window.tableRecMapSurfaceReady=()=>emit('loaded');
+const script=document.createElement('script');script.async=true;
+script.src='https://maps.googleapis.com/maps/api/js?key=AIzaSyDyBsOeFt3bzJ49ped0-qc_tNgaidpaSrs&callback=tableRecMapSurfaceReady&v=weekly';
+script.onerror=()=>fail('The map connection failed. Check your connection and reopen the map.');
+document.head.append(script);
+</script></body></html>
