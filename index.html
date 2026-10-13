@@ -9826,6 +9826,7 @@ async function trInviteContact(){
  if(cap?.isPluginAvailable?.("TableRecContacts")){
   try{
    if(typeof cap.nativePromise!=="function")throw new Error("Contacts are unavailable. Try Share an Invitation.");
+   if(!await trRequestContactConsent())return;
    await cap.nativePromise("TableRecContacts","invite",{url:trInvitationURL});
   }
   catch(e){if(e.code!=="CANCELLED")alert(e.message||"Could not open Contacts. Try Share an Invitation.");}
@@ -11621,10 +11622,10 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.36";
+const TABLESCORE_VERSION="5.58.39";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Native Restaurants, Maps and Layout Fixes";
+const TABLESCORE_BUILD_LABEL="TableRec - Contact Consent and Dig It People";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -12372,6 +12373,52 @@ async function trLoadDiggers(){
  }finally{if(request===trDiggersRequest){trDiggersBusy=false;more.disabled=false;}}
 }
 document.addEventListener("keydown",event=>{if(event.key==="Escape"&&!document.getElementById("trDiggersModal").classList.contains("hidden"))trCloseDiggers();});
+</script>
+
+
+<style>
+#trContactConsentModal{z-index:10070}
+#trContactConsentModal>.sheet{background:var(--sheetBg);color:var(--ink);padding:24px;max-height:85dvh;overflow:auto}
+.tr-contact-consent-actions{display:flex;gap:12px;margin-top:20px}
+.tr-contact-consent-actions button{flex:1;min-height:48px}
+</style>
+<div id="trContactConsentModal" class="modal hidden" role="dialog" aria-modal="true" aria-labelledby="trContactConsentTitle" aria-describedby="trContactConsentText" onclick="if(event.target===this)trFinishContactConsent(false)">
+ <div class="sheet"><h2 id="trContactConsentTitle" style="font-size:21px;line-height:1.25;margin-top:0">TableRec would like access to contacts</h2>
+ <p id="trContactConsentText" style="line-height:1.5">Approve to open Apple's contact picker and choose one friend to invite. TableRec receives only the phone number or email you select. Your contact list is not uploaded or synced. Nothing is sent until you tap Send.</p>
+ <div class="tr-contact-consent-actions"><button class="secondary" onclick="trFinishContactConsent(false)">Deny</button><button class="primary" onclick="trFinishContactConsent(true)">Approve</button></div>
+ </div>
+</div>
+<script>
+let trContactConsentPending=null,trContactConsentApproved=false,trContactConsentFocus=null;
+function trRequestContactConsent(){
+ try{if(localStorage.getItem('tr-contact-invite-consent-v1')==='approved')return Promise.resolve(true);}catch{}
+ if(trContactConsentApproved)return Promise.resolve(true);
+ if(trContactConsentPending)return Promise.resolve(false);
+ trContactConsentFocus=document.activeElement;
+ return new Promise(resolve=>{
+  trContactConsentPending=resolve;
+  lockBackgroundScroll();tableRecOpenModalFluid(document.getElementById('trContactConsentModal'));
+  document.querySelector('#trContactConsentModal .secondary')?.focus();
+ });
+}
+function trFinishContactConsent(approved){
+ const resolve=trContactConsentPending;if(!resolve)return;
+ trContactConsentPending=null;
+ if(approved){trContactConsentApproved=true;try{localStorage.setItem('tr-contact-invite-consent-v1','approved');}catch{}}
+ document.getElementById('trContactConsentModal').classList.add('hidden');
+ if(!document.querySelector('.modal:not(.hidden)'))unlockBackgroundScroll();
+ trContactConsentFocus?.focus?.();trContactConsentFocus=null;resolve(!!approved);
+}
+document.addEventListener('keydown',event=>{
+ const modal=document.getElementById('trContactConsentModal');
+ if(!trContactConsentPending||modal.classList.contains('hidden'))return;
+ if(event.key==='Escape'){event.preventDefault();trFinishContactConsent(false);}
+ if(event.key==='Tab'){
+  const buttons=[...modal.querySelectorAll('button')],first=buttons[0],last=buttons.at(-1);
+  if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus();}
+  else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus();}
+ }
+});
 </script>
 
 </body>
