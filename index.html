@@ -2309,6 +2309,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 #homePeopleSuggestions .people-row{grid-template-columns:40px minmax(0,1fr)}
 #homePeopleSuggestions .people-follow-btn{grid-column:1/-1;width:100%!important;justify-self:stretch}
 @media(max-width:350px){.people-row{grid-template-columns:40px minmax(0,1fr)}.people-follow-btn{grid-column:1/-1;width:100%!important}}
+.tr-dismiss-person{flex:0 0 36px;width:36px;height:36px;padding:0;border:1px solid var(--line);border-radius:50%;background:var(--cream);color:var(--ink);font-size:25px;line-height:1}.tr-dismiss-person:disabled{opacity:.5}
 </style>
 </head>
 <body class="booting">
@@ -2370,6 +2371,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div id="newNearby" class="list"></div>
     </div>
 
+    <div id="discoverPeopleCard" class="card">
+      <div class="section-head"><div class="section-title">Find your people</div><button class="secondary" style="width:auto" onclick="openPeopleFinder()">Find People</button></div>
+      <p class="muted">Discover diners and invite friends to your table.</p>
+      <button class="primary" onclick="trInviteContact()">Invite a Friend from Contacts</button>
+      <p class="muted" style="font-size:12px">Optional. Choose one contact to invite. Your address book is not uploaded or synced.</p>
+      <button class="secondary" onclick="trShareInvite()">Share an Invitation</button>
+      <div id="discoverPeopleSuggestionsWrap" style="margin-top:18px"><div class="section-title" style="font-size:18px">Suggested People</div><div id="discoverPeopleSuggestions" class="list" style="margin-top:10px"></div></div>
+    </div>
     <button class="primary" onclick="startRating()">+ Rate a Restaurant</button>
   </section>
 
@@ -2383,10 +2392,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <button type="submit" aria-label="Search people">Search</button>
     </form>
     <div id="homePeopleResults" class="card hidden" aria-live="polite" style="margin-bottom:16px"></div>
-    <div id="homePeopleSuggestionsWrap" class="card hidden" style="margin-bottom:16px">
-      <div class="section-head"><div class="section-title" style="font-size:18px">Suggested Friends</div><button class="secondary" style="width:auto;padding:8px 12px" onclick="openPeopleFinder()">See More</button></div>
-      <div id="homePeopleSuggestions" class="list" style="margin-top:10px"></div>
-    </div>
     <div class="home-people-head-end" style="display:none">
     </div>
 
@@ -3342,7 +3347,7 @@ function trSyncAccountState(user=currentUser){
   tableScoreNotifications=[];notificationsInitialized=false;
   tableRecPendingFollowRequests=[];
   accountMarkCache.clear();viewedManagedMarks=[];
-  for(const name of ["profileBadges","badgePicker","profileBadgeFolderSub","notificationsList"]){const el=document.getElementById(name);if(el)el.innerHTML="";}
+  for(const name of ["profileBadges","badgePicker","profileBadgeFolderSub","notificationsList","discoverPeopleSuggestions","peopleSuggestions"]){const el=document.getElementById(name);if(el)el.innerHTML="";}
   document.getElementById("secretRewardOverlay")?.classList.add("hidden");
   updateNotificationBadge();
   renderOwnBadges();
@@ -3651,7 +3656,7 @@ function showScreen(id,options={}){
 
   if(id==="saved") renderSaved();
   if(id==="profile") renderProfile();
-  if(id==="discover") loadRestaurantStats();
+  if(id==="discover"){loadRestaurantStats();void loadPeopleSuggestions(true);}
   if(id==="explore"){
     renderExplore();
     setTimeout(()=>initExploreDiscoveryMap(),80);
@@ -6879,7 +6884,7 @@ function buildMixedHomeFeed(ratingCards){
  const pollPos=takePosition();
  if(pollPos!==undefined)placements.push([pollPos,inserts[0]]);
  const dinerPos=takePosition();
- if(dinerPos!==undefined)placements.push([dinerPos,`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`]);
+ if(dinerPos!==undefined)placements.push([dinerPos,``]);
  const runPos=takePosition();
  if(runPos!==undefined)placements.push([runPos,homeRunInsert()]);
  const restaurantPos=takePosition();
@@ -6897,7 +6902,7 @@ function buildMixedHomeFeed(ratingCards){
  if(count===1){
    out.push(`<div class="home-feed-break">${inserts[0]}</div>`);
    out.push(`<div class="home-feed-break">${homeRunInsert()}</div>`);
-   out.push(`<div id="homeSuggestedDinerSlot" class="home-feed-break"></div>`);
+   out.push(``);
    out.push(`<div id="homeSuggestedRestaurantSlot" class="home-feed-break"></div>`);
  }
  return out.join("");
@@ -6990,7 +6995,7 @@ function renderHomeEngagement(){
 
 
 async function loadFollowingFeed(){
-  void loadPeopleSuggestions(true);
+  // People suggestions live in Discover.
   const el=document.getElementById("followingFeed");
   if(!el)return;
   if(!currentUser){
@@ -7035,7 +7040,7 @@ async function loadFollowingFeed(){
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
   const ratingCards=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id)));
   el.innerHTML=buildMixedHomeFeed(ratingCards);
-  void loadHomeSuggestedDiner();
+
   loadHomeSuggestedRestaurant();
   await hydrateRatingEngagement(ratings.map(r=>r.id));
 }
@@ -7811,6 +7816,7 @@ function renderProfile(){
   renderMyProfileRatings();
   renderEarnedProgressRewards();
   loadPeopleSuggestions();
+  void loadPeopleSuggestions(true);
 }
 
 
@@ -9648,12 +9654,12 @@ async function claimUsername(){
   alert("Username saved. Welcome to TableRec Social.");
 }
 
-function peopleRowMarkup(u,{showMutual=false}={}){
+function peopleRowMarkup(u,{showMutual=false,dismissible=false}={}){
   const isFollowing=followingIds.has(u.id);
   const isPending=pendingFollowingIds.has(u.id);
   const display=u.display_name||u.username||"TableRec User";
   const mutualCount=Number(u.mutual_count||0);
-  return `<div class="row people-row">
+  return `<div class="row people-row" data-suggested-user="${u.id}">
     <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none">${avatarMarkup(u,40)}</button>
     <div style="min-width:0;flex:1">
       <button onclick="openPublicProfile('${u.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;width:100%">
@@ -9663,6 +9669,7 @@ function peopleRowMarkup(u,{showMutual=false}={}){
       </button>
     </div>
     <button class="people-follow-btn ${isFollowing||isPending?"secondary":"primary"}" onclick="toggleFollow('${u.id}',this)">${isFollowing?"Following":isPending?"Requested":"Follow"}</button>
+    ${dismissible?`<button class="tr-dismiss-person" aria-label="Remove suggestion for ${esc(display)}" onclick="trDismissPerson('${u.id}',this)">×</button>`:""}
   </div>`;
 }
 
@@ -9776,32 +9783,44 @@ async function searchPeople(explicit=false){
 }
 
 
-async function loadPeopleSuggestions(home=false){
-  const wrap=document.getElementById(home?"homePeopleSuggestionsWrap":"peopleSuggestionsWrap");
-  const out=document.getElementById(home?"homePeopleSuggestions":"peopleSuggestions");
-  if(!wrap||!out)return;
-
-  if(!currentUser||!profile?.username){
-    wrap.classList.add("hidden");
-    out.innerHTML="";
-    return;
-  }
-
-  wrap.classList.remove("hidden");
-  out.innerHTML='<div class="people-suggested-empty">Finding people you may know...</div>';
-
-  const {data,error}=await db.rpc("get_people_suggestions",{p_limit:8});
-  if(error){
-    console.error("people suggestions:",error);
-    out.innerHTML='<div class="people-suggested-empty">Suggestions could not load right now.</div>';
-    return;
-  }
-  if(!data||!data.length){
-    out.innerHTML='<div class="people-suggested-empty">No suggestions yet. As more people connect on TableRec, mutual connections will appear here.</div>';
-    return;
-  }
-
-  out.innerHTML=data.slice(0,home?3:8).map(u=>peopleRowMarkup(u,{showMutual:true})).join("");
+async function loadPeopleSuggestions(discover=false){
+ const wrap=document.getElementById(discover?"discoverPeopleSuggestionsWrap":"peopleSuggestionsWrap");
+ const out=document.getElementById(discover?"discoverPeopleSuggestions":"peopleSuggestions");
+ if(!wrap||!out)return;
+ const userId=currentUser?.id, epoch=trAccountStateEpoch;
+ if(!userId||!profile?.username){wrap.classList.add("hidden");out.innerHTML="";return;}
+ wrap.classList.remove("hidden");out.innerHTML='<div class="muted">Finding people...</div>';
+ const {data,error}=await db.rpc("get_people_suggestions",{p_limit:20});
+ if(!trAccountRequestCurrent(userId,epoch))return;
+ if(error){out.innerHTML='<div class="muted">Suggestions could not load. Please try again.</div>';return;}
+ const people=(data||[]).filter(u=>!followingIds.has(u.id)&&!pendingFollowingIds.has(u.id));
+ out.innerHTML=people.length?people.slice(0,8).map(u=>peopleRowMarkup(u,{showMutual:true,dismissible:true})).join(""):'<div class="muted">No new suggestions. You can still find people by name or invite a friend.</div>';
+}
+async function trDismissPerson(id,button){
+ if(!currentUser||button.disabled)return;
+ const userId=currentUser.id,epoch=trAccountStateEpoch;button.disabled=true;
+ try{
+  const {error}=await db.from("tr_people_dismissals").upsert({user_id:userId,suggested_user_id:id},{onConflict:"user_id,suggested_user_id",ignoreDuplicates:true});
+  if(error)throw error;
+  if(!trAccountRequestCurrent(userId,epoch))return;
+  await Promise.all([loadPeopleSuggestions(true),loadPeopleSuggestions()]);
+ }catch(e){if(trAccountRequestCurrent(userId,epoch)){button.disabled=false;alert("Could not remove that suggestion. Please try again.");}}
+}
+const trInvitationURL="https://ryanantjohnson.github.io/Table-Score/";
+async function trShareInvite(){
+ const text="Join me on TableRec to discover restaurants, share ratings, and find your next good meal.";
+ try{
+  if(navigator.share)await navigator.share({title:"TableRec",text,url:trInvitationURL});
+  else if(navigator.clipboard){await navigator.clipboard.writeText(text+" "+trInvitationURL);alert("Invitation copied. Paste it into a message to your friend.");}
+  else location.href="mailto:?subject=Join%20me%20on%20TableRec&body="+encodeURIComponent(text+" "+trInvitationURL);
+ }catch(e){if(e.name!=="AbortError")alert("Could not share. Please try again.");}
+}
+async function trInviteContact(){
+ const cap=window.Capacitor;
+ if(cap?.isPluginAvailable?.("TableRecContacts")){
+  try{const plugin=cap.registerPlugin("TableRecContacts");await plugin.invite({url:trInvitationURL});}
+  catch(e){if(e.code!=="CANCELLED")alert(e.message||"Could not open Contacts. Try Share an Invitation.");}
+ }else await trShareInvite();
 }
 
 async function toggleFollow(userId,btn){
@@ -9837,6 +9856,7 @@ async function toggleFollow(userId,btn){
   btn.disabled=false;
   loadFollowingFeed();
   loadPeopleSuggestions();
+  void loadPeopleSuggestions(true);
 }
 
 const ratings=document.getElementById("ratings");
