@@ -3329,7 +3329,7 @@ const cats=["Atmosphere","Cleanliness","Taste","Quality","Portions","Price","Ser
 const dbCols=["atmosphere","cleanliness","taste","quality","portions","price","service"];
 
 let trDiggersRequest=0,trDiggersRating=null,trDiggersOffset=0,trDiggersBusy=false;
-let trDigPreviewRequest=0;
+
 let currentUser=null;
 let trAccountStateUserId=null;
 let trAccountStateEpoch=0;
@@ -6450,7 +6450,7 @@ async function loadRatingComments(ratingId){
   }
 
   if(!comments?.length){
-    list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">No comments yet. Start the table talk.</div>';
+    list.innerHTML='<div class="muted" style="font-size:12px;padding:10px 0">No comments yet. Be the first to comment.</div>';
   }else{
     list.innerHTML=comments.map(c=>{
       const p=peopleMap.get(c.user_id);
@@ -6850,7 +6850,7 @@ function unansweredHomePolls(){
   return rotated.filter(p=>!homePollChoice(p.id));
 }
 function noHomePollsCard(){
-  return `<div class="home-play-card"><div class="home-play-kicker">TABLE TALK</div><div class="home-play-question">No polls right now.</div><div class="muted" style="font-size:11px;margin-top:6px">Check back later for a new food question.</div></div>`;
+  return `<div class="home-play-card"><div class="home-play-kicker">FOOD QUESTIONS</div><div class="home-play-question">No polls right now.</div><div class="muted" style="font-size:11px;margin-top:6px">Check back later for a new food question.</div></div>`;
 }
 function nextHomePollCard(offset=0){
   const available=unansweredHomePolls();
@@ -11622,7 +11622,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.39";
+const TABLESCORE_VERSION="5.58.41";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Contact Consent and Dig It People";
@@ -12317,21 +12317,14 @@ document.addEventListener("touchcancel",()=>{trPullGesture=null;if(!trRefreshing
 </div>
 <script>
 
-async function trHydrateDigPreviews(ids,counts){
- const request=++trDigPreviewRequest,account=currentUser?.id||null,epoch=trAccountStateEpoch;
- const active=ids.filter(id=>(counts.get(id)||0)>0);
+function trHydrateDigPreviews(ids,counts){
  ids.forEach(id=>document.querySelectorAll(`[data-dig-summary="${id}"]`).forEach(el=>{
-  const count=counts.get(id)||0;el.classList.toggle("hidden",!count);
-  el.textContent=count===1?"1 person dug this rating":`${count} people dug this rating`;
- }));
- if(!active.length)return;
- const {data,error}=await db.rpc("get_rating_dig_previews",{p_rating_ids:active.slice(0,100)});
- if(error||request!==trDigPreviewRequest||!trAccountRequestCurrent(account,epoch))return;
- (data||[]).forEach(row=>document.querySelectorAll(`[data-dig-summary="${row.rating_id}"]`).forEach(el=>{
-  const count=counts.get(row.rating_id)||0;
-  el.textContent=count===1?`Dug by ${row.display_name}`:`Dug by ${row.display_name} and ${count-1} other${count===2?"":"s"}`;
+  const count=counts.get(id)||0;
+  el.classList.toggle("hidden",!count);
+  el.textContent=count===1?"1 person dug this":`${count} people dug this`;
  }));
 }
+
 function trCloseDiggers(){
  trDiggersRequest++;trDiggersRating=null;trDiggersBusy=false;trDiggersOffset=0;
  const modal=document.getElementById("trDiggersModal"),wasOpen=modal&&!modal.classList.contains("hidden");
