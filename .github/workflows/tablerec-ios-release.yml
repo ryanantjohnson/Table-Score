@@ -121,6 +121,101 @@ jobs:
           fi
           npx cap sync ios
 
+      - name: Add optional contact invitation picker
+        working-directory: native
+        run: |
+          set -euo pipefail
+          cat > ios/App/App/TableRecContacts.swift <<'SWIFT'
+          import UIKit
+          import Capacitor
+          import Contacts
+          import ContactsUI
+          import MessageUI
+          
+          @objc(TableRecContactsPlugin)
+          public class TableRecContactsPlugin: CAPPlugin, CAPBridgedPlugin, CNContactPickerDelegate, MFMessageComposeViewControllerDelegate, MFMailComposeViewControllerDelegate {
+              public let identifier = "TableRecContactsPlugin"
+              public let jsName = "TableRecContacts"
+              public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "invite", returnType: CAPPluginReturnPromise)]
+              private var pending: CAPPluginCall?
+              private let invitation = "Join me on TableRec to discover restaurants, share ratings, and find your next good meal. https://ryanantjohnson.github.io/Table-Score/"
+          
+              @objc func invite(_ call: CAPPluginCall) {
+                  DispatchQueue.main.async {
+                      guard self.pending == nil else { call.reject("An invitation is already open."); return }
+                      guard let host = self.bridge?.viewController, host.presentedViewController == nil else { call.reject("Close the open screen and try again."); return }
+                      self.pending = call
+                      let picker = CNContactPickerViewController()
+                      picker.delegate = self
+                      picker.displayedPropertyKeys = [CNContactPhoneNumbersKey, CNContactEmailAddressesKey]
+                      picker.predicateForEnablingContact = NSPredicate(format: "phoneNumbers.@count > 0 OR emailAddresses.@count > 0")
+                      picker.predicateForSelectionOfProperty = NSPredicate(format: "key == 'phoneNumbers' OR key == 'emailAddresses'")
+                      host.present(picker, animated: true)
+                  }
+              }
+              public func contactPickerDidCancel(_ picker: CNContactPickerViewController) { finish("cancelled") }
+              public func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
+                  let phone = (contactProperty.value as? CNPhoneNumber)?.stringValue
+                  let email = contactProperty.key == CNContactEmailAddressesKey ? contactProperty.value as? String : nil
+                  picker.dismiss(animated: true) {
+                      guard let host = self.bridge?.viewController else { self.finish("cancelled"); return }
+                      if let phone = phone, MFMessageComposeViewController.canSendText() {
+                          let composer = MFMessageComposeViewController()
+                          composer.messageComposeDelegate = self
+                          composer.recipients = [phone]
+                          composer.body = self.invitation
+                          host.present(composer, animated: true)
+                      } else if let email = email, MFMailComposeViewController.canSendMail() {
+                          let composer = MFMailComposeViewController()
+                          composer.mailComposeDelegate = self
+                          composer.setToRecipients([email])
+                          composer.setSubject("Join me on TableRec")
+                          composer.setMessageBody(self.invitation, isHTML: false)
+                          host.present(composer, animated: true)
+                      } else {
+                          self.pending?.reject("Messages or Mail is not available for that contact. Use Share an Invitation instead.")
+                          self.pending = nil
+                      }
+                  }
+              }
+              public func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
+                  controller.dismiss(animated: true) { self.finish(result == .sent ? "sent" : result == .cancelled ? "cancelled" : "failed") }
+              }
+              public func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
+                  controller.dismiss(animated: true) { self.finish(result == .sent ? "sent" : result == .saved ? "saved" : result == .cancelled ? "cancelled" : "failed") }
+              }
+              private func finish(_ status: String) {
+                  pending?.resolve(["status": status])
+                  pending = nil
+              }
+          }
+          @objc(TableRecBridgeViewController)
+          class TableRecBridgeViewController: CAPBridgeViewController {
+              override func capacitorDidLoad() { bridge?.registerPluginInstance(TableRecContactsPlugin()) }
+          }
+          SWIFT
+          ruby <<'RUBY'
+          require 'xcodeproj'
+          project = Xcodeproj::Project.open('ios/App/App.xcodeproj')
+          app = project.targets.find { |target| target.name == 'App' }
+          abort 'Missing App target' unless app
+          group = project.main_group.find_subpath('App', false)
+          abort 'Missing App group' unless group
+          file = group.files.find { |item| item.path == 'TableRecContacts.swift' } || group.new_file('TableRecContacts.swift')
+          app.source_build_phase.add_file_reference(file, true)
+          project.save
+          RUBY
+          python3 - <<'PYTHON'
+          from pathlib import Path
+          path=Path('ios/App/App/Base.lproj/Main.storyboard')
+          s=path.read_text()
+          if 'customClass="CAPBridgeViewController"' not in s:
+              raise SystemExit('Expected Capacitor storyboard bridge controller')
+          s=s.replace('customClass="CAPBridgeViewController"','customClass="TableRecBridgeViewController"')
+          s=s.replace('customModule="Capacitor"','customModule="App"')
+          path.write_text(s)
+          PYTHON
+
       - name: Prepare approved icon and splash
         working-directory: native
         run: |
