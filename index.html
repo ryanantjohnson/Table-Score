@@ -3263,6 +3263,11 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </label>
     </div>
 
+    <div class="account-confirmation-help">
+      <button id="resendConfirmationBtn" type="button" class="account-link" onclick="resendConfirmationEmail()">Resend confirmation email</button>
+      <p id="confirmationEmailStatus" class="muted" role="status" aria-live="polite"></p>
+    </div>
+
     <div id="accountLegalConsent" class="account-signup-only hidden tr-legal-consent">
       <label><input id="acctLegalAccepted" type="checkbox"> <span>I am at least 13 and meet the age requirements in the Terms. I agree to the <a href="legal.html#terms" target="_blank" rel="noopener">Terms of Service &amp; Community Rules</a> and acknowledge the <a href="legal.html#privacy" target="_blank" rel="noopener">Privacy Policy</a>.</span></label>
     </div>
@@ -4229,6 +4234,7 @@ async function startRating(name){
 
   syncRateRestaurantPicker();
   resetScores();
+  clearPendingRatingPhotos();
   showScreen("rate");
 }
 
@@ -5147,6 +5153,12 @@ async function openRestaurantActionTableRec(){
 function rateRestaurantAction(){
   const r=restaurantActionPlace;if(!r)return;
   captureRestaurantFinderReturn();
+  // Changing the restaurant inside an unfinished rating preserves its draft.
+  // Starting a rating from any other screen starts a new, empty draft.
+  if(restaurantFinderReturnState?.screen!=="rate"){
+    resetScores();
+    clearPendingRatingPhotos();
+  }
   selectedRestaurantId=null;selectedGoogleRestaurant={...r};selectedRestaurantName=r.name||"Restaurant";
   syncRateRestaurantPicker();
   document.getElementById("restaurantActionModal")?.classList.add("hidden");
@@ -5582,6 +5594,53 @@ async function forgotPassword(){
   alert("Password reset email sent. Open the link in that email, then return to TableRec to choose a new password.");
 }
 
+const confirmationEmailCooldowns=new Map();
+let confirmationEmailBusy=false;
+let confirmationEmailTimer=null;
+
+function updateConfirmationEmailButton(){
+  const btn=document.getElementById("resendConfirmationBtn");
+  if(!btn)return;
+  const email=document.getElementById("acctEmail").value.trim().toLowerCase();
+  const seconds=Math.max(0,Math.ceil(((confirmationEmailCooldowns.get(email)||0)-Date.now())/1000));
+  btn.disabled=confirmationEmailBusy||seconds>0;
+  btn.textContent=confirmationEmailBusy?"Requesting email...":seconds?`Resend in ${seconds}s`:"Resend confirmation email";
+  if(!seconds&&confirmationEmailTimer){clearInterval(confirmationEmailTimer);confirmationEmailTimer=null;}
+}
+
+async function resendConfirmationEmail(){
+  const input=document.getElementById("acctEmail");
+  const status=document.getElementById("confirmationEmailStatus");
+  const email=input.value.trim().toLowerCase();
+  if(!email||!input.checkValidity()){
+    status.textContent="Enter the email you used to create your account first.";
+    input.focus();
+    return;
+  }
+  if(confirmationEmailBusy||(confirmationEmailCooldowns.get(email)||0)>Date.now())return;
+  confirmationEmailBusy=true;
+  status.textContent="Requesting a new confirmation email...";
+  updateConfirmationEmailButton();
+  try{
+    const {error}=await db.auth.resend({type:"signup",email,options:{emailRedirectTo:"https://ryanantjohnson.github.io/Table-Score/"}});
+    if(error)throw error;
+    confirmationEmailCooldowns.set(email,Date.now()+60000);
+    status.textContent="If this email belongs to an account awaiting confirmation, a new link has been requested. Check your inbox, Spam, and Promotions, and use the newest confirmation email. If already confirmed, sign in.";
+  }catch(error){
+    if(error.status===429||/rate.limit|after .*seconds/i.test(error.message||"")){
+      confirmationEmailCooldowns.set(email,Date.now()+60000);
+      status.textContent="Too many email requests. Wait at least a minute before trying again.";
+    }else{
+      status.textContent="Could not request the confirmation email. Please try again later or contact tablerechelp@gmail.com.";
+    }
+  }finally{
+    confirmationEmailBusy=false;
+    updateConfirmationEmailButton();
+    if((confirmationEmailCooldowns.get(email)||0)>Date.now()&&!confirmationEmailTimer)confirmationEmailTimer=setInterval(updateConfirmationEmailButton,1000);
+  }
+}
+document.getElementById("acctEmail")?.addEventListener("input",updateConfirmationEmailButton);
+
 function openPasswordRecovery(){
   closeAccount();
   lockBackgroundScroll();
@@ -5713,7 +5772,13 @@ async function signIn(){
   setAuthBusy(true);
   const {data,error}=await db.auth.signInWithPassword({email,password});
   setAuthBusy(false);
-  if(error)return alert(error.message);
+  if(error){
+    if(error.code==="email_not_confirmed"){
+      document.getElementById("confirmationEmailStatus").textContent="Confirm your email before signing in. Check Spam and Promotions, or tap Resend confirmation email below.";
+      return alert("Your email is not confirmed yet. Use Resend confirmation email on this screen to request a new link.");
+    }
+    return alert(error.message);
+  }
   currentUser=data.user;
   trSyncAccountState();
   const keepSignedIn=document.getElementById("keepSignedIn").checked;
@@ -10424,6 +10489,9 @@ async function submitRating(){
     }
     clearPendingRatingPhotos();
 
+    // Only clear a completed submission. Validation/save failures retain the draft.
+    resetScores();
+
     alert(
       `TableRec submitted: ${Number(data.overall_score).toFixed(2)}/10\n\n`+
       (data.verified_visit
@@ -11622,7 +11690,7 @@ async function reviewChefApplication(id,action){
   await openChefsTableAdmin();
 }
 
-const TABLESCORE_VERSION="5.58.41";
+const TABLESCORE_VERSION="5.58.42";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
 const TABLESCORE_BUILD_LABEL="TableRec - Contact Consent and Dig It People";
