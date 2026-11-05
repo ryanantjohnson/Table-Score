@@ -1,27 +1,27 @@
 name: TableRec iOS Release
 
-# Add this as .github/workflows/tablerec-ios-release.yml.
-# Leave the existing tablerec-native.yml in place.
-# Default: unsigned physical-device archive for a build check only.
-# Signing requires four repository Actions secrets:
-# TABLEREC_IOS_DISTRIBUTION_CERTIFICATE_BASE64 (Apple Distribution .cer)
-# TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY (complete encrypted PEM text from CSR run)
+# Signing secrets:
+# TABLEREC_IOS_DISTRIBUTION_CERTIFICATE_BASE64
+# TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY
 # TABLEREC_IOS_CERTIFICATE_PASSWORD
-# TABLEREC_IOS_PROFILE_BASE64 (matching App Store .mobileprovision)
-# Upload additionally requires:
-# TABLEREC_APPLE_ACCOUNT_EMAIL (Apple Developer account sign-in email)
-# TABLEREC_APPLE_APP_PASSWORD (Apple-generated app-specific password)
-# Never put secret values in this file or commit them to the repository.
+# TABLEREC_IOS_PROFILE_BASE64
+#
+# Apple upload secrets:
+# TABLEREC_APPLE_API_KEY_ID
+# TABLEREC_APPLE_API_ISSUER_ID
+# TABLEREC_APPLE_API_PRIVATE_KEY
+#
+# Store secret values in GitHub Actions secrets only.
 
 on:
   workflow_dispatch:
     inputs:
       signed_release:
-        description: Build a signed App Store IPA (requires signing secrets)
+        description: Build a signed App Store IPA
         type: boolean
         default: false
       upload_to_apple:
-        description: Upload signed IPA to App Store Connect (requires upload secrets)
+        description: Upload signed IPA to App Store Connect
         type: boolean
         default: false
 
@@ -55,8 +55,9 @@ jobs:
           TR_ENCRYPTED_KEY: ${{ secrets.TABLEREC_IOS_ENCRYPTED_PRIVATE_KEY }}
           TR_CERT_PASSWORD: ${{ secrets.TABLEREC_IOS_CERTIFICATE_PASSWORD }}
           TR_PROFILE: ${{ secrets.TABLEREC_IOS_PROFILE_BASE64 }}
-          TR_APPLE_EMAIL: ${{ secrets.TABLEREC_APPLE_ACCOUNT_EMAIL }}
-          TR_APP_PASSWORD: ${{ secrets.TABLEREC_APPLE_APP_PASSWORD }}
+          TR_API_KEY_ID: ${{ secrets.TABLEREC_APPLE_API_KEY_ID }}
+          TR_API_ISSUER_ID: ${{ secrets.TABLEREC_APPLE_API_ISSUER_ID }}
+          TR_API_PRIVATE_KEY: ${{ secrets.TABLEREC_APPLE_API_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           if [[ "$TR_UPLOAD" == true && "$TR_SIGNED" != true ]]; then
@@ -66,15 +67,15 @@ jobs:
           if [[ "$TR_SIGNED" == true ]]; then
             for variable in TR_CERT TR_ENCRYPTED_KEY TR_CERT_PASSWORD TR_PROFILE; do
               if [[ -z "${!variable}" ]]; then
-                echo "Missing signing secret: $variable. Complete signing setup first."
+                echo "Missing signing secret: $variable."
                 exit 1
               fi
             done
           fi
           if [[ "$TR_UPLOAD" == true ]]; then
-            for variable in TR_APPLE_EMAIL TR_APP_PASSWORD; do
+            for variable in TR_API_KEY_ID TR_API_ISSUER_ID TR_API_PRIVATE_KEY; do
               if [[ -z "${!variable}" ]]; then
-                echo "Missing Apple upload secret: $variable. Complete upload setup first."
+                echo "Missing Apple upload secret: $variable."
                 exit 1
               fi
             done
@@ -131,7 +132,7 @@ jobs:
           import Contacts
           import ContactsUI
           import MessageUI
-          
+
           @objc(TableRecContactsPlugin)
           public class TableRecContactsPlugin: CAPPlugin, CAPBridgedPlugin, CNContactPickerDelegate, MFMessageComposeViewControllerDelegate, MFMailComposeViewControllerDelegate {
               public let identifier = "TableRecContactsPlugin"
@@ -139,11 +140,17 @@ jobs:
               public let pluginMethods: [CAPPluginMethod] = [CAPPluginMethod(name: "invite", returnType: CAPPluginReturnPromise)]
               private var pending: CAPPluginCall?
               private let invitation = "Join me on TableRec to discover restaurants, share ratings, and find your next good meal. https://ryanantjohnson.github.io/Table-Score/"
-          
+
               @objc func invite(_ call: CAPPluginCall) {
                   DispatchQueue.main.async {
-                      guard self.pending == nil else { call.reject("An invitation is already open."); return }
-                      guard let host = self.bridge?.viewController, host.presentedViewController == nil else { call.reject("Close the open screen and try again."); return }
+                      guard self.pending == nil else {
+                          call.reject("An invitation is already open.")
+                          return
+                      }
+                      guard let host = self.bridge?.viewController, host.presentedViewController == nil else {
+                          call.reject("Close the open screen and try again.")
+                          return
+                      }
                       self.pending = call
                       let picker = CNContactPickerViewController()
                       picker.delegate = self
@@ -153,12 +160,19 @@ jobs:
                       host.present(picker, animated: true)
                   }
               }
-              public func contactPickerDidCancel(_ picker: CNContactPickerViewController) { finish("cancelled") }
+
+              public func contactPickerDidCancel(_ picker: CNContactPickerViewController) {
+                  finish("cancelled")
+              }
+
               public func contactPicker(_ picker: CNContactPickerViewController, didSelect contactProperty: CNContactProperty) {
                   let phone = (contactProperty.value as? CNPhoneNumber)?.stringValue
                   let email = contactProperty.key == CNContactEmailAddressesKey ? contactProperty.value as? String : nil
                   picker.dismiss(animated: true) {
-                      guard let host = self.bridge?.viewController else { self.finish("cancelled"); return }
+                      guard let host = self.bridge?.viewController else {
+                          self.finish("cancelled")
+                          return
+                      }
                       if let phone = phone, MFMessageComposeViewController.canSendText() {
                           let composer = MFMessageComposeViewController()
                           composer.messageComposeDelegate = self
@@ -178,20 +192,30 @@ jobs:
                       }
                   }
               }
+
               public func messageComposeViewController(_ controller: MFMessageComposeViewController, didFinishWith result: MessageComposeResult) {
-                  controller.dismiss(animated: true) { self.finish(result == .sent ? "sent" : result == .cancelled ? "cancelled" : "failed") }
+                  controller.dismiss(animated: true) {
+                      self.finish(result == .sent ? "sent" : result == .cancelled ? "cancelled" : "failed")
+                  }
               }
+
               public func mailComposeController(_ controller: MFMailComposeViewController, didFinishWith result: MFMailComposeResult, error: Error?) {
-                  controller.dismiss(animated: true) { self.finish(result == .sent ? "sent" : result == .saved ? "saved" : result == .cancelled ? "cancelled" : "failed") }
+                  controller.dismiss(animated: true) {
+                      self.finish(result == .sent ? "sent" : result == .saved ? "saved" : result == .cancelled ? "cancelled" : "failed")
+                  }
               }
+
               private func finish(_ status: String) {
                   pending?.resolve(["status": status])
                   pending = nil
               }
           }
+
           @objc(TableRecBridgeViewController)
           class TableRecBridgeViewController: CAPBridgeViewController {
-              override func capacitorDidLoad() { bridge?.registerPluginInstance(TableRecContactsPlugin()) }
+              override func capacitorDidLoad() {
+                  bridge?.registerPluginInstance(TableRecContactsPlugin())
+              }
           }
           SWIFT
           ruby <<'RUBY'
@@ -207,12 +231,12 @@ jobs:
           RUBY
           python3 - <<'PYTHON'
           from pathlib import Path
-          path=Path('ios/App/App/Base.lproj/Main.storyboard')
-          s=path.read_text()
+          path = Path('ios/App/App/Base.lproj/Main.storyboard')
+          s = path.read_text()
           if 'customClass="CAPBridgeViewController"' not in s:
               raise SystemExit('Expected Capacitor storyboard bridge controller')
-          s=s.replace('customClass="CAPBridgeViewController"','customClass="TableRecBridgeViewController"')
-          s=s.replace('customModule="Capacitor"','customModule="App"')
+          s = s.replace('customClass="CAPBridgeViewController"', 'customClass="TableRecBridgeViewController"')
+          s = s.replace('customModule="Capacitor"', 'customModule="App"')
           path.write_text(s)
           PYTHON
 
@@ -225,6 +249,7 @@ jobs:
           const fs = require('node:fs');
           const path = require('node:path');
           const sharp = require(path.resolve('build/branding-tools/node_modules/sharp'));
+
           async function main() {
             const html = fs.readFileSync('../index.html', 'utf8');
             const extract = name => {
@@ -234,27 +259,45 @@ jobs:
             };
             const orange = '#f36f21';
             fs.mkdirSync('assets', {recursive: true});
-            await sharp(extract('icon')).resize(1024,1024).flatten({background:orange}).png().toFile('assets/icon-only.png');
-            const mark = await sharp(extract('mark')).resize(620,620).png().toBuffer();
-            const wordmark = await sharp(extract('wordmark')).resize({width:1000}).png().toBuffer();
-            const splash = await sharp({create:{width:2732,height:2732,channels:3,background:orange}})
-              .composite([{input:mark,left:1056,top:846},{input:wordmark,left:866,top:1520}]).png().toBuffer();
+            await sharp(extract('icon'))
+              .resize(1024, 1024)
+              .flatten({background: orange})
+              .png()
+              .toFile('assets/icon-only.png');
+            const mark = await sharp(extract('mark')).resize(620, 620).png().toBuffer();
+            const wordmark = await sharp(extract('wordmark')).resize({width: 1000}).png().toBuffer();
+            const splash = await sharp({
+              create: {width: 2732, height: 2732, channels: 3, background: orange}
+            })
+              .composite([
+                {input: mark, left: 1056, top: 846},
+                {input: wordmark, left: 866, top: 1520}
+              ])
+              .png()
+              .toBuffer();
             fs.writeFileSync('assets/splash.png', splash);
             fs.writeFileSync('assets/splash-dark.png', splash);
             const icon = await sharp('assets/icon-only.png').metadata();
-            if (icon.width !== 1024 || icon.height !== 1024 || icon.hasAlpha) throw Error('Invalid iOS icon');
+            if (icon.width !== 1024 || icon.height !== 1024 || icon.hasAlpha) {
+              throw Error('Invalid iOS icon');
+            }
           }
-          main().catch(error => { console.error(error); process.exit(1); });
+
+          main().catch(error => {
+            console.error(error);
+            process.exit(1);
+          });
           JS
           node build/branding-tools/node_modules/@capacitor/assets/bin/capacitor-assets generate --ios --iconBackgroundColor '#f36f21' --iconBackgroundColorDark '#f36f21' --splashBackgroundColor '#f36f21' --splashBackgroundColorDark '#f36f21'
 
-      - name: Configure foreground location explanation
+      - name: Configure location and camera explanations
         working-directory: native
         run: |
           python3 - <<'PY'
           import plistlib
           import os
           from pathlib import Path
+
           path = Path('ios/App/App/Info.plist')
           info = plistlib.loads(path.read_bytes())
           info['CFBundleShortVersionString'] = os.environ['TR_VERSION']
@@ -264,7 +307,10 @@ jobs:
               'restaurants, choose RUN IT suggestions, and verify restaurant visits. '
               'You can browse a selected area without sharing your location.'
           )
-          if any(key in info for key in ['NSLocationAlwaysUsageDescription', 'NSLocationAlwaysAndWhenInUseUsageDescription']):
+          if any(key in info for key in [
+              'NSLocationAlwaysUsageDescription',
+              'NSLocationAlwaysAndWhenInUseUsageDescription'
+          ]):
               raise SystemExit('Unexpected always-location permission; review before building.')
           if 'location' in info.get('UIBackgroundModes', []):
               raise SystemExit('Unexpected background location mode; review before building.')
@@ -289,18 +335,23 @@ jobs:
           python3 - <<'PY'
           import base64, os
           from pathlib import Path
+
           directory = Path(os.environ['RUNNER_TEMP'])
-          for variable, filename in [('TR_CERT','tablerec-distribution.cer'), ('TR_PROFILE','tablerec.mobileprovision')]:
+          for variable, filename in [
+              ('TR_CERT', 'tablerec-distribution.cer'),
+              ('TR_PROFILE', 'tablerec.mobileprovision')
+          ]:
               value = ''.join(os.environ[variable].split())
               (directory / filename).write_bytes(base64.b64decode(value, validate=True))
           PY
           python3 - <<'PY'
           import os
           from pathlib import Path
+
           key = os.environ['TR_ENCRYPTED_KEY'].strip() + '\n'
           if not key.startswith('-----BEGIN ENCRYPTED PRIVATE KEY-----') or not key.rstrip().endswith('-----END ENCRYPTED PRIVATE KEY-----'):
               raise SystemExit('Encrypted private key secret must contain the complete file text.')
-          (Path(os.environ['RUNNER_TEMP'])/'tablerec-encrypted-private-key.pem').write_text(key)
+          (Path(os.environ['RUNNER_TEMP']) / 'tablerec-encrypted-private-key.pem').write_text(key)
           PY
           openssl x509 -inform DER -in "$RUNNER_TEMP/tablerec-distribution.cer" \
             -out "$RUNNER_TEMP/tablerec-distribution.pem"
@@ -321,9 +372,11 @@ jobs:
           python3 - <<'PY'
           import datetime, os, plistlib, shutil, subprocess, hashlib
           from pathlib import Path
+
           directory = Path(os.environ['RUNNER_TEMP'])
           profile = plistlib.loads((directory / 'tablerec-profile.plist').read_bytes())
-          team, bundle = os.environ['TR_TEAM_ID'], os.environ['TR_BUNDLE_ID']
+          team = os.environ['TR_TEAM_ID']
+          bundle = os.environ['TR_BUNDLE_ID']
           entitlements = profile['Entitlements']
           if profile.get('TeamIdentifier') != [team]:
               raise SystemExit('Signing profile belongs to a different team.')
@@ -333,20 +386,38 @@ jobs:
               raise SystemExit('Expected an App Store distribution profile.')
           if profile['ExpirationDate'] <= datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None):
               raise SystemExit('Signing profile has expired.')
-          identities = subprocess.check_output(['security','find-identity','-v','-p','codesigning',str(directory/'tablerec-signing.keychain-db')], text=True)
-          fingerprints = [hashlib.sha1(cert).hexdigest().upper() for cert in profile['DeveloperCertificates']]
+          identities = subprocess.check_output([
+              'security', 'find-identity', '-v', '-p', 'codesigning',
+              str(directory / 'tablerec-signing.keychain-db')
+          ], text=True)
+          fingerprints = [
+              hashlib.sha1(cert).hexdigest().upper()
+              for cert in profile['DeveloperCertificates']
+          ]
           if not any(fingerprint in identities for fingerprint in fingerprints):
               raise SystemExit('Profile and installed signing certificate do not match.')
           uuid = profile['UUID']
-          for root in [Path.home()/'Library/MobileDevice/Provisioning Profiles', Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
+          for root in [
+              Path.home() / 'Library/MobileDevice/Provisioning Profiles',
+              Path.home() / 'Library/Developer/Xcode/UserData/Provisioning Profiles'
+          ]:
               root.mkdir(parents=True, exist_ok=True)
-              shutil.copyfile(directory/'tablerec.mobileprovision', root/(uuid+'.mobileprovision'))
-          with open(os.environ['GITHUB_ENV'],'a') as output:
-              output.write('TR_PROFILE_UUID='+uuid+'\n')
-          options = {'method':'app-store-connect','destination':'export','teamID':team,
-                     'signingStyle':'manual','signingCertificate':'Apple Distribution',
-                     'provisioningProfiles':{bundle:uuid}, 'manageAppVersionAndBuildNumber':False}
-          (directory/'tablerec-export.plist').write_bytes(plistlib.dumps(options))
+              shutil.copyfile(
+                  directory / 'tablerec.mobileprovision',
+                  root / (uuid + '.mobileprovision')
+              )
+          with open(os.environ['GITHUB_ENV'], 'a') as output:
+              output.write('TR_PROFILE_UUID=' + uuid + '\n')
+          options = {
+              'method': 'app-store-connect',
+              'destination': 'export',
+              'teamID': team,
+              'signingStyle': 'manual',
+              'signingCertificate': 'Apple Distribution',
+              'provisioningProfiles': {bundle: uuid},
+              'manageAppVersionAndBuildNumber': False
+          }
+          (directory / 'tablerec-export.plist').write_bytes(plistlib.dumps(options))
           PY
 
       - name: Configure app target
@@ -392,17 +463,22 @@ jobs:
           python3 - <<'PY'
           import os, plistlib
           from pathlib import Path
+
           path = Path('build/TableRec.xcarchive/Products/Applications/App.app/Info.plist')
           info = plistlib.loads(path.read_bytes())
-          expected = {'CFBundleIdentifier':os.environ['TR_BUNDLE_ID'],
-                      'CFBundleShortVersionString':os.environ['TR_VERSION'],
-                      'CFBundleVersion':os.environ['TR_BUILD_NUMBER']}
+          expected = {
+              'CFBundleIdentifier': os.environ['TR_BUNDLE_ID'],
+              'CFBundleShortVersionString': os.environ['TR_VERSION'],
+              'CFBundleVersion': os.environ['TR_BUILD_NUMBER']
+          }
           for key, value in expected.items():
               if info.get(key) != value:
-                  raise SystemExit('Unexpected archive metadata: '+key)
+                  raise SystemExit('Unexpected archive metadata: ' + key)
           if info.get('UIDeviceFamily') != [1]:
               raise SystemExit('Expected an iPhone-only app.')
-          print('Archive bundle ID, version, build number and iPhone target verified.')
+          if not info.get('NSCameraUsageDescription'):
+              raise SystemExit('Camera usage explanation is missing from the archive.')
+          print('Archive bundle ID, version, build number, camera permission and iPhone target verified.')
           PY
 
       - name: Export signed App Store IPA
@@ -417,6 +493,7 @@ jobs:
           python3 - <<'PY'
           from pathlib import Path
           import shutil
+
           files = list(Path('build/release').glob('*.ipa'))
           if len(files) != 1:
               raise SystemExit('Expected exactly one exported IPA.')
@@ -436,23 +513,44 @@ jobs:
       - name: Validate and upload to Apple
         if: inputs.upload_to_apple
         env:
-          TR_APPLE_EMAIL: ${{ secrets.TABLEREC_APPLE_ACCOUNT_EMAIL }}
-          TR_APP_PASSWORD: ${{ secrets.TABLEREC_APPLE_APP_PASSWORD }}
+          TR_API_KEY_ID: ${{ secrets.TABLEREC_APPLE_API_KEY_ID }}
+          TR_API_ISSUER_ID: ${{ secrets.TABLEREC_APPLE_API_ISSUER_ID }}
+          TR_API_PRIVATE_KEY: ${{ secrets.TABLEREC_APPLE_API_PRIVATE_KEY }}
         run: |
           set -euo pipefail
           python3 - <<'PY'
-          import os, re
-          email = os.environ['TR_APPLE_EMAIL']
-          password = os.environ['TR_APP_PASSWORD']
-          if email != email.strip() or not re.fullmatch(r'[^\s@]+@[^\s@]+\.[^\s@]+', email):
-              raise SystemExit('Apple account email secret must contain only the sign-in email.')
-          if not re.fullmatch(r'[a-z]{4}(?:-[a-z]{4}){3}', password):
-              raise SystemExit('Use the Apple-generated app-specific password, including its hyphens, with no extra spaces.')
+          import os, re, uuid, subprocess
+          from pathlib import Path
+
+          key_id = os.environ['TR_API_KEY_ID']
+          issuer = os.environ['TR_API_ISSUER_ID']
+          if not re.fullmatch(r'[A-Z0-9]{10}', key_id):
+              raise SystemExit('Apple API Key ID must be the 10-character ID for the downloaded key, without spaces.')
+          try:
+              uuid.UUID(issuer)
+          except ValueError:
+              raise SystemExit('Apple API Issuer ID must be the UUID from the Team Keys page.')
+          if issuer != issuer.strip():
+              raise SystemExit('Remove extra spaces from the Apple API Issuer ID.')
+          key = os.environ['TR_API_PRIVATE_KEY'].strip() + '\n'
+          if not key.startswith('-----BEGIN PRIVATE KEY-----\n') or not key.rstrip().endswith('-----END PRIVATE KEY-----'):
+              raise SystemExit('Copy the complete .p8 text, including BEGIN and END lines and original line breaks.')
+          folder = Path.home() / '.appstoreconnect/private_keys'
+          folder.mkdir(parents=True, exist_ok=True, mode=0o700)
+          path = folder / ('AuthKey_' + key_id + '.p8')
+          path.write_text(key)
+          path.chmod(0o600)
+          result = subprocess.run(
+              ['openssl', 'pkey', '-in', str(path), '-noout'],
+              capture_output=True
+          )
+          if result.returncode:
+              raise SystemExit('Invalid Apple API private key. Check the complete downloaded .p8 text.')
           PY
           xcrun altool --validate-app -f native/release-artifacts/TableRec.ipa -t ios \
-            -u "$TR_APPLE_EMAIL" -p '@env:TR_APP_PASSWORD'
+            --apiKey "$TR_API_KEY_ID" --apiIssuer "$TR_API_ISSUER_ID"
           xcrun altool --upload-app -f native/release-artifacts/TableRec.ipa -t ios \
-            -u "$TR_APPLE_EMAIL" -p '@env:TR_APP_PASSWORD'
+            --apiKey "$TR_API_KEY_ID" --apiIssuer "$TR_API_ISSUER_ID"
 
       - name: Record result
         env:
@@ -461,13 +559,14 @@ jobs:
         run: |
           python3 - <<'PY'
           import os
-          with open(os.environ['GITHUB_STEP_SUMMARY'],'a') as report:
+
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as report:
               report.write('## TableRec iOS build passed\n\n')
-              report.write('Version '+os.environ['TR_VERSION']+', build '+os.environ['TR_BUILD_NUMBER']+'.\n\n')
+              report.write('Version ' + os.environ['TR_VERSION'] + ', build ' + os.environ['TR_BUILD_NUMBER'] + '.\n\n')
               if os.environ['TR_SIGNED'] == 'true':
                   report.write('Signed App Store IPA saved in the run artifacts.\n\n')
               else:
-                  report.write('Unsigned physical-iPhone archive compiled successfully. It cannot be installed or uploaded. Complete signing setup before running signed_release.\n\n')
+                  report.write('Unsigned physical-iPhone archive compiled successfully. It cannot be installed or uploaded.\n\n')
               if os.environ['TR_UPLOAD'] == 'true':
                   report.write('Upload command completed. Apple processing must finish before the build appears in TestFlight. This workflow does not submit for App Review or publish the app.\n\n')
               report.write('Real-device testing of authentication, photos and location remains required.\n')
@@ -482,16 +581,28 @@ jobs:
           python3 - <<'PY'
           import os, plistlib
           from pathlib import Path
+
           directory = Path(os.environ['RUNNER_TEMP'])
-          profile = directory/'tablerec-profile.plist'
+          profile = directory / 'tablerec-profile.plist'
           if profile.exists():
               uuid = plistlib.loads(profile.read_bytes()).get('UUID')
               if uuid:
-                  for root in [Path.home()/'Library/MobileDevice/Provisioning Profiles', Path.home()/'Library/Developer/Xcode/UserData/Provisioning Profiles']:
-                      (root/(uuid+'.mobileprovision')).unlink(missing_ok=True)
-          for filename in ['tablerec.p12','tablerec-distribution.cer','tablerec-distribution.pem','tablerec-encrypted-private-key.pem','tablerec.mobileprovision','tablerec-profile.plist','tablerec-export.plist']:
-              (directory/filename).unlink(missing_ok=True)
-          folder = Path.home()/'.appstoreconnect/private_keys'
+                  for root in [
+                      Path.home() / 'Library/MobileDevice/Provisioning Profiles',
+                      Path.home() / 'Library/Developer/Xcode/UserData/Provisioning Profiles'
+                  ]:
+                      (root / (uuid + '.mobileprovision')).unlink(missing_ok=True)
+          for filename in [
+              'tablerec.p12',
+              'tablerec-distribution.cer',
+              'tablerec-distribution.pem',
+              'tablerec-encrypted-private-key.pem',
+              'tablerec.mobileprovision',
+              'tablerec-profile.plist',
+              'tablerec-export.plist'
+          ]:
+              (directory / filename).unlink(missing_ok=True)
+          folder = Path.home() / '.appstoreconnect/private_keys'
           if folder.exists():
               for path in folder.glob('AuthKey_*.p8'):
                   path.unlink()
