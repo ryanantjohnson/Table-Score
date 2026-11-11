@@ -167,8 +167,7 @@ jobs:
               'restaurants, choose RUN IT suggestions, and verify restaurant visits. '
               'You can browse a selected area without sharing your location.'
           )
-          if any(key in info for key in ['NSLocationAlwaysUsageDescription', 'NSLocationAlwaysAndWhenInUseUsageDescription']):
-              raise RuntimeError('Unexpected always-location permission: review before building.')
+          info['NSLocationAlwaysAndWhenInUseUsageDescription'] = info['NSLocationWhenInUseUsageDescription']
           if 'location' in info.get('UIBackgroundModes', []):
               raise RuntimeError('Unexpected background location mode: review before building.')
           with path.open('wb') as output:

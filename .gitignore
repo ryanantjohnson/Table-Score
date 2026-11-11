@@ -1,0 +1,8 @@
+native/node_modules/
+native/www/
+native/ios/
+native/android/
+test-results/
+tests/node_modules/
+
+supabase/.temp/

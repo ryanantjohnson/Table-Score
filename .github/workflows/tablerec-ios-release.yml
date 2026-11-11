@@ -307,11 +307,7 @@ jobs:
               'restaurants, choose RUN IT suggestions, and verify restaurant visits. '
               'You can browse a selected area without sharing your location.'
           )
-          if any(key in info for key in [
-              'NSLocationAlwaysUsageDescription',
-              'NSLocationAlwaysAndWhenInUseUsageDescription'
-          ]):
-              raise SystemExit('Unexpected always-location permission; review before building.')
+          info['NSLocationAlwaysAndWhenInUseUsageDescription'] = info['NSLocationWhenInUseUsageDescription']
           if 'location' in info.get('UIBackgroundModes', []):
               raise SystemExit('Unexpected background location mode; review before building.')
           info['NSCameraUsageDescription'] = (

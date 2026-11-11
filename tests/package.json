@@ -1,0 +1,7 @@
+{
+  "name": "tablerec-prelaunch-checks",
+  "private": true,
+  "scripts": {"test": "cd .. && node tests/prelaunch-smoke.cjs"},
+  "devDependencies": {"jsdom": "26.1.0"},
+  "engines": {"node": ">=22"}
+}
