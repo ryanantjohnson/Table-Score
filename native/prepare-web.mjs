@@ -6,7 +6,7 @@ const nativeDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(nativeDirectory, '..');
 const webDirectory = resolve(nativeDirectory, 'www');
 const documents = ['index.html', 'legal.html'];
-const files = [...documents, 'app-platform.js'];
+const files = [...documents, 'app-platform.js', 'app-intro.js'];
 
 // Check both source files before changing the generated bundle.
 for (const file of documents) {
