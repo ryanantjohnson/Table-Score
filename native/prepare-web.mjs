@@ -5,10 +5,11 @@ import { dirname, resolve } from 'node:path';
 const nativeDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(nativeDirectory, '..');
 const webDirectory = resolve(nativeDirectory, 'www');
-const files = ['index.html', 'legal.html'];
+const documents = ['index.html', 'legal.html'];
+const files = [...documents, 'app-platform.js'];
 
 // Check both source files before changing the generated bundle.
-for (const file of files) {
+for (const file of documents) {
   const source = resolve(repositoryDirectory, file);
   const html = await readFile(source, 'utf8');
   if (!/<html\b/i.test(html) || !/<head\b/i.test(html) || !/<body\b/i.test(html) || !/<\/html>/i.test(html)) {

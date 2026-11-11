@@ -1,0 +1,25 @@
+name: TableRec prelaunch checks
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tests/package-lock.json
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: tests
+      - run: npm test
+        working-directory: tests
+      - run: node --check app-platform.js
+      - run: node native/prepare-web.mjs
