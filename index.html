@@ -3715,6 +3715,11 @@ function useLocation(){
   const btn=document.querySelector("#locationCard .primary");
   if(btn){btn.disabled=true;btn.textContent="Checking location...";}
   tableRecGeo.getCurrentPosition(async pos=>{
+    if(!tableRecUsableGpsCoords(pos?.coords)){
+      if(btn){btn.disabled=false;btn.textContent="Try Again";}
+      alert("GPS returned an unusable location. Please try again.");
+      return;
+    }
     localStorage.setItem("ts_location_mode","current");
     acceptTableScorePosition(pos);
     void startTableScoreLocationWatch();
@@ -4337,6 +4342,10 @@ function getTableRecBrowseCoords(){
   if(!tableRecGeo.available)return Promise.reject(new Error("Location is unavailable. Choose a browsing area in Settings."));
   tableRecBrowseCoordsRequest=new Promise((resolve,reject)=>{
     tableRecGeo.getCurrentPosition(pos=>{
+      if(!tableRecUsableGpsCoords(pos?.coords)){
+        reject(new Error("GPS returned an unusable location. Try again."));
+        return;
+      }
       acceptTableScorePosition(pos);
       resolve({latitude:pos.coords.latitude,longitude:pos.coords.longitude});
     },err=>{
@@ -8628,39 +8637,18 @@ async function introduceFirstSignInLocation(){
 let tableRecLocationResumeBusy=false;
 
 async function resumeGrantedTableScoreLocation(){
-  if(localStorage.getItem("ts_location_mode")==="manual")return;
-  const hadStoredLocation=restoreStoredTableScoreLocation();
-  if(!tableRecGeo.available||tableRecLocationResumeBusy)return;
-
-  // If this device has already enabled TableRec location, refresh it silently.
-  // This is important on iPhone Safari, where Permissions API support is not
-  // reliable enough to be the gate for refreshing an already-approved location.
-  const previouslyEnabled=localStorage.getItem("ts_location_enabled")==="1" || hadStoredLocation;
-  if(!previouslyEnabled)return;
+  if(document.hidden || localStorage.getItem("ts_location_mode")==="manual")return;
+  restoreStoredTableScoreLocation();
+  if(!tableRecGeo.available || tableRecLocationResumeBusy)return;
   tableRecLocationResumeBusy=true;
-  if(await tableRecGeo.permission()!=="granted"){
+  try{
+    // OS permission is authoritative, including after an upgrade with no saved
+    // GPS flags. Starting the watch must not depend on a successful one-shot fix.
+    if(await tableRecGeo.permission()!=="granted")return;
+    await startTableScoreLocationWatch();
+  }finally{
     tableRecLocationResumeBusy=false;
     renderLocationStatus();
-    return;
-  }
-  if(document.hidden || localStorage.getItem("ts_location_mode")==="manual"){
-    tableRecLocationResumeBusy=false;
-    return;
-  }
-
-  const finish=()=>{tableRecLocationResumeBusy=false;renderLocationStatus();};
-  try{
-    tableRecGeo.getCurrentPosition(
-      pos=>{
-        acceptTableScorePosition(pos);
-        startTableScoreLocationWatch();
-        finish();
-      },
-      ()=>finish(),
-      {enableHighAccuracy:true,timeout:15000,maximumAge:0}
-    );
-  }catch(e){
-    finish();
   }
 }
 
