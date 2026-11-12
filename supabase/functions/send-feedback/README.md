@@ -1,6 +1,8 @@
 # In-app feedback email
 
-Not deployed. Do not merge the client into a store build until delivery is verified.
+Backend deployed to project jyojnjkpwhwzgarfpepm on November 12, 2026. The mailbox secret is configured. A signed-in browser test was confirmed received by Ryan, and feedback_outbox records the suggestion as sent. Signup confirmation and password-reset sender/link tests were also confirmed. SPF, DKIM and DMARC are publicly published. Native iPhone/Android feedback UI and travel/location tests remain required before public launch.
+
+For deployment to another environment:
 
 1. Review and apply `supabase/feedback-setup.sql`; RLS enabled, no client table access. Server-only claim RPC serializes per-user limits (five/hour) and request IDs.
 2. In Supabase > Edge Functions > Secrets, add `FEEDBACK_SMTP_PASSWORD` using the support@tablerec.co mailbox password. Do not commit it or send it in chat. Auth SMTP configuration does not automatically provide this secret to Edge Functions.
