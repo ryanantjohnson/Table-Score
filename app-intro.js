@@ -3,7 +3,7 @@
   'use strict';
   // Change this ID and its copy together for each customer-facing release.
   // Store build numbers can differ across iOS and Android.
-  const releaseNotesId = 'launch-guide-1';
+  const releaseNotesId = 'feedback-location-2';
   const build = window.tableRecBuild;
   const release = build ? `${releaseNotesId}:${build.platform}:${build.version}:${build.number}` : releaseNotesId;
   function versionLabel() {
@@ -75,7 +75,7 @@
       (tour ? '' : '<p class="tri-count" id="triVersion"></p>') +
       '<p class="tri-copy" id="triBody">' + (tour ? slide[2] : 'A smoother start. More time for good food.') + '</p>' +
       (tour ? '<div class="tri-progress" aria-hidden="true">' + slides.map((_, i) => '<span class="tri-dot' + (i === page ? ' active' : '') + '"></span>').join('') + '</div><p class="tri-count">' + (page + 1) + ' of ' + slides.length + '</p>' :
-        '<ul class="tri-notes"><li><strong>A little help getting started</strong>A quick tour you can revisit in Settings.</li><li><strong>A clearer signup</strong>Email confirmation instructions and an easy resend option.</li><li><strong>Smoother everyday use</strong>Improvements to location permissions, rating forms, follow requests, comments, and badges.</li></ul>') +
+        '<ul class="tri-notes"><li><strong>Your ideas have a home</strong>Send suggestions, report a problem, or share something you love from Settings → A little help.</li><li><strong>Location that catches up</strong>Fresh GPS when you reopen the app, recovery when automatic updates stall, and more reliable city labels.</li><li><strong>Help when you need it</strong>Replay the welcome tour or these update notes anytime in Settings.</li></ul>') +
       '<div class="tri-actions">' + (tour && page > 0 ? '<button data-action="back">Back</button>' : '') + '<button class="tri-next" data-action="next">' + (tour ? (page === slides.length - 1 ? 'Let’s eat' : 'Next') : 'Let’s eat') + '</button></div></section>';
     if (!tour) overlay.querySelector('#triVersion').textContent = versionLabel();
     overlay.querySelector('#triTitle').focus();
