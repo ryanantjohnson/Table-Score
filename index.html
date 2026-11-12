@@ -3715,6 +3715,9 @@ function useLocation(){
   const btn=document.querySelector("#locationCard .primary");
   if(btn){btn.disabled=true;btn.textContent="Checking location...";}
   tableRecGeo.getCurrentPosition(async pos=>{
+    localStorage.setItem("ts_location_mode","current");
+    acceptTableScorePosition(pos);
+    void startTableScoreLocationWatch();
     locationEnabled=true;
     const lat=pos.coords.latitude;
     const lon=pos.coords.longitude;
@@ -4515,6 +4518,9 @@ async function refreshLiveBrowseLocation({reloadRestaurants=true}={}){
       updateArea();
     }
 
+    // A one-shot refresh must also resume foreground movement updates.
+    acceptTableScorePosition({coords:{latitude:coords.latitude,longitude:coords.longitude,accuracy:coords.accuracy}});
+    void startTableScoreLocationWatch();
     // Keep accuracy available for troubleshooting without showing coordinates.
     if(top && coords?.accuracy){
       top.title="Location accuracy about "+Math.round(coords.accuracy)+" meters";
@@ -8565,13 +8571,21 @@ async function introduceFirstSignInLocation(){
   });
   if(params.has("recovery") || hashParams.get("type")==="recovery" || accountFlowOpen)return;
   const key="tr_location_intro_v1_"+userId;
+  const permissionKey=key+"_native_v2";
   if(tableRecLocationIntroducedUsers.has(userId))return;
-  try{if(localStorage.getItem(key)==="1")return;}catch(e){}
+  try{if(localStorage.getItem(permissionKey)==="1")return;}catch(e){}
   tableRecLocationIntroducedUsers.add(userId);
-  try{localStorage.setItem(key,"1");}catch(e){}
+  try{localStorage.setItem(permissionKey,"1");}catch(e){}
   // Keep an area the person deliberately chose and reuse existing permission.
-  if(localStorage.getItem("ts_location_mode")==="manual" ||
-     localStorage.getItem("ts_location_enabled")==="1")return;
+  if(localStorage.getItem("ts_location_mode")==="manual")return;
+  // Stored flags are not OS permission. Upgrading an older WebView build can
+  // retain enabled=1 while the native permission is still undetermined.
+  const permission=await tableRecGeo.permission();
+  if(currentUser?.id!==userId)return;
+  if(permission==="granted"){
+    void resumeGrantedTableScoreLocation();
+    return;
+  }
   const stillActive=()=>currentUser?.id===userId && localStorage.getItem("ts_location_mode")!=="manual";
   const fallback=message=>{
     if(!stillActive())return;
@@ -8643,7 +8657,9 @@ async function resumeGrantedTableScoreLocation(){
   }
 }
 
+let tableRecLocationRetryTimer=null;
 function stopTableScoreLocationWatch(){
+  if(tableRecLocationRetryTimer!==null){clearTimeout(tableRecLocationRetryTimer);tableRecLocationRetryTimer=null;}
   if(tableScoreLocationWatchId!==null)tableRecGeo.clearWatch(tableScoreLocationWatchId);
   tableScoreLocationWatchId=null;
 }
@@ -8719,7 +8735,13 @@ function acceptTableScorePosition(pos){
 
 function tableScoreLocationError(err){
   stopTableScoreLocationWatch();
-  tableScoreLocation=null;
+  // Keep the last usable fix; a temporary timeout must not erase it.
+  if(err?.code!==1 && !document.hidden && localStorage.getItem("ts_location_mode")!=="manual"){
+    tableRecLocationRetryTimer=setTimeout(()=>{
+      tableRecLocationRetryTimer=null;
+      void startTableScoreLocationWatch();
+    },15000);
+  }
   const status=document.getElementById("locationStatusText");
   const btn=document.getElementById("locationEnableBtn");
   let message="TableRec could not get your location.";
@@ -8750,6 +8772,7 @@ function enableTableScoreLocation(){
     return;
   }
 
+  localStorage.setItem("ts_location_mode","current");
   if(btn){btn.disabled=true;btn.textContent="Checking...";}
   if(status)status.textContent="Getting your current location...";
 

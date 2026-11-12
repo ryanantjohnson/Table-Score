@@ -69,6 +69,32 @@ const w=dom.window;
  w.__db.from=table=>{const proxy=new Proxy({}, {get(target,key){if(key==='then')return resolve=>resolve({data:[{follower_id:'follower',status:'accepted'}],error:null});return()=>proxy;}});return proxy;};
  await w.approveFollowRequest('follower',{fromNotifications:true});
  assert(!alerts.some(a=>/sign in again/i.test(a)));
+ // Location regressions: a legacy enabled flag cannot suppress native permission,
+ // and a manual GPS refresh must leave an active movement watch behind.
+ w.eval(`currentUser={id:'location-upgrade-test'};tableRecLocationIntroducedUsers.clear();
+ tableScoreLocation=null;tableScoreLocationWatchId=null;
+ reverseGeocodeBrowseArea=async()=> 'Round Rock, TX';loadRestaurantStats=async()=>{};
+ window.__watchStarts=0;window.__originalStartWatch=startTableScoreLocationWatch;
+ startTableScoreLocationWatch=async()=>{window.__watchStarts++};`);
+ w.localStorage.setItem('ts_location_enabled','1');w.localStorage.setItem('ts_location_mode','current');
+ w.localStorage.setItem('tr_location_intro_v1_location-upgrade-test','1');
+ w.tableRecGeo.permission=async()=> 'prompt';let firstFixes=0;
+ w.eval('getTableRecBrowseCoords=async()=>{window.__firstFixRequested=true;return {latitude:30.5,longitude:-97.7}}');
+ await w.introduceFirstSignInLocation();assert(w.__firstFixRequested);
+ w.eval('getFreshTableScoreCoords=async()=>({latitude:30.6,longitude:-97.6,accuracy:12})');
+ const beforeWatch=w.__watchStarts;assert(await w.refreshLiveBrowseLocation());
+ assert(w.__watchStarts>beforeWatch);assert.equal(w.currentTableScoreCoords().latitude,30.6);
+ // The ordinary Enable/Refresh control must switch out of deliberate city mode.
+ w.localStorage.setItem('ts_location_mode','manual');
+ w.tableRecGeo.getCurrentPosition=success=>success({coords:{latitude:30.7,longitude:-97.5,accuracy:10}});
+ w.enableTableScoreLocation();assert.equal(w.localStorage.getItem('ts_location_mode'),'current');
+ // A transient GPS error preserves the last fix and schedules a foreground retry.
+ let retry;const realTimer=w.setTimeout;
+ w.setTimeout=(callback,delay)=>{if(delay===15000){retry=callback;return 987;}return realTimer(callback,delay)};
+ const savedCoords=w.currentTableScoreCoords();w.tableScoreLocationError({code:3});
+ assert.deepEqual(w.currentTableScoreCoords(),savedCoords);assert.equal(typeof retry,'function');
+ const starts=w.__watchStarts;retry();assert(w.__watchStarts>starts);
+ w.setTimeout=realTimer;
  assert.deepEqual(errors,[]);
  dom.window.close();
  // Test native bridge without invoking browser geolocation.
