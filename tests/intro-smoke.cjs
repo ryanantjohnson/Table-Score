@@ -43,4 +43,16 @@ dom=setup();w=dom.window;
 Object.defineProperty(w,'localStorage',{get(){throw new Error('Storage disabled');}});
 w.TableRecIntro.maybeOpen();assert(w.document.getElementById('trIntro'));
 w.TableRecIntro.close();w.TableRecIntro.maybeOpen();assert(!w.document.getElementById('trIntro'));dom.window.close();
+// Store build changes trigger update notes once; the label uses the same metadata.
+dom=setup({tr_intro_release:seen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'25.1'};
+w.eval(code);w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triVersion').textContent,'Version 1.0 · Build 25.1');
+w.TableRecIntro.close();const buildSeen=w.localStorage.getItem('tr_intro_release');dom.window.close();
+dom=setup({tr_intro_release:buildSeen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'25.1'};w.eval(code);w.TableRecIntro.maybeOpen();
+assert(!w.document.getElementById('trIntro'));dom.window.close();
+dom=setup({tr_intro_release:buildSeen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'26.1'};w.eval(code);w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triVersion').textContent,'Version 1.0 · Build 26.1');dom.window.close();
 console.log('PASS: welcome slides, completion, skip, back, focus, replay, upgrade notes, recovery, modal deferral, and disabled storage');
