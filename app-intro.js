@@ -3,7 +3,13 @@
   'use strict';
   // Change this ID and its copy together for each customer-facing release.
   // Store build numbers can differ across iOS and Android.
-  const release = 'launch-guide-1';
+  const releaseNotesId = 'launch-guide-1';
+  const build = window.tableRecBuild;
+  const release = build ? `${releaseNotesId}:${build.platform}:${build.version}:${build.number}` : releaseNotesId;
+  function versionLabel() {
+    if (build) return `Version ${build.version} · Build ${build.number}`;
+    return 'Version ' + (typeof TABLESCORE_VERSION !== 'undefined' ? TABLESCORE_VERSION : '1.0') + ' · Web preview';
+  }
   const seenKey = 'tr_intro_release';
   const read = key => { try { return localStorage.getItem(key); } catch (_) { return null; } };
   const returning = !!(read(seenKey) || read('ts_current_screen') || read('ts_location_mode'));
@@ -66,10 +72,12 @@
       '<div class="tri-art">' + icon(tour ? slide[3] : 'rate') + '</div>' +
       '<p class="tri-eyebrow">' + (tour ? slide[1] : 'A little fresh sauce') + '</p>' +
       '<h2 id="triTitle" tabindex="-1">' + (tour ? slide[0] : 'What’s new') + '</h2>' +
+      (tour ? '' : '<p class="tri-count" id="triVersion"></p>') +
       '<p class="tri-copy" id="triBody">' + (tour ? slide[2] : 'A smoother start. More time for good food.') + '</p>' +
       (tour ? '<div class="tri-progress" aria-hidden="true">' + slides.map((_, i) => '<span class="tri-dot' + (i === page ? ' active' : '') + '"></span>').join('') + '</div><p class="tri-count">' + (page + 1) + ' of ' + slides.length + '</p>' :
         '<ul class="tri-notes"><li><strong>A little help getting started</strong>A quick tour you can revisit in Settings.</li><li><strong>A clearer signup</strong>Email confirmation instructions and an easy resend option.</li><li><strong>Smoother everyday use</strong>Improvements to location permissions, rating forms, follow requests, comments, and badges.</li></ul>') +
       '<div class="tri-actions">' + (tour && page > 0 ? '<button data-action="back">Back</button>' : '') + '<button class="tri-next" data-action="next">' + (tour ? (page === slides.length - 1 ? 'Let’s eat' : 'Next') : 'Let’s eat') + '</button></div></section>';
+    if (!tour) overlay.querySelector('#triVersion').textContent = versionLabel();
     overlay.querySelector('#triTitle').focus();
   }
   function open(kind = 'tour') {
