@@ -4343,7 +4343,7 @@ function getTableRecBrowseCoords(){
   return tableRecBrowseCoordsRequest;
 }
 
-async function getFreshTableScoreCoords(){
+async function getFreshTableScoreCoords({targetAccuracy=300,timeoutMs=10000}={}){
   if(!tableRecGeo.available){
     throw new Error("Location is not available in this browser.");
   }
@@ -4375,7 +4375,7 @@ async function getFreshTableScoreCoords(){
         if(watchId!==null)tableRecGeo.clearWatch(watchId);
         reject(new Error("TableRec could not get a fresh GPS fix."));
       }
-    },10000);
+    },timeoutMs);
 
     watchId=tableRecGeo.watchPosition(
       pos=>{
@@ -4383,8 +4383,8 @@ async function getFreshTableScoreCoords(){
           best=pos;
         }
 
-        // Good enough for city-level accuracy. Stop early once we have it.
-        if(Number(pos.coords.accuracy||Infinity)<=300){
+        // Verification waits for a tighter fix than city browsing.
+        if(Number(pos.coords.accuracy||Infinity)<=targetAccuracy){
           clearTimeout(timer);
           finish(pos);
         }
@@ -4397,7 +4397,7 @@ async function getFreshTableScoreCoords(){
         if(err.code===1)reject(new Error("Location permission is blocked. Allow location for TableRec in your device or browser settings."));
         else reject(new Error("TableRec could not get your current location."));
       },
-      {enableHighAccuracy:true,maximumAge:0,timeout:10000}
+      {enableHighAccuracy:true,maximumAge:0,timeout:timeoutMs}
     );
   });
 }
@@ -10606,10 +10606,11 @@ async function submitRating(){
     // decides whether this qualifies as a Verified Visit.
     let coords=null;
     try{
-      coords=await getFreshTableScoreCoords();
+      coords=await getFreshTableScoreCoords({targetAccuracy:50,timeoutMs:15000});
     }catch(locationErr){
       console.warn("Fresh visit location unavailable:",locationErr);
       coords=null;
+      if(!confirm("We couldn’t get your current GPS location, so this visit can’t be verified. Tap Cancel to keep your rating and try location again while you’re at the restaurant, or OK to save without verification."))return;
     }
     const lat=coords?.latitude??null;
     const lon=coords?.longitude??null;
@@ -10655,7 +10656,9 @@ async function submitRating(){
       `TableRec submitted: ${Number(data.overall_score).toFixed(2)}/10\n\n`+
       (data.verified_visit
         ?"Verified Visit confirmed - your submitted location was within the restaurant verification zone."
-        :"Visit not verified - the rating still counts normally.")+photoWarning
+        :!coords
+          ?"Rating saved without visit verification because GPS was unavailable. Your rating still counts normally."
+          :"Rating saved, but visit verification could not be confirmed. This can happen if GPS is imprecise or the restaurant’s map location is missing or outside the verification zone. Your rating still counts normally.")+photoWarning
     );
     selectedRestaurantId=restaurant.id;
     selectedRestaurantName=restaurant.name;

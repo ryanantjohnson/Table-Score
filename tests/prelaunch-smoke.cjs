@@ -62,6 +62,14 @@ const w=dom.window;
  // A photo failure after insert must never ask for a second rating submission.
  w.eval(`currentUser={id:'test-user'};selectedRestaurantId='restaurant-test';selectedRestaurantName='Test Restaurant';getScores=()=>[8,8,8,8,8,8,8];findOrCreateRestaurant=async()=>({id:'restaurant-test',name:'Test Restaurant'});getFreshTableScoreCoords=async()=>{throw Error('denied')};pendingRatingPhotos=[{}];uploadRatingPhotos=async()=>{throw Error('upload failure')};openRestaurantById=async()=>{};loadRestaurantStats=async()=>{};`);
  w.document.getElementById('rateRestaurant').value='Test Restaurant';const alerts=[];w.alert=message=>alerts.push(message);await w.submitRating();
+ // Rejecting an unverified save keeps the draft and must not insert a rating.
+ const priorCount=w.__calls.filter(c=>c.table==='ratings'&&c.action==='insert').length;
+ w.confirm=()=>false;
+ w.document.getElementById('rateRestaurant').value='Still Here Restaurant';
+ await w.submitRating();
+ assert.equal(w.__calls.filter(c=>c.table==='ratings'&&c.action==='insert').length,priorCount);
+ assert.equal(w.document.getElementById('rateRestaurant').value,'Still Here Restaurant');
+ assert(!w.document.getElementById('submitBtn').disabled);w.confirm=()=>true;
  const inserts=w.__calls.filter(c=>c.table==='ratings'&&c.action==='insert');assert.equal(inserts.length,1);assert.equal(inserts[0].args[0].visit_latitude,null);assert(alerts.some(a=>a.includes('Your rating was saved')));
  assert(!w.document.getElementById('submitBtn').disabled);
  // Follow approval by a signed-in user must mutate their request and avoid auth prompts.
