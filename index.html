@@ -4332,7 +4332,7 @@ async function getCurrentBrowseCoords(){
   const saved=currentTableScoreCoords();
   if(localStorage.getItem("ts_location_mode")==="manual")return saved;
   if(saved && tableScoreLocation?.capturedAt>0 && Date.now()-tableScoreLocation.capturedAt<30000)return saved;
-  if(saved)return saved;
+  // Saved coordinates are a display fallback, not proof of a current GPS fix.
   return await getTableRecBrowseCoords();
 }
 
@@ -8636,24 +8636,42 @@ async function introduceFirstSignInLocation(){
 
 let tableRecLocationResumeBusy=false;
 
-async function resumeGrantedTableScoreLocation(){
+let tableRecLocationHealthTimer=null;
+function scheduleTableRecLocationHealth(){
+  if(tableRecLocationHealthTimer!==null || document.hidden || localStorage.getItem("ts_location_mode")==="manual")return;
+  tableRecLocationHealthTimer=setTimeout(()=>{
+    tableRecLocationHealthTimer=null;
+    void resumeGrantedTableScoreLocation({forceFresh:false});
+  },30000);
+}
+async function resumeGrantedTableScoreLocation({forceFresh=true}={}){
   if(document.hidden || localStorage.getItem("ts_location_mode")==="manual")return;
   restoreStoredTableScoreLocation();
   if(!tableRecGeo.available || tableRecLocationResumeBusy)return;
   tableRecLocationResumeBusy=true;
+  let granted=false;
   try{
-    // OS permission is authoritative, including after an upgrade with no saved
-    // GPS flags. Starting the watch must not depend on a successful one-shot fix.
     if(await tableRecGeo.permission()!=="granted")return;
+    granted=true;
+    if(document.hidden || localStorage.getItem("ts_location_mode")==="manual")return;
+    const age=tableScoreLocation?.capturedAt>0 ? Date.now()-tableScoreLocation.capturedAt : Infinity;
+    // A watch ID can survive even when native callbacks have silently stopped.
+    if(age>=60000)stopTableScoreLocationWatch();
     await startTableScoreLocationWatch();
+    // Reopening and a silent watch use the same fresh GPS path as manual refresh.
+    if(forceFresh || age>=30000)await getTableRecBrowseCoords();
+  }catch(err){
+    console.warn("Automatic GPS refresh:",err);
   }finally{
     tableRecLocationResumeBusy=false;
     renderLocationStatus();
+    if(granted)scheduleTableRecLocationHealth();
   }
 }
 
 let tableRecLocationRetryTimer=null;
 function stopTableScoreLocationWatch(){
+  if(tableRecLocationHealthTimer!==null){clearTimeout(tableRecLocationHealthTimer);tableRecLocationHealthTimer=null;}
   if(tableRecLocationRetryTimer!==null){clearTimeout(tableRecLocationRetryTimer);tableRecLocationRetryTimer=null;}
   if(tableScoreLocationWatchId!==null)tableRecGeo.clearWatch(tableScoreLocationWatchId);
   tableScoreLocationWatchId=null;
@@ -8692,8 +8710,12 @@ async function updateAutomaticBrowseArea(coords){
   const moved=!prior || tableRecMilesBetween(prior.latitude,prior.longitude,coords.latitude,coords.longitude)>0.3;
   if(!moved && Date.now()-prior.at<300000)return;
   tableRecAutoAreaBusy=true;
+  if(moved){
+    // Do not label fresh coordinates with the city from the previous GPS fix.
+    area="Near you";localStorage.setItem("ts_area",area);updateArea();
+  }
   try{
-    const label=await reverseGeocodeBrowseArea(coords.latitude,coords.longitude);
+    const label=await tableRecRequestDeadline(reverseGeocodeBrowseArea(coords.latitude,coords.longitude),10000,"City lookup timed out.");
     if(localStorage.getItem("ts_location_mode")==="manual")return;
     const latest=tableScoreLocation;
     if(!latest || tableRecMilesBetween(latest.latitude,latest.longitude,coords.latitude,coords.longitude)>0.3)return;
@@ -8704,7 +8726,14 @@ async function updateAutomaticBrowseArea(coords){
     renderExplore();
     renderHomeRankings();
   }catch(e){console.warn("Automatic location label:",e);}
-  finally{tableRecAutoAreaBusy=false;}
+  finally{
+    tableRecAutoAreaBusy=false;
+    const latest=tableScoreLocation;
+    if(latest && localStorage.getItem("ts_location_mode")!=="manual" &&
+       tableRecMilesBetween(latest.latitude,latest.longitude,coords.latitude,coords.longitude)>0.3){
+      void updateAutomaticBrowseArea(latest);
+    }
+  }
 }
 
 function acceptTableScorePosition(pos){
@@ -8750,13 +8779,15 @@ function tableScoreLocationError(err){
 
 async function startTableScoreLocationWatch(){
   if(document.hidden || localStorage.getItem("ts_location_mode")==="manual" || !tableRecGeo.available)return;
-  if(tableScoreLocationWatchId!==null || await tableRecGeo.permission()!=="granted")return;
-  if(document.hidden || localStorage.getItem("ts_location_mode")==="manual" || tableScoreLocationWatchId!==null)return;
+  if(await tableRecGeo.permission()!=="granted")return;
+  if(document.hidden || localStorage.getItem("ts_location_mode")==="manual")return;
+  if(tableScoreLocationWatchId!==null){scheduleTableRecLocationHealth();return;}
   tableScoreLocationWatchId=tableRecGeo.watchPosition(
     acceptTableScorePosition,
     tableScoreLocationError,
     {enableHighAccuracy:true,maximumAge:0,timeout:20000}
   );
+  scheduleTableRecLocationHealth();
 }
 
 function enableTableScoreLocation(){
@@ -12653,3 +12684,4 @@ document.addEventListener('keydown',event=>{
 
 </body>
 </html>
+
