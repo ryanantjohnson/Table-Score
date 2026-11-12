@@ -58,6 +58,13 @@ const w=dom.window;
  // A fresh verification fix must not replace a deliberately selected browsing city.
  w.localStorage.setItem('ts_lat','40');w.localStorage.setItem('ts_lon','-100');
  w.tableRecGeo.watchPosition=success=>{setTimeout(()=>success({coords:{latitude:30,longitude:-97,accuracy:20}}),0);return 7;};
+ const usable=w.tableRecUsableGpsCoords;
+ assert(!usable({latitude:0,longitude:0}));assert(!usable({latitude:null,longitude:null}));
+ assert(!usable({latitude:91,longitude:30}));assert(usable({latitude:0,longitude:30}));
+ w.tableRecGeo.watchPosition=success=>{setTimeout(()=>{
+   success({coords:{latitude:0,longitude:0,accuracy:5}});
+   success({coords:{latitude:30,longitude:-97,accuracy:20}});
+ },0);return 8;};
  const fresh=await w.getFreshTableScoreCoords();assert.equal(fresh.latitude,30);assert.equal(w.localStorage.getItem('ts_lat'),'40');
  // A photo failure after insert must never ask for a second rating submission.
  w.eval(`currentUser={id:'test-user'};selectedRestaurantId='restaurant-test';selectedRestaurantName='Test Restaurant';getScores=()=>[8,8,8,8,8,8,8];findOrCreateRestaurant=async()=>({id:'restaurant-test',name:'Test Restaurant'});getFreshTableScoreCoords=async()=>{throw Error('denied')};pendingRatingPhotos=[{}];uploadRatingPhotos=async()=>{throw Error('upload failure')};openRestaurantById=async()=>{};loadRestaurantStats=async()=>{};`);

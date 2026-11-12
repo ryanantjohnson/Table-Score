@@ -4309,6 +4309,12 @@ function storedTableRecCoords(){
   if(!Number.isFinite(latitude)||!Number.isFinite(longitude)||Math.abs(latitude)>90||Math.abs(longitude)>180)return null;
   return {latitude,longitude};
 }
+function tableRecUsableGpsCoords(coords){
+  if(!coords)return false;
+  const lat=tableRecCoordinate(coords.latitude),lon=tableRecCoordinate(coords.longitude);
+  // (0,0) is an unusable sentinel for restaurant visits, not a recovered fix.
+  return Number.isFinite(lat)&&Number.isFinite(lon)&&Math.abs(lat)<=90&&Math.abs(lon)<=180&&!(lat===0&&lon===0);
+}
 function currentTableScoreCoords(){
   if(localStorage.getItem("ts_location_mode")==="manual")return storedTableRecCoords();
   if(tableScoreLocation&&Number.isFinite(tableScoreLocation.latitude)&&Number.isFinite(tableScoreLocation.longitude)){
@@ -4379,6 +4385,7 @@ async function getFreshTableScoreCoords({targetAccuracy=300,timeoutMs=10000}={})
 
     watchId=tableRecGeo.watchPosition(
       pos=>{
+        if(settled || !tableRecUsableGpsCoords(pos?.coords))return;
         if(!best || Number(pos.coords.accuracy||Infinity)<Number(best.coords.accuracy||Infinity)){
           best=pos;
         }
@@ -8713,6 +8720,7 @@ async function updateAutomaticBrowseArea(coords){
 }
 
 function acceptTableScorePosition(pos){
+  if(!tableRecUsableGpsCoords(pos?.coords))return;
   if(localStorage.getItem("ts_location_mode")==="manual")return;
   tableScoreLocation={
     latitude:pos.coords.latitude,
@@ -10607,6 +10615,7 @@ async function submitRating(){
     let coords=null;
     try{
       coords=await getFreshTableScoreCoords({targetAccuracy:50,timeoutMs:15000});
+      if(!tableRecUsableGpsCoords(coords))throw new Error("GPS returned an unusable location.");
     }catch(locationErr){
       console.warn("Fresh visit location unavailable:",locationErr);
       coords=null;
