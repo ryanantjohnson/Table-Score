@@ -20,6 +20,7 @@ const dom=new JSDOM(source,{url:'https://test.tablerec.co/',runScripts:'dangerou
  w.tableRecGeo={available:true,permission:async()=> 'unknown',getCurrentPosition:(success,error)=>error({code:1}),watchPosition:()=>1,clearWatch:()=>{}};
 }});
 const w=dom.window;
+const originalBrowseCoords=w.getTableRecBrowseCoords;
 (async()=>{
  await new Promise(resolve=>setTimeout(resolve,100));
  assert.deepEqual(errors,[],'DOM boots without uncaught errors');
@@ -53,8 +54,8 @@ const w=dom.window;
  w.eval('updateAutomaticBrowseArea=async()=>{};');
  w.localStorage.setItem('ts_location_mode','current');w.localStorage.setItem('ts_location_enabled','1');w.localStorage.setItem('ts_lat','30');w.localStorage.setItem('ts_lon','-97');
  for(const state of ['prompt','denied','unknown']){w.tableRecGeo.permission=async()=>state;await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);}
- w.tableRecGeo.permission=async()=> 'granted';await w.resumeGrantedTableScoreLocation();assert.equal(requests,1);
- w.localStorage.setItem('ts_location_mode','manual');await w.resumeGrantedTableScoreLocation();assert.equal(requests,1);
+ w.tableRecGeo.permission=async()=> 'granted';await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);
+ w.localStorage.setItem('ts_location_mode','manual');await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);
  // A fresh verification fix must not replace a deliberately selected browsing city.
  w.localStorage.setItem('ts_lat','40');w.localStorage.setItem('ts_lon','-100');
  w.tableRecGeo.watchPosition=success=>{setTimeout(()=>success({coords:{latitude:30,longitude:-97,accuracy:20}}),0);return 7;};
@@ -110,6 +111,36 @@ const w=dom.window;
  assert.deepEqual(w.currentTableScoreCoords(),savedCoords);assert.equal(typeof retry,'function');
  const starts=w.__watchStarts;retry();assert(w.__watchStarts>starts);
  w.setTimeout=realTimer;
+ // Exercise the real watch startup after cold launch and app resume.
+ w.eval('startTableScoreLocationWatch=window.__originalStartWatch;stopTableScoreLocationWatch();tableScoreLocation=null;');
+ for(const key of ['ts_lat','ts_lon','ts_location_enabled'])w.localStorage.removeItem(key);
+ w.localStorage.setItem('ts_location_mode','current');
+ let watches=0,oneShots=0,cleared=0,positionCallback;
+ w.tableRecGeo.permission=async()=> 'granted';
+ w.tableRecGeo.getCurrentPosition=(success,failure)=>{oneShots++;failure({code:3})};
+ w.tableRecGeo.watchPosition=success=>{watches++;positionCallback=success;return watches+100};
+ w.tableRecGeo.clearWatch=()=>{cleared++};
+ await Promise.all([w.resumeGrantedTableScoreLocation(),w.resumeGrantedTableScoreLocation()]);
+ assert.equal(watches,1,'OS grant starts one watch even without saved flags');
+ assert.equal(oneShots,0,'movement watch does not depend on a one-shot fix');
+ positionCallback({coords:{latitude:30.6,longitude:-97.6,accuracy:12}});
+ positionCallback({coords:{latitude:30.8,longitude:-97.4,accuracy:10}});
+ assert.equal(w.currentTableScoreCoords().latitude,30.8,'movement updates the current position');
+ Object.defineProperty(w.document,'hidden',{configurable:true,value:true});
+ w.document.dispatchEvent(new w.Event('visibilitychange'));assert.equal(cleared,1);
+ Object.defineProperty(w.document,'hidden',{configurable:true,value:false});
+ w.document.dispatchEvent(new w.Event('visibilitychange'));
+ await new Promise(resolve=>setTimeout(resolve,0));assert.equal(watches,2,'foreground resumes tracking');
+ w.stopTableScoreLocationWatch();
+ w.tableRecGeo.permission=async()=> 'denied';await w.resumeGrantedTableScoreLocation();
+ assert.equal(watches,2,'denied permission does not restart or prompt');
+ w.tableRecGeo.permission=async()=> 'prompt';await w.resumeGrantedTableScoreLocation();
+ assert.equal(watches,2,'automatic resume does not request permission again');
+ w.tableRecGeo.permission=async()=> 'granted';w.localStorage.setItem('ts_location_mode','manual');
+ await w.resumeGrantedTableScoreLocation();assert.equal(watches,2,'manual browsing stays manual');
+ w.localStorage.setItem('ts_location_mode','current');
+ w.tableRecGeo.getCurrentPosition=success=>success({coords:{latitude:0,longitude:0,accuracy:5}});
+ await assert.rejects(originalBrowseCoords(),/unusable location/);
  assert.deepEqual(errors,[]);
  dom.window.close();
  // Test native bridge without invoking browser geolocation.
