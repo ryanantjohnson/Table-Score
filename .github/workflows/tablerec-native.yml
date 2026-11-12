@@ -93,8 +93,6 @@ jobs:
 
       - name: Bundle TableRec web files
         working-directory: native
-        env:
-          TR_BUILD_PLATFORM: ${{ matrix.platform }}
         run: node prepare-web.mjs
 
       - name: Prepare approved TableRec branding assets
@@ -215,6 +213,8 @@ jobs:
           if [ ! -d android ]; then
             npx cap add android
           fi
+          # Android's generated Gradle file must exist before reading its version.
+          TR_BUILD_PLATFORM=Android node prepare-web.mjs
           npx cap sync android
           "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" \
             'platforms;android-36' 'build-tools;36.0.0'
