@@ -1,0 +1,58 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const {JSDOM} = require('jsdom');
+const code = fs.readFileSync('app-intro.js', 'utf8');
+function setup(storage = {}, url = 'https://test.tablerec.co/') {
+  const dom = new JSDOM('<html><head></head><body><button id="origin">Settings</button></body></html>', {url, runScripts:'dangerously', pretendToBeVisual:true});
+  for (const [key, value] of Object.entries(storage)) dom.window.localStorage.setItem(key, value);
+  dom.window.eval(code); return dom;
+}
+let dom = setup(), w = dom.window;
+w.document.getElementById('origin').focus();
+w.TableRecIntro.maybeOpen();
+assert(w.document.getElementById('triTitle').textContent.includes('Rate'));
+for (let i = 0; i < 4; i++) w.document.querySelector('[data-action="next"]').click();
+assert.equal(w.document.getElementById('triTitle').textContent, 'One last little step.');
+w.document.querySelector('[data-action="back"]').click();
+assert.equal(w.document.getElementById('triTitle').textContent, 'Bring your people.');
+w.document.dispatchEvent(new w.KeyboardEvent('keydown', {key:'Escape', bubbles:true}));
+assert(!w.document.getElementById('trIntro'));
+assert.equal(w.document.activeElement.id, 'origin');
+w.TableRecIntro.maybeOpen(); assert(!w.document.getElementById('trIntro'));
+const seen = w.localStorage.getItem('tr_intro_release');
+w.TableRecIntro.open();
+for (let i=0; i<5; i++) w.document.querySelector('[data-action="next"]').click();
+assert(!w.document.getElementById('trIntro')); dom.window.close();
+dom=setup({ts_current_screen:'home'});w=dom.window;w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triTitle').textContent, 'What’s new');
+// Keyboard navigation stays inside the dialog, including its initially focused heading.
+w.document.dispatchEvent(new w.KeyboardEvent('keydown', {key:'Tab', shiftKey:true, bubbles:true}));
+assert(w.document.getElementById('trIntro').contains(w.document.activeElement));
+w.TableRecIntro.close();dom.window.close();
+dom=setup({tr_intro_release:seen});w=dom.window;w.TableRecIntro.maybeOpen();
+assert(!w.document.getElementById('trIntro'));
+w.TableRecIntro.open('news');assert(w.document.getElementById('trIntro'));dom.window.close();
+dom=setup({tr_intro_release:'older-release'});w=dom.window;w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triTitle').textContent, 'What’s new');dom.window.close();
+dom=setup({},'https://test.tablerec.co/#type=recovery');w=dom.window;w.TableRecIntro.maybeOpen();
+assert(!w.document.getElementById('trIntro'));dom.window.close();
+dom=setup();w=dom.window;
+w.document.body.insertAdjacentHTML('beforeend','<div class="modal">Account confirmation</div>');
+w.TableRecIntro.maybeOpen();assert(!w.document.getElementById('trIntro'));dom.window.close();
+dom=setup();w=dom.window;
+Object.defineProperty(w,'localStorage',{get(){throw new Error('Storage disabled');}});
+w.TableRecIntro.maybeOpen();assert(w.document.getElementById('trIntro'));
+w.TableRecIntro.close();w.TableRecIntro.maybeOpen();assert(!w.document.getElementById('trIntro'));dom.window.close();
+// Store build changes trigger update notes once; the label uses the same metadata.
+dom=setup({tr_intro_release:seen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'25.1'};
+w.eval(code);w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triVersion').textContent,'Version 1.0 · Build 25.1');
+w.TableRecIntro.close();const buildSeen=w.localStorage.getItem('tr_intro_release');dom.window.close();
+dom=setup({tr_intro_release:buildSeen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'25.1'};w.eval(code);w.TableRecIntro.maybeOpen();
+assert(!w.document.getElementById('trIntro'));dom.window.close();
+dom=setup({tr_intro_release:buildSeen});w=dom.window;
+w.tableRecBuild={platform:'iOS',version:'1.0',number:'26.1'};w.eval(code);w.TableRecIntro.maybeOpen();
+assert.equal(w.document.getElementById('triVersion').textContent,'Version 1.0 · Build 26.1');dom.window.close();
+console.log('PASS: welcome slides, completion, skip, back, focus, replay, upgrade notes, recovery, modal deferral, and disabled storage');
