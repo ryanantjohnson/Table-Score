@@ -21,6 +21,7 @@ const dom=new JSDOM(source,{url:'https://test.tablerec.co/',runScripts:'dangerou
 }});
 const w=dom.window;
 const originalBrowseCoords=w.getTableRecBrowseCoords;
+const originalAutomaticArea=w.updateAutomaticBrowseArea;
 (async()=>{
  await new Promise(resolve=>setTimeout(resolve,100));
  assert.deepEqual(errors,[],'DOM boots without uncaught errors');
@@ -54,8 +55,8 @@ const originalBrowseCoords=w.getTableRecBrowseCoords;
  w.eval('updateAutomaticBrowseArea=async()=>{};');
  w.localStorage.setItem('ts_location_mode','current');w.localStorage.setItem('ts_location_enabled','1');w.localStorage.setItem('ts_lat','30');w.localStorage.setItem('ts_lon','-97');
  for(const state of ['prompt','denied','unknown']){w.tableRecGeo.permission=async()=>state;await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);}
- w.tableRecGeo.permission=async()=> 'granted';await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);
- w.localStorage.setItem('ts_location_mode','manual');await w.resumeGrantedTableScoreLocation();assert.equal(requests,0);
+ w.tableRecGeo.permission=async()=> 'granted';await w.resumeGrantedTableScoreLocation();assert.equal(requests,1);
+ w.localStorage.setItem('ts_location_mode','manual');await w.resumeGrantedTableScoreLocation();assert.equal(requests,1);
  // A fresh verification fix must not replace a deliberately selected browsing city.
  w.localStorage.setItem('ts_lat','40');w.localStorage.setItem('ts_lon','-100');
  w.tableRecGeo.watchPosition=success=>{setTimeout(()=>success({coords:{latitude:30,longitude:-97,accuracy:20}}),0);return 7;};
@@ -116,31 +117,59 @@ const originalBrowseCoords=w.getTableRecBrowseCoords;
  for(const key of ['ts_lat','ts_lon','ts_location_enabled'])w.localStorage.removeItem(key);
  w.localStorage.setItem('ts_location_mode','current');
  let watches=0,oneShots=0,cleared=0,positionCallback;
+ w.getTableRecBrowseCoords=originalBrowseCoords;
  w.tableRecGeo.permission=async()=> 'granted';
  w.tableRecGeo.getCurrentPosition=(success,failure)=>{oneShots++;failure({code:3})};
  w.tableRecGeo.watchPosition=success=>{watches++;positionCallback=success;return watches+100};
  w.tableRecGeo.clearWatch=()=>{cleared++};
  await Promise.all([w.resumeGrantedTableScoreLocation(),w.resumeGrantedTableScoreLocation()]);
  assert.equal(watches,1,'OS grant starts one watch even without saved flags');
- assert.equal(oneShots,0,'movement watch does not depend on a one-shot fix');
+ assert.equal(oneShots,1,'foreground asks for a fresh fix while the watch remains running if that fix fails');
  positionCallback({coords:{latitude:30.6,longitude:-97.6,accuracy:12}});
  positionCallback({coords:{latitude:30.8,longitude:-97.4,accuracy:10}});
  assert.equal(w.currentTableScoreCoords().latitude,30.8,'movement updates the current position');
  Object.defineProperty(w.document,'hidden',{configurable:true,value:true});
- w.document.dispatchEvent(new w.Event('visibilitychange'));assert.equal(cleared,1);
+ const beforeBackgroundClear=cleared;w.document.dispatchEvent(new w.Event('visibilitychange'));assert.equal(cleared,beforeBackgroundClear+1);
  Object.defineProperty(w.document,'hidden',{configurable:true,value:false});
  w.document.dispatchEvent(new w.Event('visibilitychange'));
  await new Promise(resolve=>setTimeout(resolve,0));assert.equal(watches,2,'foreground resumes tracking');
+ // A silent native watch is replaced and refreshed without asking permission.
+ w.eval('tableScoreLocation.capturedAt=Date.now()-61000');
+ let healthTick;const realHealthTimer=w.setTimeout;
+ w.setTimeout=(cb,delay)=>{if(delay===30000){healthTick=cb;return 876};return realHealthTimer(cb,delay)};
+ await w.resumeGrantedTableScoreLocation({forceFresh:false});
+ assert.equal(watches,3,'stale watch replaced');
+ assert.equal(typeof healthTick,'function','foreground health check stays scheduled');
+ w.tableRecGeo.getCurrentPosition=success=>{oneShots++;success({coords:{latitude:31,longitude:-98,accuracy:15}})};
+ w.eval('tableScoreLocation.capturedAt=Date.now()-61000');
+ healthTick();await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(watches,4,'scheduled health check repairs a silent watch');
+ assert.equal(w.currentTableScoreCoords().latitude,31);
+ // Browsing must not silently reuse an old city after a missed update.
+ w.eval('tableScoreLocation.capturedAt=Date.now()-61000');
+ const beforeBrowse=oneShots;await w.getCurrentBrowseCoords();assert.equal(oneShots,beforeBrowse+1);
+ w.setTimeout=realHealthTimer;
  w.stopTableScoreLocationWatch();
  w.tableRecGeo.permission=async()=> 'denied';await w.resumeGrantedTableScoreLocation();
- assert.equal(watches,2,'denied permission does not restart or prompt');
+ assert.equal(watches,4,'denied permission does not restart or prompt');
  w.tableRecGeo.permission=async()=> 'prompt';await w.resumeGrantedTableScoreLocation();
- assert.equal(watches,2,'automatic resume does not request permission again');
+ assert.equal(watches,4,'automatic resume does not request permission again');
  w.tableRecGeo.permission=async()=> 'granted';w.localStorage.setItem('ts_location_mode','manual');
- await w.resumeGrantedTableScoreLocation();assert.equal(watches,2,'manual browsing stays manual');
+ await w.resumeGrantedTableScoreLocation();assert.equal(watches,4,'manual browsing stays manual');
  w.localStorage.setItem('ts_location_mode','current');
  w.tableRecGeo.getCurrentPosition=success=>success({coords:{latitude:0,longitude:0,accuracy:5}});
  await assert.rejects(originalBrowseCoords(),/unusable location/);
+ // Moving during a slow city lookup drops the old city and queues the newest fix.
+ w.eval('updateArea=()=>{};renderExplore=()=>{};renderHomeRankings=()=>{};tableRecAutoAreaFix=null;area="Pflugerville, TX";');
+ w.updateAutomaticBrowseArea=originalAutomaticArea;
+ let finishCity;let cityLookups=0;
+ w.reverseGeocodeBrowseArea=()=>{cityLookups++;if(cityLookups===1)return new Promise(resolve=>{finishCity=resolve});return Promise.resolve('Georgetown, TX')};
+ w.eval('tableScoreLocation={latitude:30.5,longitude:-97.7,capturedAt:Date.now()}');
+ const pendingCity=originalAutomaticArea(w.eval('tableScoreLocation'));
+ assert.equal(w.eval('area'),'Near you','old city removed while moved GPS coordinates resolve');
+ w.eval('tableScoreLocation={latitude:30.7,longitude:-97.7,capturedAt:Date.now()}');
+ finishCity('Round Rock, TX');await pendingCity;await new Promise(resolve=>setTimeout(resolve,0));
+ assert.equal(cityLookups,2);assert.equal(w.eval('area'),'Georgetown, TX');
  assert.deepEqual(errors,[]);
  dom.window.close();
  // Test native bridge without invoking browser geolocation.
@@ -152,3 +181,4 @@ const originalBrowseCoords=w.getTableRecBrowseCoords;
  const watch=native.tableRecGeo.watchPosition(()=>{},assert.fail,{});native.tableRecGeo.clearWatch(watch);await new Promise(r=>setTimeout(r,0));assert(called.includes('clearWatch'));
  console.log('PASS: 30+ assertions covering syntax, DOM boot, signup, verification persistence, cooldown, auth callback, auth failure, rankings, badges, encoding, permission states, manual location, rating/photo failure, follow approval, and native bridge');
 })().catch(e=>{console.error(e);dom.window.close();process.exit(1);});
+
