@@ -2582,6 +2582,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </button>
     </div>
 
+    <div id="contributorProfileCard" class="card hidden"><div class="section-title">Verified Contributor</div><p id="contributorProfileProgress" class="muted" aria-live="polite">Loading progress...</p><p class="muted" style="font-size:11px">250 qualifying Verified Visit ratings across 50 restaurants. Repeat visits count once per restaurant per day; removed or hidden ratings do not count.</p></div>
     <div id="profileBadgeFolderCard" class="card hidden">
       <button class="badge-folder-btn" onclick="openOwnBadgeFolder()">
         <span class="badge-folder-icon" aria-hidden="true">
@@ -2641,7 +2642,6 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
           <div style="font-weight:950">Account Marks</div>
           <div class="muted" style="font-size:11px;line-height:1.4;margin-top:3px">OG-only controls. Grant or revoke a distinction for this account.</div>
           <div class="mark-admin-actions">
-            <button id="grantChefsTableBtn" class="mark-admin-btn" onclick="toggleManagedMark('chefs_table')">Grant Verified</button>
             <button id="grantFirstRoundBtn" class="mark-admin-btn" onclick="toggleManagedMark('first_round')">Grant First Round</button>
           </div>
         </div>
@@ -2766,7 +2766,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="section-title">Settings</div>
       <button class="tr-close-control secondary settings-external-close" onclick="closeSettings()">Close</button>
     </div>
-    <div class="tr-modal-scroll">
+    <div class="tr-modal-scroll"><div id="guestSettingsCard" class="card hidden"><div class="section-title">You’re browsing as a guest</div><p class="muted">Explore restaurants and Run It without an account. Sign in to rate, save places, follow diners, or manage your account.</p><button class="primary" onclick="closeSettings();openAccount()">Create Account / Sign In</button></div>
     <div class="card">
       <div class="section-title">A little help</div>
       <p class="muted">Get to know TableRec, or catch up on the latest improvements.</p>
@@ -2774,14 +2774,14 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <button class="secondary" onclick="closeSettings();window.TableRecIntro?.open('news')">What’s new</button>
       <button class="secondary" onclick="window.TableRecFeedback.open()">Send feedback</button>
     </div>
-    <div class="card">
+    <div class="card" data-account-only>
       <div class="section-title">Community Safety</div>
       <p class="muted tr-safety-note">Report concerns from a rating, comment, or member profile.</p>
       <button class="secondary" onclick="trOpenBlocked()">Blocked Accounts</button>
       <div id="trModeratorControls" class="hidden" style="margin-top:10px"><button class="primary" onclick="trOpenModeration()">Review Reports</button></div>
       <p class="muted tr-safety-note"><a href="mailto:support@tablerec.co">Contact TableRec</a></p>
     </div>
-    <div class="card" style="margin-top:8px">
+    <div class="card" data-account-only style="margin-top:8px">
       <div class="section-title" style="font-size:15px">Notifications</div>
       <div class="muted" style="font-size:11px;line-height:1.45;margin-top:4px">TableRec will keep an in-app notification history for account marks and important activity.</div>
       <div class="notification-permission">
@@ -2791,7 +2791,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-account-only>
       <div class="section-title" style="font-size:15px">Privacy</div>
       <div class="settings-row">
         <div>
@@ -2807,31 +2807,16 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 
 
-    <div class="card">
+    <div class="card" data-account-only>
       <div class="section-title" style="font-size:15px">Profile Title</div>
       <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Pick the title shown under your username. More titles will become unlockable later.</div>
       <div id="titlePicker" class="title-picker">
         <div class="muted" style="grid-column:1/-1;font-size:11px">Loading titles...</div>
       </div>
     </div>
-<div id="chefsTableAdminCard" class="card hidden">
-      <div class="section-title" style="font-size:15px">Verification Requests</div>
-      <div class="muted" style="font-size:11px;margin-top:4px">Private OG review queue.</div>
-      <button class="primary" style="width:100%;margin-top:10px" onclick="openChefsTableAdmin()">Review Verification Requests</button>
-    </div>
 
-    <div id="accountMarksSettingsCard" class="card hidden">
-      <div class="section-title" style="font-size:15px">Account Mark</div>
-      <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Your TableRec identity marks appear beside your name everywhere they are shown.</div>
-      <div id="accountMarkPicker" class="account-mark-picker hidden"></div>
-    </div>
 
-    <div id="chefsTableApplyCard" class="card">
-      <div class="section-title" style="font-size:15px">Verified Accounts</div>
-      <div class="muted" style="font-size:11px;line-height:1.5;margin-top:4px">Verification confirms that a notable public account is authentic. Established food creators, chefs, celebrities, athletes, public figures, and other notable accounts may be eligible. Verified accounts receive TableRec's small golden fork beside their name. Verification does not endorse or give extra weight to their ratings.</div>
-      <button class="primary" style="margin-top:12px;width:100%" onclick="openChefsTableApplication()">Request Verification</button>
-      <div id="chefsTableApplicationStatus" class="muted" style="font-size:11px;margin-top:9px"></div>
-    </div>
+    <div id="chefsTableApplyCard" class="card" data-account-only><div class="section-title">Verified Contributor</div><p class="muted">Earn it through 250 qualifying Verified Visit ratings across at least 50 restaurants. Followers do not count.</p><div id="chefsTableApplicationStatus" class="muted" aria-live="polite"></div></div>
 
     <div class="card">
       <div class="section-title" style="font-size:15px">Appearance</div>
@@ -2863,7 +2848,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       <div class="muted" style="font-size:10px;line-height:1.4;margin-top:9px">TableRec will use your location for nearby restaurant discovery and local rankings. Your exact coordinates are not shown on your profile.</div>
     </div>
 
-    <div class="card">
+    <div class="card" data-account-only>
       <div class="section-title" style="font-size:15px">Birthday</div>
       <div class="muted" style="font-size:11px;line-height:1.4;margin-top:4px">Optional. Submit a rating on your birthday to earn Birthday Bite. Your birthday is not shown publicly.</div>
       <div class="inline-actions" style="margin-top:10px">
@@ -2893,7 +2878,7 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
       </div>
     </div>
 
-    <div class="card">
+    <div class="card" data-account-only>
       <div class="section-title" style="font-size:15px">Account</div>
 
       <div class="settings-row" style="display:block">
@@ -3330,8 +3315,13 @@ function tableRecRequestDeadline(task,ms=30000,message="The connection took too 
   return Promise.race([Promise.resolve(task),new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error(message)),ms);})]).finally(()=>clearTimeout(timer));
 }
 async function tableRecInvokeRestaurant(name,options){
+  if(!currentUser){
+    if(options?.body?.mode==="create")throw new Error("Sign in before adding a restaurant.");
+    if(name==="nearby-restaurants")name="guest-restaurants";
+    else if(name==="where-to-eat")name="guest-where-to-eat";
+  }
   const controller=new AbortController();
-  const ms=name==="where-to-eat"?45000:30000;
+  const ms=["where-to-eat","guest-where-to-eat"].includes(name)?45000:30000;
   let timer;
   try{
     const result=await Promise.race([
@@ -3380,7 +3370,8 @@ function trSyncAccountState(user=currentUser){
   followerCount=0;followingCount=0;followRequestCount=0;
   tableScoreNotifications=[];notificationsInitialized=false;
   tableRecPendingFollowRequests=[];
-  accountMarkCache.clear();viewedManagedMarks=[];
+  accountMarkCache.clear();accountMarkLoadedAt.clear();contributorProgressCache.clear();viewedManagedMarks=[];
+  renderContributorProgress();
   for(const name of ["profileBadges","badgePicker","profileBadgeFolderSub","notificationsList","discoverPeopleSuggestions","peopleSuggestions"]){const el=document.getElementById(name);if(el)el.innerHTML="";}
   document.getElementById("secretRewardOverlay")?.classList.add("hidden");
   updateNotificationBadge();
@@ -4825,7 +4816,6 @@ function setRestaurantUserLocationMarker(coords){
 let mapSelectedRestaurant=null;
 
 function openRestaurantFinder(mode="search"){
-  if(!currentUser)return openAccount(()=>openRestaurantFinder(mode));
   document.getElementById("nearbyRestaurantModal").classList.remove("hidden");
   setRestaurantFinderMode(mode);
   if(mode==="search"){
@@ -5204,6 +5194,7 @@ async function openRestaurantActionTableRec(){
   }
 }
 function rateRestaurantAction(){
+  if(!currentUser)return openAccount(()=>rateRestaurantAction());
   const r=restaurantActionPlace;if(!r)return;
   captureRestaurantFinderReturn();
   // Changing the restaurant inside an unfinished rating preserves its draft.
@@ -5998,6 +5989,7 @@ async function signOut(){
 async function refreshUserData(){
   const accountEpoch=trSyncAccountState();
   const accountId=currentUser?.id||null;
+  if(accountId){accountMarkCache.delete(accountId);accountMarkLoadedAt.delete(accountId);contributorProgressCache.delete(accountId);}
   if(!currentUser){
     profile=null;
     myRatings=[];
@@ -6978,7 +6970,7 @@ function avatarMarkup(person,size=42){
 function renderFollowingFeedGuest(){
   const el=document.getElementById("followingFeed");
   if(!el)return;
-  el.innerHTML='<div class="empty"><div class="section-title">Your food circle starts here</div><p class="muted" style="font-size:13px">Sign in to follow people and see their latest restaurant ratings.</p><button class="secondary" onclick="openAccount()">Sign In</button></div>';
+  el.innerHTML='<div class="empty"><div class="section-title">Your food circle starts here</div><p class="muted" style="font-size:13px">Browse restaurants and try Run It without an account. Sign in when you want to rate, save places, or follow diners.</p><button class="primary" onclick="showScreen(&quot;discover&quot;)">Explore Restaurants</button><button class="secondary" onclick="openWhereToEat()">Try Run It</button><button class="secondary" onclick="openAccount()">Create Account / Sign In</button></div>';
 }
 
 const HOME_POLL_DECK=[
@@ -7235,6 +7227,7 @@ async function loadFollowingFeed(){
   (ratings||[]).forEach(r=>r._photos=photoMap.get(r.id)||[]);
   const ratingCards=ratings.map(r=>feedRatingCard(r,peopleMap.get(r.user_id)));
   el.innerHTML=buildMixedHomeFeed(ratingCards);
+  await applyAccountMarks(el);
 
   loadHomeSuggestedRestaurant();
   await hydrateRatingEngagement(ratings.map(r=>r.id));
@@ -7254,10 +7247,10 @@ function feedRatingCard(r,person){
     <div style="display:flex;gap:10px;align-items:center">
       <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none">${avatarMarkup(p,42)}</button>
       <div style="min-width:0;flex:1">
-        <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableRec User")}</button>
+        <button onclick="event.stopPropagation();openPublicProfile('${p.id}')" style="padding:0;border:0;background:none;color:inherit;text-align:left;font-weight:900;font-size:13px">${esc(p.display_name||p.username||"TableRec User")}</button><span class="feed-account-marks" data-user-id="${esc(p.id)}" data-account-name="true"></span>
         <div class="row-meta">${p.username?"@"+esc(p.username)+" - ":""}${esc(timeAgo(r.created_at))}</div>
       </div>
-      ${r.verified_visit?'<span class="pill">VERIFIED</span>':""}
+      ${r.verified_visit?'<span class="pill">Verified Visit</span>':""}
     </div>
     <button onclick="event.stopPropagation();openRatingDetail('${r.id}')" style="display:block;width:100%;padding:0;border:0;background:none;color:inherit;text-align:left;margin-top:10px">
       <div class="tr-feed-restaurant-name">${esc(restaurant.name||"Restaurant")}</div>
@@ -7976,6 +7969,7 @@ function renderProfile(){
     badgeFolderSub.textContent=`${earnedCount} earned - ${equippedBadgeSlugs.length}/4 displayed`;
   }
   renderOwnRewardPreview();
+  renderContributorProgress();
   const fallback=currentUser?.email?.split("@")[0]||"Guest";
   const name=profile?.display_name||currentUser?.user_metadata?.display_name||fallback;
   const username=profile?.username||"";
@@ -7990,8 +7984,9 @@ function renderProfile(){
       const owned=markMap[markUserId]||[];
       decorateNameWithMark(profileNameEl,owned,profile?.active_account_mark||null);
       renderAccountMarkPicker(owned,profile?.active_account_mark||null);
+      renderContributorProgress();
     });
-  }
+  }else{delete profileNameEl.dataset.userId;delete profileNameEl.dataset.accountName;}
   renderAvatarUI(name);
   document.getElementById("profileUsername").textContent=username?"@"+username:"";
   const profileTitleEl=document.getElementById("profileTitle"); if(profileTitleEl)profileTitleEl.textContent=profile?.active_title||"Table Regular";
@@ -9191,7 +9186,21 @@ function openSettings(){
   const buildEl=document.getElementById("settingsBuildLabel");
   if(versionEl)versionEl.textContent=TABLESCORE_VERSION;
   if(buildEl)buildEl.textContent=TABLESCORE_BUILD_LABEL;
-  if(!currentUser)return openAccount();
+  const guest=!currentUser;
+  document.getElementById("guestSettingsCard")?.classList.toggle("hidden",!guest);
+  document.querySelectorAll("#settingsModal [data-account-only]").forEach(el=>el.classList.toggle("hidden",guest));
+  for(const id of ["accountMarksSettingsCard","secretBadgeLabCard","restaurantCleanupCard"]){document.getElementById(id)?.classList.add("hidden");}
+  if(guest){
+    document.getElementById("privateAccountToggle").checked=false;
+    document.getElementById("settingsUsernameInput").value="";
+    document.getElementById("settingsBirthDate").value="";
+    document.getElementById("settingsArea").innerHTML=trCityHtml(area||"Not set");
+    renderLocationStatus();
+    lockBackgroundScroll();
+    document.getElementById("settingsModal").classList.remove("hidden");
+    return;
+  }
+  void loadChefsTableStatus();
   setTimeout(()=>{
     renderLocationStatus();
     updateSettingsPasswordResetUI();
@@ -11319,6 +11328,16 @@ async function openWhereEatRatings(){
   closeWhereToEat();
   await openRestaurantById(id);
 }
+function focusWhereEatResult(){
+  const sheet=document.querySelector(".where-eat-sheet");
+  const result=document.getElementById("whereEatResult");
+  sheet?.classList.add("where-result-focus");
+  return new Promise(resolve=>requestAnimationFrame(()=>{
+    const scroller=sheet?.querySelector(".tr-modal-scroll");
+    if(scroller&&result)scroller.scrollTo({top:scroller.scrollTop+result.getBoundingClientRect().top-scroller.getBoundingClientRect().top-10,behavior:"instant"});
+    resolve();
+  }));
+}
 function sleepWhere(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function whereBurstMarkup(){
   const bits=["&#127860;","&#127922;","&#10024;","&#127828;","&#127860;"];
@@ -11334,6 +11353,7 @@ async function animateWhereRestaurant(pool,finalPick,labelText){
     <div id="whereStageName" class="where-stage-name">RUNNING IT...</div>
     <div id="whereStageSub" class="where-stage-sub">TableRec is shuffling the table.</div>
   </div>`;
+  await focusWhereEatResult();
   const name=document.getElementById("whereStageName");
   const delays=[85,90,95,105,115,130,150,175,205,245,300,380];
   for(let i=0;i<delays.length;i++){
@@ -11356,6 +11376,7 @@ async function animateWhereCuisine(label){
   const result=document.getElementById("whereEatResult");
   const labels=WHERE_EAT_CUISINES.map(x=>x[0]);
   result.innerHTML=`<div id="whereStage" class="where-stage running"><div class="where-stage-label">WHAT ARE WE EATING?</div><div id="whereStageName" class="where-stage-name">...</div></div>`;
+  await focusWhereEatResult();
   const name=document.getElementById("whereStageName");
   for(const delay of [90,100,115,135,160,200,250,330]){
     name.textContent=labels[Math.floor(Math.random()*labels.length)];
@@ -11434,6 +11455,8 @@ async function spinWhereToEat(){
   const status=document.getElementById("whereEatStatus");
   btn.disabled=true;
   btn.textContent="RUNNING...";
+  document.getElementById("whereEatResult").innerHTML='<div class="where-stage"><div class="where-stage-label">GETTING THE TABLE READY...</div><div class="where-stage-name">Finding your options</div></div>';
+  await focusWhereEatResult();
   try{
     const all=await loadWhereEatPool(whereEatMode==="cuisine"?whereEatCuisine:"");
     if(!all.length)throw new Error("No restaurants found in that radius.");
@@ -11493,6 +11516,7 @@ async function spinWhereToEat(){
   }
 }
 function chooseWhereEatRestaurant(){
+  if(!currentUser)return openAccount(()=>chooseWhereEatRestaurant());
   if(!whereEatPick)return;
   selectedRestaurantId=null;
   selectedGoogleRestaurant={...whereEatPick};
@@ -11652,8 +11676,8 @@ const ACCOUNT_MARK_META = {
     copy: "Where the first table was set. Est. 2026."
   },
   chefs_table: {
-    title: "Verified",
-    copy: "TableRec has confirmed the identity of this notable account. Verification does not endorse or give extra weight to their ratings."
+    title: "Verified Contributor",
+    copy: "Earned through 250 qualifying Verified Visit ratings across at least 50 restaurants. Repeat visits count on different days. This badge recognizes contributions, not identity or follower count."
   },
   first_round: {
     title: "First Round",
@@ -11731,38 +11755,50 @@ function showAccountMarkInfo(kind){
 
 function accountMarkHtml(kind){
   if(!ACCOUNT_MARK_META[kind]) return "";
-  return `<span class="account-mark mark-${kind}" title="${ACCOUNT_MARK_META[kind].title}" onclick="event.stopPropagation();showAccountMarkInfo('${kind}')">${accountMarkSvg(kind)}</span>`;
+  return `<span class="account-mark mark-${kind}" role="button" tabindex="0" aria-label="${ACCOUNT_MARK_META[kind].title}" title="${ACCOUNT_MARK_META[kind].title}" onclick="event.stopPropagation();showAccountMarkInfo('${kind}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();event.stopPropagation();showAccountMarkInfo('${kind}')}">${accountMarkSvg(kind)}</span>`;
 }
 
 // Cache keeps rendering inexpensive in feed/comments/community cards.
 const accountMarkCache = new Map();
 
+const contributorProgressCache=new Map();
+const accountMarkLoadedAt=new Map();
 async function loadAccountMarks(userIds=[]){
-  const ids = [...new Set((userIds||[]).filter(Boolean))];
-  if(!ids.length) return {};
-  const missing = ids.filter(id => !accountMarkCache.has(id));
-  if(missing.length){
+  const ids=[...new Set(userIds.filter(Boolean))];
+  const epoch=trAccountStateEpoch;
+  const missing=ids.filter(id=>!accountMarkCache.has(id)||Date.now()-(accountMarkLoadedAt.get(id)||0)>60000);
+  for(let i=0;i<missing.length;i+=100){
+    const batch=missing.slice(i,i+100);
     try{
-      const { data, error } = await db
-        .from("account_marks")
-        .select("user_id,mark_type,is_active")
-        .in("user_id", missing)
-        .eq("is_active", true);
-      if(error) throw error;
-      missing.forEach(id => accountMarkCache.set(id, []));
-      (data||[]).forEach(r => {
-        const arr = accountMarkCache.get(r.user_id) || [];
-        if(!arr.includes(r.mark_type)) arr.push(r.mark_type);
-        accountMarkCache.set(r.user_id, arr);
-      });
-    }catch(err){
-      console.warn("Account marks unavailable:", err?.message || err);
-      missing.forEach(id => accountMarkCache.set(id, []));
+      const {data,error}=await db.rpc("get_account_contributor_status",{p_user_ids:batch});
+      if(error)throw error;
+      if(epoch!==trAccountStateEpoch)return {};
+      for(const id of batch){
+        const row=(data||[]).find(r=>r.user_id===id);
+        const marks=(row?.marks||[]).filter(k=>k==="og"||k==="first_round");
+        if(row?.earned===true)marks.push("chefs_table");
+        accountMarkCache.set(id,marks);
+        contributorProgressCache.set(id,row||null);
+        accountMarkLoadedAt.set(id,Date.now());
+      }
+    }catch(error){
+      console.warn("Contributor status unavailable:",error?.message||error);
+      // Never treat an identity grant or client count as an earned milestone.
+      // Existing non-contributor marks remain usable while the new endpoint is unavailable.
+      const {data,error:markError}=await db.from("account_marks").select("user_id,mark_type,is_active").in("user_id",batch).eq("is_active",true);
+      if(epoch!==trAccountStateEpoch)return {};
+      if(!markError)for(const id of batch){
+        accountMarkCache.set(id,(data||[]).filter(r=>r.user_id===id&&["og","first_round"].includes(r.mark_type)).map(r=>r.mark_type));
+      }
     }
   }
-  const out = {};
-  ids.forEach(id => out[id] = accountMarkCache.get(id) || []);
-  return out;
+  return Object.fromEntries(ids.map(id=>[id,accountMarkCache.get(id)||[]]));
+}
+function renderContributorProgress(){
+  const row=currentUser?contributorProgressCache.get(currentUser.id):null;
+  const copy=!currentUser?"Sign in to start earning Verified Contributor.":!row?"Progress is temporarily unavailable. Try reopening your profile.":`${row.qualifying_ratings} / 250 qualifying Verified Visit ratings · ${row.distinct_restaurants} / 50 restaurants${row.earned?" · Earned!":""}`;
+  for(const id of ["contributorProfileProgress","chefsTableApplicationStatus"]){const el=document.getElementById(id);if(el)el.textContent=copy;}
+  document.getElementById("contributorProfileCard")?.classList.toggle("hidden",!currentUser);
 }
 
 function orderedAccountMarks(markTypes=[]){
@@ -11793,109 +11829,18 @@ function decorateNameWithMark(nameEl, markTypes=[]){
 
 
 
-function closeChefsTableApplication(){document.getElementById("chefsTableModal")?.classList.add("hidden");}
-async function openChefsTableApplication(){
-  if(!currentUser)return alert("Sign in to apply.");
-  document.getElementById("chefsTableModal")?.classList.remove("hidden");
-}
-async function submitChefsTableApplication(){
-  if(!currentUser)return;
-  const creator_name=document.getElementById("ctCreatorName").value.trim();
-  const platform=document.getElementById("ctPlatform").value;
-  const profile_url=document.getElementById("ctProfileUrl").value.trim();
-  const market=document.getElementById("ctMarket").value.trim();
-  const followers=parseInt(document.getElementById("ctFollowers").value||"0",10);
-  const notes=document.getElementById("ctNotes").value.trim();
-  if(!creator_name)return alert("Add your public name.");
-  try{const url=new URL(profile_url);if(url.protocol!=="https:"||url.username||url.password)throw new Error();}catch(e){return alert("Add the full HTTPS link to your public profile, not just a handle.");}
-  if(notes.length<20)return alert("Describe your public work and why your account qualifies for verification.");
-  const {data,error}=await db.rpc("submit_chefs_table_application",{
-    p_creator_name:creator_name,p_platform:platform,p_profile_url:profile_url,
-    p_market:market,p_followers:followers,p_notes:notes
-  });
-  if(error){console.error(error);return alert("Could not submit application.");}
-  closeChefsTableApplication();
-  await loadChefsTableStatus();
-  alert("Verification request submitted. Your verification code is "+data+". Requests expire after 14 days. Add it temporarily to the bio of the public profile you submitted so TableRec can confirm you control that account.");
-}
+function closeChefsTableApplication(){}
+async function openChefsTableApplication(){showScreen("profile");await loadChefsTableStatus();}
 async function loadChefsTableStatus(){
-  if(!currentUser)return;
-  const status=document.getElementById("chefsTableApplicationStatus");
-  const admin=document.getElementById("chefsTableAdminCard");
-  if(admin)admin.classList.toggle("hidden",!isOGAccount());
-  const {data}=await db.from("chefs_table_applications")
-    .select("status,verification_code,platform,profile_url,created_at")
-    .eq("user_id",currentUser.id).order("created_at",{ascending:false}).limit(1).maybeSingle();
-  if(!status)return;
-  if(!data){status.textContent="";return;}
-  if(data.status==="pending_verification"){
-    status.innerHTML=`Application received - <strong>Verification needed</strong><br>Temporarily place <strong>${data.verification_code}</strong> in your ${data.platform} bio, then leave it there while your application is reviewed.`;
-  }else if(data.status==="pending_review"){
-    status.textContent="Public profile control checked - your request still needs TableRec approval.";
-  }else if(data.status==="approved"){
-    status.textContent="Verified. TableRec has confirmed your account identity.";
-  }else if(data.status==="denied"){
-    status.textContent="This verification request was not approved.";
-  }
+  if(currentUser)await loadAccountMarks([currentUser.id]);
+  renderContributorProgress();
 }
-let tableRecVerificationApplications=new Map();
-async function openChefsTableAdmin(applicationId=null){
-  if(!isOGAccount())return;
-  const modal=document.getElementById("chefsTableAdminModal");
-  const list=document.getElementById("chefsTableAdminList");
-  modal.classList.remove("hidden");
-  list.innerHTML='<div class="muted">Loading...</div>';
-  try{
-  const {data,error}=await db.rpc("get_chefs_table_applications");
-  if(error){console.error(error);list.innerHTML='<div class="muted">Could not load applications.</div>';return;}
-  if(!data?.length){list.innerHTML='<div class="muted">No applications waiting.</div>';return;}
-  tableRecVerificationApplications=new Map(data.map(a=>[a.id,a]));
-  list.innerHTML=data.map(a=>`<div id="verification-request-${esc(a.id)}" class="card" tabindex="-1" style="margin-bottom:10px">
-    <strong>${esc(a.creator_name||"Creator")}</strong>
-    <div class="muted" style="font-size:11px;margin-top:4px">${esc(a.platform||"")} - ${esc(a.profile_url||"")}</div>
-    <div style="font-size:12px;margin-top:7px">${esc(a.market||"")} - ${Number(a.followers||0).toLocaleString()} followers</div>
-    <div style="font-size:12px;margin-top:7px">${esc(a.notes||"")}</div>
-    <div style="font-size:12px;margin-top:8px">Verification code: <strong>${esc(a.verification_code)}</strong></div>
-    <div class="muted" style="font-size:10px;margin-top:3px">Status: ${esc(a.status)}</div>
-    <p class="muted" style="font-size:12px">Check the live public profile yourself. A screenshot, follower count or bio claim alone is not proof. Confirm both control of the profile and that its public identity matches this applicant.</p>
-    ${/^https:\/\//i.test(a.profile_url||"")?`<a href="${esc(a.profile_url)}" target="_blank" rel="noopener noreferrer">Open public profile</a>`:""}
-    <div style="font-size:12px;margin-top:7px">Prior identity review: ${esc(a.identity_review_notes||"Not completed")}</div>
-    <div class="mark-admin-actions">
-      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','verify')" ${a.status!=="pending_verification"?"disabled":""}>Review Profile Control</button>
-      <button class="mark-admin-btn active" onclick="reviewChefApplication('${a.id}','approve')" ${a.status!=="pending_review"||!a.identity_checked_by?"disabled":""}>Review and Approve</button>
-      <button class="mark-admin-btn" onclick="reviewChefApplication('${a.id}','deny')">Deny</button>
-    </div>
-  </div>`).join("");
-  if(applicationId){
-    const card=document.getElementById("verification-request-"+applicationId);
-    if(card){card.scrollIntoView({block:"nearest"});card.focus({preventScroll:true});}
-  }
-  }catch(err){console.error("Verification requests:",err);list.innerHTML='<div class="muted">Could not load verification requests. Close and try again.</div>';}
-}
-async function reviewChefApplication(id,action){
-  if(!isOGAccount())return;
-  const application=tableRecVerificationApplications.get(id);
-  if(!application)return;
-  let observedCode=null,notes=null;
-  if(action==="verify"){
-    observedCode=prompt("Open the applicant's live public profile. Enter the verification code you actually see in its bio. Do not copy it from this review page.");
-    if(observedCode===null)return;
-    notes=prompt("Record the public profile you checked and how its identity matches this applicant (at least 20 characters).");
-  }else if(action==="approve"){
-    notes=prompt("Record the independent evidence of this person's public work and eligibility. Follower counts alone do not qualify (at least 20 characters).");
-  }
-  if(action!=="deny" && (!notes||notes.trim().length<20))return alert("Approval requires a written evidence review of at least 20 characters.");
-  if(!confirm(`${action==="approve"?"Approve Verified for":action==="verify"?"Record profile-control review for":"Deny verification for"} ${application.creator_name}?`))return;
-  const {data,error}=await db.rpc("review_verification_application",{p_application_id:id,p_action:action,p_observed_code:observedCode?.trim()||null,p_review_notes:notes?.trim()||null});
-  if(error){console.error(error);return alert("Review action failed.");}
-  if(!data)return alert("Review was not accepted. Check the code, complete profile-control review first, and make sure the request has not expired.");
-  await openChefsTableAdmin();
-}
+async function openChefsTableAdmin(){await openChefsTableApplication();}
 
-const TABLESCORE_VERSION="5.58.42";
+const TABLESCORE_VERSION="5.58.43";
 const tableRecLaunchVersion=document.getElementById("trLaunchVersion");
 if(tableRecLaunchVersion)tableRecLaunchVersion.textContent="Version "+TABLESCORE_VERSION;
-const TABLESCORE_BUILD_LABEL="TableRec - Contact Consent and Dig It People";
+const TABLESCORE_BUILD_LABEL="TableRec - Guest Access and Earned Contributors";
 const TABLESCORE_OG_USER_ID="493a7069-d9df-4e16-906d-ef3279a6bfee";
 let viewedManagedMarks=[];
 
@@ -11904,24 +11849,15 @@ function isOGAccount(){
 }
 
 function markLabel(kind){
-  return kind==="og"?"OG":kind==="chefs_table"?"Verified":"First Round";
+  return kind==="og"?"OG":kind==="chefs_table"?"Verified Contributor":"First Round";
 }
 
-function renderAccountMarkPicker(owned=[],selected=null){
-  const card=document.getElementById("accountMarksSettingsCard");
-  const picker=document.getElementById("accountMarkPicker");
+function renderAccountMarkPicker(owned=[]){
+  const card=document.getElementById("accountMarksSettingsCard"),picker=document.getElementById("accountMarkPicker");
   if(!card||!picker)return;
-  if(!currentUser||!owned.length){
-    card.classList.add("hidden");
-    picker.innerHTML="";
-    return;
-  }
-  card.classList.remove("hidden");
-  const active=preferredAccountMark(owned,selected);
-  picker.innerHTML=owned.map(kind=>`<button class="account-mark-choice ${kind===active?"active":""}" onclick="setActiveAccountMark('${kind}')">
-    ${accountMarkHtml(kind)}
-    <span><strong>${markLabel(kind)}</strong><span class="muted" style="display:block;font-size:10px;margin-top:2px">${kind===active?"Showing beside your name":"Tap to display this mark"}</span></span>
-  </button>`).join("");
+  card.classList.toggle("hidden",!currentUser||!owned.length);
+  picker.classList.remove("hidden");
+  picker.innerHTML=orderedAccountMarks(owned).map(kind=>`<div class="account-mark-choice">${accountMarkHtml(kind)}<strong>${markLabel(kind)}</strong></div>`).join("");
 }
 
 async function setActiveAccountMark(kind){
@@ -11945,24 +11881,16 @@ function renderMarkAdminControls(targetUserId,marks=[]){
   const canManage=isOGAccount() && targetUserId!==TABLESCORE_OG_USER_ID;
   card.classList.toggle("show",canManage);
   if(!canManage)return;
-  const t=document.getElementById("grantChefsTableBtn");
   const f=document.getElementById("grantFirstRoundBtn");
-  const hasT=marks.includes("chefs_table");
   const hasF=marks.includes("first_round");
-  t.textContent=hasT?"Revoke Verified":"Review Verification";
   f.textContent=hasF?"Revoke First Round":"Grant First Round";
-  t.classList.toggle("active",hasT);
   f.classList.toggle("active",hasF);
 }
 
 async function toggleManagedMark(kind){
   if(!isOGAccount()||!viewedProfile)return;
-  if(!["chefs_table","first_round"].includes(kind))return;
+  if(kind!=="first_round")return;
   const has=viewedManagedMarks.includes(kind);
-  if(kind==="chefs_table"&&!has){
-    alert("Verified can only be granted after reviewing an application and its identity evidence. This profile shortcut cannot grant it.");
-    return openChefsTableAdmin();
-  }
   const action=has?"revoke":"grant";
   const label=markLabel(kind);
   if(!confirm(`${has?"Revoke":"Grant"} ${label} ${has?"from":"to"} @${viewedProfile.username||"this account"}?`))return;
@@ -12120,46 +12048,7 @@ if(document.readyState==="loading"){
 </div>
 
 
-<div id="chefsTableModal" class="modal hidden">
-  <div class="sheet" style="max-height:88dvh;overflow:auto">
-    <div class="modal-head">
-      <div>
-        <div class="section-title">Request Verification</div>
-        <div class="muted" style="font-size:11px;margin-top:3px">A live public profile check and separate eligibility review are required. Requests do not automatically grant a badge.</div>
-      </div>
-      <button class="tr-close-control icon-btn" onclick="closeChefsTableApplication()" aria-label="Close verification request">Close</button>
-    </div>
-    <label>Creator / public name</label>
-    <input id="ctCreatorName" placeholder="Name people know you by">
-    <label>Primary platform</label>
-    <select id="ctPlatform">
-      <option value="Instagram">Instagram</option>
-      <option value="TikTok">TikTok</option>
-      <option value="YouTube">YouTube</option>
-      <option value="Other">Other</option>
-    </select>
-    <label>Full public profile URL</label>
-    <input id="ctProfileUrl" placeholder="https://www.instagram.com/yourhandle/">
-    <label>Primary city / market</label>
-    <input id="ctMarket" placeholder="Austin, TX">
-    <label>Approximate followers</label>
-    <input id="ctFollowers" type="number" min="0" inputmode="numeric" placeholder="Optional">
-    <label>Tell us about your food content</label>
-    <textarea id="ctNotes" rows="4" placeholder="Tell us about your public work and why your account should be Verified."></textarea>
-    <button class="primary" style="width:100%;margin-top:12px" onclick="submitChefsTableApplication()">Submit Application</button>
-  </div>
-</div>
 
-
-<div id="chefsTableAdminModal" class="modal hidden">
-  <div class="sheet" style="max-height:88dvh;overflow:auto">
-    <div class="modal-head">
-      <div class="section-title">Verification Requests</div>
-      <button class="tr-close-control icon-btn" onclick="document.getElementById('chefsTableAdminModal').classList.add('hidden')" aria-label="Close verification requests"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
-    </div>
-    <div id="chefsTableAdminList"></div>
-  </div>
-</div>
 
 
 <div id="whereToEatModal" class="modal hidden" onclick="if(event.target===this)closeWhereToEat()">
