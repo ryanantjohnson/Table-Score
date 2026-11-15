@@ -38,11 +38,14 @@ language sql stable security definer set search_path = '' as $$
      and r.visit_latitude between -90 and 90 and r.visit_longitude between -180 and 180
      and not (r.visit_latitude=0 and r.visit_longitude=0)
      and private.tr_content_visible('rating',r.id)
+ ), capped_visits as (
+   select v.*,row_number() over(partition by v.user_id,v.place order by v.visit_day) as visit_number
+   from visits v
  ), totals as (
    select t.id, count(v.place) as ratings, count(distinct v.place) as places
-   from targets t left join visits v on v.user_id=t.id group by t.id
+   from targets t left join capped_visits v on v.user_id=t.id and v.visit_number<=10 group by t.id
  )
- select x.id,x.ratings,x.places,(x.ratings>=250 and x.places>=50),
+ select x.id,x.ratings,x.places,(x.ratings>=250 and x.places>=25),
    array(select am.mark_type from public.account_marks am
      where am.user_id=x.id and am.is_active and (
        am.mark_type='first_round' or

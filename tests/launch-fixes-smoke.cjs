@@ -26,15 +26,16 @@ const w=dom.window,$=id=>w.document.getElementById(id);
  // Account switch refreshes settings visibility, and logging out clears progress.
  w.eval("currentUser={id:'user-a',email:'a@example.com'};profile={id:'user-a',display_name:'A'};trSyncAccountState();");
  await w.tableRecInvokeRestaurant('nearby-restaurants',{body:{mode:'search'}});assert.equal(invoked.at(-1),'nearby-restaurants');
- marks=[{user_id:'user-a',marks:['first_round'],qualifying_ratings:249,distinct_restaurants:50,earned:false}];
+ marks=[{user_id:'user-a',marks:['first_round'],qualifying_ratings:249,distinct_restaurants:25,earned:false}];
  w.openSettings();assert($('guestSettingsCard').classList.contains('hidden'));
- await w.loadAccountMarks(['user-a']);w.renderContributorProgress();assert($('chefsTableApplicationStatus').textContent.includes('249 / 250'));
+ await w.loadAccountMarks(['user-a']);w.renderContributorProgress();assert($('chefsTableApplicationStatus').textContent.includes('249 / 250'));assert($('chefsTableApplicationStatus').textContent.includes('25 / 25 distinct restaurant locations'));assert($('contributorAccessState').textContent.startsWith('Locked'));assert(!$('ctCreatorName'));assert(!w.document.querySelector('[onclick*=submitChefsTableApplication]'));
  const row={id:'rating-a',user_id:'user-a',restaurant_id:'rest-a',overall_score:8,created_at:new Date().toISOString(),restaurants:{name:'Restaurant'},verified_visit:true};
  const holder=w.document.createElement('div');holder.innerHTML=w.feedRatingCard(row,{id:'user-a',display_name:'Diner',username:'diner'});w.document.body.append(holder);await w.applyAccountMarks(holder);
  assert.equal(holder.querySelectorAll('.mark-first_round').length,1);assert.equal(holder.querySelectorAll('.mark-chefs_table').length,0);assert(holder.textContent.includes('Verified Visit'));
  // The earned flag comes only from server response, not count or legacy profile marks.
- w.eval("accountMarkCache.clear();accountMarkLoadedAt.clear()");marks=[{user_id:'user-a',marks:['first_round','chefs_table'],qualifying_ratings:250,distinct_restaurants:50,earned:true}];await w.applyAccountMarks(holder);assert.equal(holder.querySelectorAll('.account-mark').length,2);
- holder.querySelector('.mark-chefs_table').click();assert(w.document.querySelector('.account-mark-pop').textContent.includes('250 qualifying Verified Visit'));w.document.querySelector('.account-mark-close').click();
+ w.eval("accountMarkCache.clear();accountMarkLoadedAt.clear()");marks=[{user_id:'user-a',marks:['first_round','chefs_table'],qualifying_ratings:250,distinct_restaurants:25,earned:true}];await w.applyAccountMarks(holder);assert.equal(holder.querySelectorAll('.account-mark').length,2);w.renderContributorProgress();assert($('contributorAccessState').textContent.startsWith('Unlocked'));assert($('contributorSettingsLock').classList.contains('hidden'));
+ holder.querySelector('.mark-first_round').click();assert(w.document.querySelector('.account-mark-pop').textContent.includes('Personally awarded by the TableRec founder'));w.document.querySelector('.account-mark-close').click();
+ holder.querySelector('.mark-chefs_table').click();assert(w.document.querySelector('.account-mark-pop').textContent.includes('250 qualifying Verified Visit'));assert(w.document.querySelector('.account-mark-pop').textContent.includes('25 distinct restaurant locations'));w.document.querySelector('.account-mark-close').click();
  await w.applyAccountMarks(holder);assert.equal(holder.querySelectorAll('.account-mark').length,2,'idempotent decoration');
  w.eval("accountMarkCache.clear();accountMarkLoadedAt.clear()");marks=[{user_id:'user-a',marks:['chefs_table'],qualifying_ratings:999,distinct_restaurants:60,earned:false}];await w.applyAccountMarks(holder);assert.equal(holder.querySelectorAll('.mark-chefs_table').length,0,'legacy grants and client counts cannot grant it');
  // Pending backend/unavailable progress cannot impersonate zero or award a badge.

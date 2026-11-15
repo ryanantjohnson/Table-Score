@@ -7,8 +7,8 @@ Client prepared on a separate branch. Do not merge, publish the website, or disp
 - Guests can explore restaurants, use Run It, and open Settings. Rating, saving, following, and account management require sign-in.
 - Run It brings its loading and shuffle stage into view before searching or cycling through options.
 - Feed author names display existing account marks, with keyboard/tap explanations.
-- Verified Contributor uses server-calculated eligibility: 250 qualifying Verified Visit ratings across at least 50 canonical Google restaurants. One contribution per restaurant per Central calendar day counts. Hidden, deleted, unverified, and future-dated ratings do not count. Legacy identity grants and follower counts cannot qualify.
-- Profile and Settings show contributor progress. The existing golden fork artwork is retained. First Round and OG marks retain their meaning.
+- Verified Contributor uses server-calculated eligibility: 250 qualifying Verified Visit ratings across at least 25 distinct canonical Google restaurant locations. One contribution per canonical restaurant location per Central calendar day counts, capped at 10 per location. Additional ratings remain normal ratings but do not advance the badge. Hidden, deleted, unverified, and future-dated ratings do not count. Legacy identity grants and follower counts cannot qualify.
+- Profile and Settings show contributor progress. Settings shows a locked/unlocked achievement section; there is no identity application form or request button. The existing golden fork artwork is retained. First Round and OG marks retain their meaning.
 
 - Own-profile Ratings and Places are now buttons. History shows 20 items at a time with Show more; Places groups repeat visits and links to their ratings. Own rating data loads in stable pages instead of silently stopping at the API row cap.
 
