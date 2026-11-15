@@ -40,6 +40,26 @@ const w=dom.window,$=id=>w.document.getElementById(id);
  // Pending backend/unavailable progress cannot impersonate zero or award a badge.
  w.eval("accountMarkCache.clear();accountMarkLoadedAt.clear();contributorProgressCache.clear()");fail=true;await w.loadAccountMarks(['user-a']);w.renderContributorProgress();assert($('contributorProfileProgress').textContent.includes('unavailable'));fail=false;
  w.eval("currentUser=null;trSyncAccountState();");w.openSettings();assert(!$('guestSettingsCard').classList.contains('hidden'));assert($('contributorProfileCard').classList.contains('hidden'));
+ // Own history must expose older ratings and separate distinct places from repeat visits.
+ w.eval("currentUser={id:'history-user'};trSyncAccountState();getPhotosForRatings=async()=>new Map();hydrateRatingEngagement=async()=>{};myRatings=Array.from({length:45},(_,i)=>({id:'visit-'+i,restaurant_id:'place-'+(i%23),restaurants:{name:'Restaurant '+(i%23)},created_at:new Date(2026,10,15-i).toISOString(),overall_score:8}));");
+ await w.openProfileHistory('ratings');assert.equal($('myProfileRatings').querySelectorAll('.rating-clickable').length,20);assert($('profileHistorySummary').textContent.includes('20 of 45'));
+ await w.showMoreProfileHistory();assert.equal($('myProfileRatings').querySelectorAll('.rating-clickable').length,40);
+ await w.showMoreProfileHistory();assert.equal($('myProfileRatings').querySelectorAll('.rating-clickable').length,45);assert($('profileHistoryMore').classList.contains('hidden'));assert($('myProfileRatings').textContent.includes('Restaurant 21'));
+ await w.openProfileHistory('places');assert($('profileHistorySummary').textContent.includes('20 of 23 places'));await w.showMoreProfileHistory();assert.equal($('myProfileRatings').querySelectorAll('.card').length,23);
+ await w.openProfileHistory('ratings','place-0');assert.equal($('myProfileRatings').querySelectorAll('.rating-clickable').length,2);
+ // Real counter markup invokes the history list (native buttons support Enter and Space).
+ $('profileRatings').closest('button').click();await new Promise(r=>setTimeout(r,10));assert($('profileHistorySummary').textContent.includes('20 of 45 ratings'));
+ $('profileRestaurants').closest('button').click();assert($('profileHistorySummary').textContent.includes('20 of 23 places'));
+ // An old async response must not put previous-account ratings back after logout.
+ let finishPhotos;w.getPhotosForRatings=()=>new Promise(r=>finishPhotos=r);const pending=w.openProfileHistory('ratings');w.eval("currentUser=null;trSyncAccountState();");finishPhotos(new Map());await pending;assert.equal($('myProfileRatings').textContent,'');
+ // Paging uses the actual row count, handles server caps, stable ordering, and errors.
+ let pages=[],ranges=[],orders=[];const originalFrom=w.eval('db.from');
+ w.eval("currentUser={id:'history-user'};trSyncAccountState();");
+ const records=Array.from({length:1201},(_,i)=>({id:'rating-'+i}));
+ w.eval('db').from=()=>{const query={select(){return query},eq(key,id){assert.equal(id,'history-user');return query},order(key){orders.push(key);return query},range(a,b){ranges.push([a,b]);return Promise.resolve({data:records.slice(a,Math.min(b+1,a+300)),error:null})}};return query};
+ let result=await w.loadOwnRatingHistory('history-user');assert.equal(result.data.length,1201);assert.deepEqual(ranges.map(r=>r[0]),[0,300,600,900,1200,1201]);assert(orders.includes('id'));
+ w.eval('db').from=()=>{const query={select(){return query},eq(){return query},order(){return query},range(){return Promise.resolve({data:null,error:{message:'offline'}})}};return query};result=await w.loadOwnRatingHistory('history-user');assert.equal(result.error.message,'offline');assert.equal(result.data,null);
+ w.eval('db').from=originalFrom;w.getPhotosForRatings=async()=>new Map();w.eval("currentUser=null;trSyncAccountState();");
  // Inspect layout timing: scroll must happen before any pool lookup or option cycle.
  let order=[];w.eval("loadWhereEatPool=async()=>{window.__order.push('load');return [{id:'r',name:'One'}]};sleepWhere=async()=>{window.__order.push('cycle')};renderWhereEatPick=()=>{};");w.__order=order;
  const scroller=w.document.querySelector('.where-eat-sheet .tr-modal-scroll');scroller.scrollTo=()=>order.push('scroll');w.openWhereToEat();await w.spinWhereToEat();

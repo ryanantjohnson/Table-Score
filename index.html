@@ -2564,8 +2564,8 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
     <div class="card">
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:7px">
-        <div class="stat"><div class="stat-label">RATINGS</div><div id="profileRatings" class="stat-value">0</div></div>
-        <div class="stat"><div class="stat-label">PLACES</div><div id="profileRestaurants" class="stat-value">0</div></div>
+        <button type="button" class="stat" onclick="openProfileHistory('ratings')" style="color:inherit;text-align:left"><span class="stat-label" style="display:block">RATINGS</span><span id="profileRatings" class="stat-value" style="display:block">0</span></button>
+        <button type="button" class="stat" onclick="openProfileHistory('places')" style="color:inherit;text-align:left"><span class="stat-label" style="display:block">PLACES</span><span id="profileRestaurants" class="stat-value" style="display:block">0</span></button>
         <div class="stat" role="button" tabindex="0" onclick="openConnections('followers')" onkeydown="if(event.key==='Enter')openConnections('followers')" style="cursor:pointer"><div class="stat-label">FOLLOWERS</div><div id="profileFollowers" class="stat-value">0</div></div>
         <div class="stat" role="button" tabindex="0" onclick="openConnections('following')" onkeydown="if(event.key==='Enter')openConnections('following')" style="cursor:pointer"><div class="stat-label">FOLLOWING</div><div id="profileFollowing" class="stat-value">0</div></div>
       </div>
@@ -2608,10 +2608,13 @@ OTHER DEALINGS IN THE FONT SOFTWARE.
 
 <div id="myProfileRatingsCard" class="card hidden">
       <div class="section-head">
-        <div class="section-title">Recent Ratings</div>
-        <span class="muted" style="font-size:11px">Your posts</span>
+        <div id="profileHistoryTitle" class="section-title">Your Ratings</div>
+        <button class="secondary" onclick="openProfileHistory('ratings')">All Ratings</button>
       </div>
+      <div id="profileHistoryControls" class="inline-actions" style="margin-top:8px"><button class="secondary" onclick="openProfileHistory('ratings')">Ratings</button><button class="secondary" onclick="openProfileHistory('places')">Places</button></div>
+      <p id="profileHistorySummary" class="muted" aria-live="polite"></p>
       <div id="myProfileRatings" style="margin-top:8px"></div>
+      <button id="profileHistoryMore" class="secondary hidden" onclick="showMoreProfileHistory()">Show more</button>
     </div>
 
     <button id="profileAuthBtn" class="primary" onclick="openAccount()">Create Account / Sign In</button>
@@ -3365,7 +3368,9 @@ function trSyncAccountState(user=currentUser){
   earnedSecretRewards=[];earnedProgressRewards=[];
   currentSecretReward=null;
   if(profile?.id!==id)profile=null;
-  myRatings=[];savedRestaurantIds=new Set();savedRestaurants=[];
+  myRatings=[];profileHistoryView="ratings";profileHistoryLimit=20;profileHistoryRestaurant=null;profileHistoryRequest++;
+  savedRestaurantIds=new Set();savedRestaurants=[];
+  document.getElementById("myProfileRatings").innerHTML="";
   followingIds=new Set();pendingFollowingIds=new Set();
   followerCount=0;followingCount=0;followRequestCount=0;
   tableScoreNotifications=[];notificationsInitialized=false;
@@ -3382,6 +3387,7 @@ function trAccountRequestCurrent(id,epoch){return (currentUser?.id||null)===id&&
 
 let profile=null;
 let myRatings=[];
+let profileHistoryView="ratings",profileHistoryLimit=20,profileHistoryRestaurant=null,profileHistoryRequest=0;
 let restaurantStats=[];
 let savedRestaurantIds=new Set();
 let savedRestaurants=[];
@@ -5986,6 +5992,18 @@ async function signOut(){
   showScreen("home");
 }
 
+async function loadOwnRatingHistory(userId){
+  const rows=[];
+  for(let offset=0;;){
+    const {data,error}=await db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",userId).order("created_at",{ascending:false}).order("id",{ascending:false}).range(offset,offset+499);
+    if(error)return {data:null,error};
+    if(currentUser?.id!==userId)return {data:null,error:new Error("Account changed")};
+    if(!data?.length)break;
+    rows.push(...data);offset+=data.length;
+  }
+  return {data:[...new Map(rows.map(r=>[r.id,r])).values()],error:null};
+}
+
 async function refreshUserData(){
   const accountEpoch=trSyncAccountState();
   const accountId=currentUser?.id||null;
@@ -6010,7 +6028,7 @@ async function refreshUserData(){
   const [{data:p,error:pErr},{data:privateRows,error:privateErr},{data:r,error:rErr},{data:saved,error:sErr}]=await Promise.all([
     db.from("profiles").select("id,display_name,first_name,last_name,home_city,created_at,username,is_private,avatar_url,selected_title,active_account_mark,active_title,background_url").eq("id",currentUser.id).maybeSingle(),
     db.rpc("get_my_private_profile_fields"),
-    db.from("ratings").select("id,restaurant_id,overall_score,atmosphere,cleanliness,taste,quality,portions,price,service,best_dish,would_return,quick_take,verified_visit,created_at,restaurants(name)").eq("user_id",currentUser.id).order("created_at",{ascending:false}),
+    loadOwnRatingHistory(accountId),
     db.from("saved_restaurants").select("restaurant_id,created_at,restaurants(id,name,cuisine,city,state_region)").eq("user_id",currentUser.id).order("created_at",{ascending:false})
   ]);
 
@@ -6023,7 +6041,7 @@ async function refreshUserData(){
   const privateProfile=Array.isArray(privateRows)?privateRows[0]:privateRows;
   if(!pErr)profile=p?{...p,...(privateProfile||{})}:null;
 
-  myRatings=r||[];
+  if(!rErr)myRatings=r||[];
   savedRestaurants=saved||[];
   savedRestaurantIds=new Set(savedRestaurants.map(x=>x.restaurant_id));
 
@@ -8011,9 +8029,22 @@ function renderProfile(){
 
 
 
+async function openProfileHistory(view="ratings",restaurantId=null){
+  if(!currentUser)return openAccount();
+  profileHistoryView=view==="places"?"places":"ratings";
+  profileHistoryRestaurant=restaurantId;profileHistoryLimit=20;
+  await renderMyProfileRatings();
+  document.getElementById("myProfileRatingsCard").scrollIntoView({behavior:"smooth",block:"start"});
+}
+function showMoreProfileHistory(){profileHistoryLimit+=20;return renderMyProfileRatings();}
+
 async function renderMyProfileRatings(){
   const el=document.getElementById("myProfileRatings");
   if(!el)return;
+  const request=++profileHistoryRequest,accountId=currentUser?.id,epoch=trAccountStateEpoch;
+  const more=document.getElementById("profileHistoryMore"),summary=document.getElementById("profileHistorySummary");
+  more.classList.add("hidden");summary.textContent="";
+  document.getElementById("profileHistoryTitle").textContent=profileHistoryView==="places"?"Your Places":profileHistoryRestaurant?"Ratings at this place":"Your Ratings";
   if(!currentUser){
     el.innerHTML="";
     return;
@@ -8023,8 +8054,25 @@ async function renderMyProfileRatings(){
     return;
   }
 
-  const recent=myRatings.slice(0,10);
+  const source=profileHistoryRestaurant?myRatings.filter(r=>r.restaurant_id===profileHistoryRestaurant):myRatings;
+  const places=new Map();
+  for(const rating of source){
+    const key=rating.restaurant_id||rating.id;
+    if(!places.has(key))places.set(key,{rating,count:0});
+    places.get(key).count++;
+  }
+  const count=profileHistoryView==="places"?places.size:source.length;
+  const shown=Math.min(profileHistoryLimit,count);
+  summary.textContent=`Showing ${shown} of ${count} ${profileHistoryView==="places"?"places":"ratings"}`;
+  more.classList.toggle("hidden",shown>=count);
+  more.textContent=`Show more ${profileHistoryView==="places"?"places":"ratings"}`;
+  if(profileHistoryView==="places"){
+    el.innerHTML=[...places.values()].slice(0,shown).map(({rating:r,count:visits})=>`<div class="card" style="margin-bottom:10px"><button class="secondary" onclick="openRestaurantById('${esc(r.restaurant_id)}')">${esc(r.restaurants?.name||"Restaurant")}</button><p class="muted">${visits} ${visits===1?"rating":"ratings"} · Latest score ${Number(r.overall_score).toFixed(2)}</p><button class="secondary" onclick="openProfileHistory('ratings','${esc(r.restaurant_id)}')">View ratings at this place</button></div>`).join("");
+    return;
+  }
+  const recent=source.slice(0,shown);
   const photoMap=await getPhotosForRatings(recent.map(r=>r.id));
+  if(request!==profileHistoryRequest||!trAccountRequestCurrent(accountId,epoch))return;
   recent.forEach(r=>r._photos=photoMap.get(r.id)||[]);
 
   el.innerHTML=recent.map(r=>{

@@ -10,6 +10,8 @@ Prepared on a separate branch. Do not merge, publish the website, deploy backend
 - Verified Contributor uses server-calculated eligibility: 250 qualifying Verified Visit ratings across at least 50 canonical Google restaurants. One contribution per restaurant per Central calendar day counts. Hidden, deleted, unverified, and future-dated ratings do not count. Legacy identity grants and follower counts cannot qualify.
 - Profile and Settings show contributor progress. The existing golden fork artwork is retained. First Round and OG marks retain their meaning.
 
+- Own-profile Ratings and Places are now buttons. History shows 20 items at a time with Show more; Places groups repeat visits and links to their ratings. Own rating data loads in stable pages instead of silently stopping at the API row cap.
+
 ## Backend dependencies — prepared, not deployed
 
 1. Review and apply `supabase/launch-contributor-status.sql` to the intended project. It adds an owner/privacy-aware status RPC and server-owned rating submission timestamps. Existing timestamps are not rewritten. Deleted or moderated contributions can remove eligibility. The Central day boundary matches the current Texas launch; revisit this rule before expanding geographically.
