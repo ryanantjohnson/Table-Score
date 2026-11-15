@@ -14,7 +14,7 @@ drop trigger if exists tr_rating_recorded_at on public.ratings;
 create trigger tr_rating_recorded_at before insert or update of created_at on public.ratings
 for each row execute function private.tr_rating_recorded_at();
 
--- PENDING release dependency. Do not run until the consolidated update is ready.
+-- Applied to the TableScore project on November 15, 2026. Retained for reproducibility.
 -- Legacy chefs_table identity grants do not qualify.
 -- SECURITY DEFINER is required to count an owner's private contributions.
 -- Return only marks/counts to permitted viewers, never rating rows/coordinates.

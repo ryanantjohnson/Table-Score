@@ -3,7 +3,7 @@ const fs=require('node:fs'),vm=require('node:vm'),assert=require('node:assert/st
  for(const folder of ['guest-restaurants','guest-where-to-eat']){
   let handler,allowed=true,cache={restaurants:[{name:'Test restaurant'}]},calls=[];
   const context={Request,Response,Headers,URL,AbortController,AbortSignal,setTimeout,clearTimeout,TextEncoder,crypto:require('node:crypto').webcrypto,console,
-   Deno:{env:{get:()=> 'test-only'},serve:fn=>handler=fn},createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});return name==='consume_edge_rate_limit'?{data:[{allowed,remaining:5}]}:{data:cache}}}),fetch:async()=>{throw Error('Provider must not be contacted for rejected/cached requests')}};
+   Deno:{env:{get:()=> 'test-only'},serve:fn=>handler=fn},createClient:()=>({rpc:async(name,args)=>{calls.push({name,args});if(name==='consume_edge_rate_limit')assert(args.p_caller_hash.length>=16&&args.p_caller_hash.length<=128,'live limiter requires a 16–128 character caller hash');return name==='consume_edge_rate_limit'?{data:[{allowed,remaining:5}]}:{data:cache}}}),fetch:async()=>{throw Error('Provider must not be contacted for rejected/cached requests')}};
   vm.createContext(context);
   let shared=stripTypeScriptTypes(fs.readFileSync('supabase/functions/_shared/guest-access.ts','utf8')).replaceAll('export ','');
   let src=stripTypeScriptTypes(fs.readFileSync('supabase/functions/'+folder+'/index.ts','utf8')).replace(/^import .*;$/gm,'');vm.runInContext(shared+'\n'+src,context);

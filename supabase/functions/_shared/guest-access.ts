@@ -7,7 +7,7 @@ export function guestCaller(req: Request): string | null {
 }
 export async function guestBudget(client: any): Promise<boolean> {
   const {data,error}=await client.rpc("consume_edge_rate_limit",{
-    p_limiter:"guest-discovery-global",p_caller_hash:"all-guests",
+    p_limiter:"guest-discovery-global",p_caller_hash:"3d6def880e71d8201abea8301324ce53f4cf8ac6015f414f426a80a6effb1b29",
     p_limit:60,p_window_seconds:60
   });
   return !error && (Array.isArray(data)?data[0]:data)?.allowed===true;
