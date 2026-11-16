@@ -1,0 +1,74 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const path = require('node:path');
+const {execFileSync} = require('node:child_process');
+const {JSDOM} = require('jsdom');
+const loader=fs.readFileSync('native/pro-preview.js','utf8');
+const html=fs.readFileSync('native/pro-preview.html','utf8');
+const scripts=[...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script>/g)];
+for(const [,code] of scripts)new (require('node:vm').Script)(code);
+function setup(enabled){
+ const dom=new JSDOM('<html><head></head><body><section id="profile"><div id="profileBadgeFolderCard"></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test/index.html',runScripts:'outside-only'});
+ const w=dom.window;
+ w.tableRecProPreviewEnabled=enabled;
+ w.currentUser={id:'account-a'};
+ w.profile={display_name:'Tester'};
+ w.renderProfile=function(){};
+ w.signOut=async function(){w.currentUser=null;};
+ w.closeSettings=function(){w.document.getElementById('settingsModal').classList.add('hidden');};
+ w.eval(loader);return dom;
+}
+(async()=>{
+ let dom=setup(false);
+ assert.equal(dom.window.document.querySelector('[data-tr-pro-entry]'),null);
+ assert.equal(dom.window.TableRecProPreview,undefined);dom.window.close();
+ dom=setup(true);const w=dom.window;
+ assert.equal(w.document.querySelectorAll('[data-tr-pro-entry]').length,2);
+ w.TableRecProPreview.sync();
+ assert.equal(w.document.querySelectorAll('[data-tr-pro-entry]').length,2);
+ w.document.querySelector('#profile [data-tr-pro-entry] button').click();
+ let modal=w.document.getElementById('trProNative');
+ assert(modal&&!modal.hidden);
+ const frame=modal.querySelector('iframe');
+ assert.equal(frame.getAttribute('sandbox'),'allow-scripts allow-modals allow-downloads');
+ assert.equal(frame.src,'https://app.test/pro-preview.html');
+ assert(!frame.getAttribute('sandbox').includes('allow-same-origin'));
+ w.TableRecProPreview.close();assert(modal.hidden);
+ w.TableRecProPreview.open();assert(!modal.hidden);
+ // Session data remains in the same frame while returning to the main app.
+ assert.equal(modal.querySelector('iframe'),frame);
+ w.currentUser={id:'account-b'};w.TableRecProPreview.sync();
+ assert.equal(w.document.getElementById('trProNative'),null);
+ w.TableRecProPreview.open();
+ await w.signOut();
+ assert.equal(w.document.getElementById('trProNative'),null);
+ assert.equal(w.document.querySelectorAll('[data-tr-pro-entry]').length,0);
+ w.TableRecProPreview.open();assert.equal(w.document.getElementById('trProNative'),null);
+ dom.window.close();
+ dom=new JSDOM(html,{url:'https://app.test/pro-preview.html',runScripts:'outside-only'});
+ const p=dom.window;
+ for(const [,code] of scripts)p.eval(code);
+ const checks=p.runChecks();assert(checks.every(c=>c.pass));
+ for(const tab of ['overview','needs','happy','recipes','trip','journal']){
+  p.state.tab=tab;p.render();assert(p.document.getElementById('content').textContent.length>50);
+ }
+ p.state.tab='needs';p.render();p.toggleNeed('Sesame');
+ assert(p.activeNeeds().includes('Sesame'));
+ p.document.getElementById('dialog').showModal=function(){this.setAttribute('open','');};
+ p.document.getElementById('dialog').close=function(){this.removeAttribute('open');};
+ p.openVenue('ember');
+ assert(p.document.getElementById('modalBody').textContent.includes('Arachis (peanut) oil'));
+ p.addStopDay('cedar',2);assert.equal(p.state.trip.stops[0].day,2);
+ p.changeDays(1);assert.equal(p.state.trip.stops[0].day,1);
+ p.saveDeal('d1');assert(p.state.savedDeals.includes('d1'));
+ p.pickRecipe('r1');p.saveRecipe('r1');assert(p.state.savedRecipes.includes('r1'));
+ p.state.tab='journal';p.render();
+ p.document.getElementById('journalDish').value='<img src=x onerror=alert(1)>';
+ p.document.getElementById('journalNotes').value='Sample only';
+ p.addJournal({preventDefault(){}});
+ assert(!p.document.querySelector('#content img[src=x]'));
+ p.deleteJournal(p.state.journal[0].id);assert.equal(p.state.journal.length,0);
+ assert(!/localStorage|sessionStorage|fetch\(/.test(scripts.map(s=>s[1]).join('')));
+ console.log('Pro native entry isolation, state, syntax, and sample-data checks passed.');
+ dom.window.close();
+})().catch(error=>{console.error(error);process.exitCode=1;});
