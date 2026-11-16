@@ -42,4 +42,15 @@ if (build) {
   const html = await readFile(target, 'utf8');
   await writeFile(target, html.replace('<head>', '<head>\n<script>window.tableRecBuild=' + JSON.stringify(build) + ';</script>'));
 }
+// Pro is bundled only for an explicitly selected tester build.
+if (process.env.TR_PRO_PREVIEW === 'true') {
+  for (const name of ['pro-preview.html', 'pro-preview.js']) {
+    await copyFile(resolve(nativeDirectory, name), resolve(webDirectory, name));
+  }
+  const target = resolve(webDirectory, 'index.html');
+  const html = await readFile(target, 'utf8');
+  const entry = '<script>window.tableRecProPreviewEnabled=true;</script><script src="pro-preview.js"></script>';
+  if (!html.includes('</body>')) throw new Error('Cannot install Pro tester entry.');
+  await writeFile(target, html.replace('</body>', () => entry + '\n</body>'));
+}
 console.log('TableRec web bundle prepared in native/www.');
