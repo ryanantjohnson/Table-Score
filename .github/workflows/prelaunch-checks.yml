@@ -22,4 +22,7 @@ jobs:
       - run: npm test
         working-directory: tests
       - run: node --check app-platform.js
+      - run: npm ci --ignore-scripts --no-audit --no-fund
+        working-directory: native
+      - run: node --check app-pro.js
       - run: node native/prepare-web.mjs

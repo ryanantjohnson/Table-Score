@@ -2,7 +2,7 @@
   "name": "tablerec-prelaunch-checks",
   "private": true,
   "scripts": {
-    "test": "cd .. && node tests/prelaunch-smoke.cjs && node tests/intro-smoke.cjs && node tests/feedback-smoke.cjs && node tests/launch-fixes-smoke.cjs && node tests/contributor-db.cjs && node tests/guest-services.cjs"
+    "test": "cd .. && node tests/prelaunch-smoke.cjs && node tests/intro-smoke.cjs && node tests/feedback-smoke.cjs && node tests/launch-fixes-smoke.cjs && node tests/contributor-db.cjs && node tests/guest-services.cjs && node tests/pro-smoke.cjs"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3.14",
