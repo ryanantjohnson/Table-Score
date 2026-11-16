@@ -41,6 +41,7 @@ jobs:
       run:
         shell: bash
     env:
+      TR_PRO_PREVIEW: ${{ github.ref == 'refs/heads/pro/dining-needs-spec' && 'true' || 'false' }}
       TR_TEAM_ID: X9NC4BRLJ7
       TR_BUNDLE_ID: com.ryanantjohnson.tablerec
       TR_VERSION: '1.0'
