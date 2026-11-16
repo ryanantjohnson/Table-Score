@@ -6,7 +6,7 @@ const nativeDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryDirectory = resolve(nativeDirectory, '..');
 const webDirectory = resolve(nativeDirectory, 'www');
 const documents = ['index.html', 'legal.html'];
-const files = [...documents, 'app-platform.js', 'app-intro.js', 'app-feedback.js'];
+const files = [...documents, 'app-platform.js', 'app-intro.js', 'app-feedback.js', 'pro-config.js', 'app-pro.js'];
 
 // Check both source files before changing the generated bundle.
 for (const file of documents) {
@@ -43,3 +43,9 @@ if (build) {
   await writeFile(target, html.replace('<head>', '<head>\n<script>window.tableRecBuild=' + JSON.stringify(build) + ';</script>'));
 }
 console.log('TableRec web bundle prepared in native/www.');
+
+// Bundle the pinned native subscription SDK; it stays inactive until configured.
+const { build: bundlePro } = await import('esbuild');
+await bundlePro({entryPoints:[resolve(nativeDirectory,'pro-billing.mjs')],bundle:true,format:'iife',platform:'browser',outfile:resolve(webDirectory,'pro-billing.js')});
+const proTarget=resolve(webDirectory,'index.html');
+await writeFile(proTarget,(await readFile(proTarget,'utf8')).replace('<script src="app-pro.js"></script>','<script src="pro-billing.js"></script>\n<script src="app-pro.js"></script>'));
