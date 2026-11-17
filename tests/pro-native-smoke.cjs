@@ -5,7 +5,7 @@ const fixture=require('./pro-fixture.json');
 const source=fs.readFileSync('native/pro-preview.js','utf8');
 new(require('node:vm').Script)(source);
 const recipe=fixture.recipes[0];
-function setup({enabled=true,active=true,delay=0,native=false}={}){
+function setup({enabled=true,active=true,delay=0,native=false,generation=true}={}){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadges"><span>Existing badge</span></div><div id="profileBadgeFolderCard"></div></section><section id="discover" class="screen"><div id="locationCard"></div><div id="discoverPeopleCard"></div></section><section id="saved" class="screen"><div id="savedList"></div></section></div><nav class="nav">Main navigation</nav><section id="whereToEatModal" class="hidden"><div class="tr-modal-scroll"><div>Free Run It</div></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
  const w=dom.window;w.scrollTo=()=>{};w.matchMedia=()=>({matches:true});w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
  w.__maps=[];w.__markers=[];w.loadGoogleMaps=async()=>{};w.google={maps:{tableRecNativeBridge:native,Map:class{
@@ -22,7 +22,7 @@ function setup({enabled=true,active=true,delay=0,native=false}={}){
  w.__restaurantSearch=[];w.tableRecInvokeRestaurant=async(name,args)=>{w.__restaurantSearch.push(args);return {data:{restaurants:[{place_id:'test-chipotle',name:'Chipotle Mexican Grill',address:'Georgetown, TX 78628'},{place_id:'unrelated-cava',name:'Cava Mezze',address:'Washington, DC'}]},error:null};};
  w.__books={};w.__prefs={};w.__writes=[];w.__error=false;w.__conflict=false;
  const result=async data=>{if(delay)await new Promise(r=>setTimeout(r,delay));return w.__error?{error:{code:'offline'}}:{data,error:null};};
- w.db={rpc:async(name,args)=>{
+ w.db={functions:{invoke:async(name,args)=>{if(name!=='generate-pro-recipes')throw Error('Unexpected function');if(args.body.action==='status')return result({available:generation});w.__generation=args.body;if(w.__generationError)return {error:{message:'offline'}};return result({state:'ready',message:'Created from your pantry.',recipes:[{...recipe,id:'ai-test-recipe',generated:true,source_url:undefined,summary:'A test recipe idea.',pantry_used:args.body.pantry,pantry_unused:[]}]});}},rpc:async(name,args)=>{
   const id=w.currentUser?.id;
   if(name==='has_tablerec_pro')return result(active);
   if(name==='pro_recipe_summary')return result(fixture.summary);
@@ -49,7 +49,7 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  assert(doc.querySelector('#whereToEatModal [data-tr-pro-entry="recipes"]'));
  assert(!doc.querySelector('[data-tr-pro-entry="journal"]'));assert(!doc.querySelector('[data-tr-pro-entry="trip"]'));
  assert(!doc.querySelector('#settingsModal [data-tr-pro-entry]'));
- await open('recipes');assert(doc.querySelector('#pro').textContent.includes('Your ingredients.'));
+ await open('recipes');await flush();assert(doc.querySelector('#pro').textContent.includes('What have you got?'));click('recipeMode','library');assert(doc.querySelector('#pro').textContent.includes('Your ingredients.'));
  assert(!doc.querySelector('#pro iframe'));assert(doc.querySelector('.topbar'));assert(doc.querySelector('.nav'));
  click('findRecipes');assert(!w.__matchArgs,'Empty pantry is rejected');
  doc.getElementById('prPantry').value='milk, lemon';doc.getElementById('prPantry').dispatchEvent(new w.Event('input',{bubbles:true}));doc.getElementById('prRequireAll').checked=true;doc.getElementById('prRequireAll').dispatchEvent(new w.Event('change',{bubbles:true}));
@@ -72,20 +72,22 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  await open('needs');click('go','edit');for(const x of doc.querySelectorAll('[data-need]'))x.checked=x.dataset.need==='Vegan';doc.getElementById('prDietConsent').checked=true;click('saveNeeds');await flush();click('filter','documented');const sq=doc.getElementById('prSearch');sq.value='';sq.dispatchEvent(new w.Event('input',{bubbles:true}));assert(doc.querySelector('#pro').textContent.includes('Published ingredients fit'));
  await open('happy');assert(doc.getElementById('prHappyMap'));const map=w.__maps.at(-1);assert(map);map.center={lat:0,lng:0};map.emit('idle');await new Promise(r=>setTimeout(r,210));assert.equal(doc.querySelectorAll('.pr-deal').length,0);assert.equal(w.__maps.at(-1),map,'Panning preserves the live map');
  click('resetMap');await flush();assert(map.disposed);change('prDay','Mon');change('prBudget','0');await flush();assert(doc.querySelectorAll('.pr-deal').length>0);assert(!doc.querySelector('.pr-deal a'),'Opening a special does not leave the app');
- click('happyDetail',fixture.offers[0].id);assert(doc.querySelector('#pro').textContent.includes('Happy Hour times'));assert(doc.querySelector('#pro').textContent.includes(fixture.offers[0].offer));assert(doc.querySelector('#pro a').href.startsWith('https://'));click('back');await flush();
- const marker=w.__markers.filter(m=>m.map).find(m=>m.opts.title===fixture.offers[0].name);assert(marker);marker.listeners.click();assert(doc.querySelector('#pro').textContent.includes('Specials & restrictions'));click('back');await flush();
+ click('happyDetail',fixture.offers[0].id);assert(doc.querySelector('#pro').textContent.includes('Happy Hour times'));assert(doc.querySelector('#pro').textContent.includes(fixture.offers[0].offer));assert(doc.querySelector('#pro a').href.startsWith('https://'));assert.equal(w.__maps.at(-1).disposed,undefined,'Snapshot keeps the map mounted');assert.equal(doc.body.style.overflow,'hidden');click('closeHappy');assert.equal(doc.body.style.overflow,'');await flush();
+ const marker=w.__markers.filter(m=>m.map).find(m=>m.opts.title===fixture.offers[0].name);assert(marker);marker.listeners.click();assert(doc.querySelector('#pro').textContent.includes('Specials & restrictions'));assert(doc.querySelector('[role="dialog"]'));click('closeHappy');await flush();
  const RealDate=w.Date;w.Date=class extends RealDate{constructor(...args){super(...(args.length?args:['2026-11-16T21:45:00Z']));}};change('prDay','Sun');change('prOpen','Active now');assert(doc.querySelectorAll('.pr-deal').length>0,'Active now ignores the browse weekday');w.Date=RealDate;change('prOpen','Scheduled');change('prDay','Mon');
  change('prBudget','5');assert(!doc.querySelector('#pro').textContent.includes('Half-price starters'));
  change('prBudget','0');click('happyDetail',fixture.offers[0].id);click('deal',fixture.offers[0].id);await flush();assert(w.__books.a.document.savedDeals.includes(fixture.offers[0].id));
  // Legacy private content is retained without offering retired features.
- w.__books.a.document.journal=[{notes:'Legacy private note'}];await w.TableRecProPreview.reload();
+ w.__books.a.document.journal=[{notes:'Legacy private note'}];await w.TableRecProPreview.reload();await flush();click('happyDetail',fixture.offers[0].id);
  click('deal',fixture.offers[0].id);await flush();assert.equal(w.__books.a.document.journal[0].notes,'Legacy private note');
- w.__conflict=true;click('deal',fixture.offers[0].id);await flush();assert(doc.querySelector('.pr-feedback').textContent.includes('another device'));w.__conflict=false;
+ w.__conflict=true;click('deal',fixture.offers[0].id);await flush();assert(doc.querySelector('.pr-snapshot-feedback').textContent.includes('another device'));w.__conflict=false;
+ await open('recipes');click('recipeMode','create');await flush();const pantry=doc.getElementById('prPantry');pantry.value='bread, butter';pantry.dispatchEvent(new w.Event('input',{bubbles:true}));click('generateRecipes');await flush();assert.equal(w.__generation.pantry.join(','),'bread,butter');assert(w.__generation.request_id);assert.equal(w.__generation.servings,2);assert(!('needs' in w.__generation));click('generatedRecipe','ai-test-recipe');assert(!doc.querySelector('#pro a[href*="creativecommons"]'),'Generated recipes must not inherit catalog licensing');assert(doc.querySelector('#pro').textContent.includes('AI-generated'));click('again');click('recipeMode','create');assert(doc.querySelector('#prGeneratedResults').textContent.includes('Created from your pantry'));
  await open('home');assert(!doc.querySelector('#pro').textContent.includes('Trip Planner'));assert(!doc.querySelector('#pro').textContent.includes('Dining Journal'));
  await open('trip');assert(doc.querySelector('#pro').textContent.includes('More ways to find your favorite'));
  assert.equal(doc.getElementById('profileBadges').textContent,'Existing badge');
  w.currentUser={id:'b'};w.TableRecProPreview.sync();await open('recipes');assert(!doc.querySelector('#pro').textContent.includes('Legacy private note'));
  await w.signOut();assert(!doc.getElementById('pro'));assert(doc.querySelector('#discover [data-tr-pro-entry]'));d.window.close();
+ d=setup({generation:false});w=d.window;w.TableRecProPreview.open('recipes');await flush();await flush();assert(w.document.querySelector('[data-pro-action="generateRecipes"]').disabled);assert(w.document.querySelector('#pro').textContent.includes('getting ready'));w.close();
  d=setup({active:false});w=d.window;w.TableRecProPreview.open('recipes');await flush();assert(w.document.querySelector('#pro').textContent.includes('purchases are not open'));assert(!w.document.querySelector('#pro [data-pro-action="findRecipes"]'));d.window.close();
  d=setup({delay:30});w=d.window;w.TableRecProPreview.open('recipes');w.currentUser={id:'new-account'};w.TableRecProPreview.sync();await new Promise(r=>setTimeout(r,80));assert(!w.document.getElementById('pro').textContent.includes('Private note'));d.window.close();
  d=setup({native:true});w=d.window;w.TableRecProPreview.open('happy');await flush();const nm=w.__maps.at(-1);nm.receive({event:'state',center:{lat:0,lng:0},zoom:12});await new Promise(r=>setTimeout(r,210));assert.equal(w.document.querySelectorAll('.pr-deal').length,0,'Native idle bridge updates viewport results');assert.equal(w.__maps.length,1);w.close();

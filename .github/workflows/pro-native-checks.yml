@@ -10,6 +10,10 @@ on:
       - 'tests/dining-evidence.cjs'
       - 'supabase/pro/pantry-matching.sql'
       - 'tests/pro-pantry.sql'
+      - 'tests/pro-generation.sql'
+      - 'tests/recipe-generation.cjs'
+      - 'supabase/functions/generate-pro-recipes/**'
+      - 'supabase/pro/recipe-generation.sql'
       - 'native/prepare-web.mjs'
       - 'tests/pro-native-smoke.cjs'
       - 'tests/pro-browser.cjs'
@@ -37,6 +41,7 @@ jobs:
           node native/build-dining-data.mjs
           git diff --exit-code native/dining-sources.js
           node tests/dining-evidence.cjs
+          node tests/recipe-generation.cjs
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs
       - name: Check tester and standard bundle separation
