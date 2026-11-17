@@ -1,21 +1,31 @@
-# TableRec Pro app testing
+# TableRec Pro tester build
 
-Pro is now rendered inside the existing TableRec app document as the `pro` screen. It uses the app header, bottom navigation, theme variables, cards, fields, and existing drill-screen/back-gesture handling. It does not use an iframe, duplicate site header, or separate page.
+## What is integrated
 
-## iPhone installation
-Run TableRec iOS Release on branch `pro/dining-needs-spec`, with `signed_release` and `upload_to_apple` enabled. After processing, assign the build only to Ryan's private TestFlight group. Keep automatic distribution off. Do not replace the 29.1 App Store submission.
+- Discover: Happy Hours and Trip Planner entries.
+- Profile: private Dining Needs.
+- Run It: a cook-at-home Recipe Wheel entry. Restaurant Run It is unchanged, free, and unlimited.
+- Saved: private Dining Journal and Trip Planner.
+- Nonmembers see Pro features with an access screen; purchases are disabled.
 
-## Features
-Profile → TableRec Pro opens the membership screen. Dining Needs has multi-selection, an optional additional diner's requirement, result filters, and per-dish evidence with ingredient/oil/preparation details. Happy Hours has day/budget filters and saving. Recipe Wheel has category selection, recipes, and a saved collection. Trip Planner has editable stops, times, estimates, day counts, and a budget. Dining Journal supports private session entries and deletion.
+The feature screens live in TableRec's existing app document, use its header, bottom tabs, appearance variables, navigation, and typography, and do not load an iframe.
 
-Run It stays free and unlimited. No reservations or billing are included.
+## Connected services
 
-## Data boundaries
-The restaurant, special, and evidence collection is illustrative and is labeled as such. No actual allergy suitability determination is made. Unknown, stale, conflicting, manual-review, and scope-limited evidence remains visible. Recipes are not dietary matched.
+The existing Supabase project provides 3,796 attributed Wikibooks recipes, six source-linked Central Texas happy-hour locations, server-checked Pro access, private dietary preferences, and revision-protected private notebook saves. Recipe, special, itinerary, and journal saves survive app reloads. Edits on another device cause an explicit conflict rather than silently overwriting that device's changes. Account changes discard in-memory state and stale requests.
 
-Data remains in memory for the app session and clears on account change/sign-out. No live sourcing, account persistence, clinical rule review, or subscription integration is connected. These are required before public release.
+The dietary source library contains 16 published US restaurant/brand guides. Restaurant references are matched conservatively by brand name, with additional Austin scope checks for local entries. This is source-linked guidance, not dish-level approval, certification validation, or a guarantee of suitability. No fictional restaurant evidence is used.
+
+See data/dining-sources.json and docs/dietary-data-coverage.md for source scope and limitations. Reviewed dishes, current certification details, broad local coverage, and production payments remain unfinished.
+
+## Private TestFlight installation
+
+Run TableRec iOS Release on branch `pro/dining-needs-spec`, with signing and Apple upload enabled. Wait for Apple processing, then assign the new build only to Ryan's private group with automatic distribution disabled. Keep 29.1 selected for App Store review. Earlier TestFlight builds do not change when source code changes.
 
 ## Validation
-Automated jsdom checks cover existing app chrome, no iframe, navigation/back, multi-need filtering, peanut-oil warnings, happy-hour filtering/saving, recipe selection/saving, trip edits, journal text escaping, and clearing across accounts. Bundle checks verify the retired HTML page is excluded and standard builds have no Pro entry.
 
-On-device visual validation is still required: narrow and wide iPhone screens; scrolling with keyboard; night/electric themes; native back swipe; leaving and reopening Pro; account change. The current assistant environment cannot render the app or run an iOS simulator. Automated checks do not establish visual quality or App Store readiness.
+Local checks exercise placements, server access, recipe search and attribution, preference consent, unknown dietary evidence, specials, saves, conflicting revisions, account switching, and delayed requests. Existing launch checks cover auth, badges, location, onboarding, and feedback.
+
+A live database transaction verified recipe access, private preference writes, revision-protected notebook saves, and denial for an unrelated non-Pro account. All validation writes were rolled back.
+
+Hosted browser tests render the actual app HTML and CSS using isolated fixture responses at 320, 390, 430, and 768 pixel widths. They capture screenshots for review. These tests do not replace native iPhone/TestFlight testing, keyboard testing, or App Review.

@@ -25,6 +25,15 @@ const originalAutomaticArea=w.updateAutomaticBrowseArea;
 (async()=>{
  await new Promise(resolve=>setTimeout(resolve,100));
  assert.deepEqual(errors,[],'DOM boots without uncaught errors');
+ // A temporary network failure must preserve equipped badges and permit account-mark retry.
+ const fromBeforeBadge=w.__db.from;
+ w.eval("currentUser={id:'badge-regression'};trSyncAccountState();equippedBadgeSlugs=['burger-lover'];accountMarkCache.clear();");
+ w.__db.from=()=>{const q=new Proxy({}, {get(_,key){if(key==='then')return resolve=>resolve({data:null,error:{message:'temporary network failure'}});return()=>q;}});return q;};
+ await w.loadFoodBadges();assert.equal(w.eval('equippedBadgeSlugs[0]'),'burger-lover');
+ await w.loadAccountMarks(['retry-mark']);assert.equal(w.eval("accountMarkCache.has('retry-mark')"),false);
+ w.__db.from=()=>{const q=new Proxy({}, {get(_,key){if(key==='then')return resolve=>resolve({data:[{user_id:'retry-mark',mark_type:'og',is_active:true}],error:null});return()=>q;}});return q;};
+ const recovered=await w.loadAccountMarks(['retry-mark']);assert(recovered['retry-mark'].includes('og'));
+ w.__db.from=fromBeforeBadge;w.eval('currentUser=null;trSyncAccountState();');
  w.openAccount();w.setAccountMode('signup');
  for(const [id,value] of Object.entries({acctFirstName:'Test',acctLastName:'Diner',acctUsername:'test_diner',acctEmail:'tester@example.com',acctPassword:'TestPass1!'}))w.document.getElementById(id).value=value;
  w.document.getElementById('acctLegalAccepted').checked=true;

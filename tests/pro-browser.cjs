@@ -5,7 +5,7 @@ const smoke=fs.readFileSync('tests/pro-native-smoke.cjs','utf8');
 const start=smoke.indexOf('w.currentTableScoreCoords=');const end=smoke.indexOf('w.tableRecProPreviewEnabled=enabled;');
 let mock=smoke.slice(start,end).replace('w.eval(source);','').replace("w.eval(fs.readFileSync('native/dining-sources.js','utf8'));",'');
 let html=fs.readFileSync('index.html','utf8').replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi,'');
-const init=`const fixture=${JSON.stringify(fixture)};const active=true,delay=0;const w=window;w.currentUser={id:'visual-test'};w.renderProfile=()=>{};const stack=[];${mock}w.tableRecProPreviewEnabled=true;document.documentElement.dataset.theme='warm';document.getElementById('profileName').textContent='Ryan Johnson';document.getElementById('profileUsername').textContent='@ryanjohnson';document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id==='discover'));`;
+const init=`const fixture=${JSON.stringify(fixture)};const active=true,delay=0;const w=window;w.currentUser={id:'visual-test'};w.renderProfile=()=>{};const stack=[];${mock}w.tableRecProPreviewEnabled=true;document.body.classList.remove('booting');document.documentElement.dataset.theme='warm';document.getElementById('profileName').textContent='Ryan Johnson';document.getElementById('profileUsername').textContent='@ryanjohnson';document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id==='discover'));`;
 html=html.replace('</body>','<script>'+init+'</script><script>'+fs.readFileSync('native/dining-sources.js','utf8')+'</script><script src="/pro-preview.js"></script></body>');
 fs.mkdirSync('test-results/pro',{recursive:true});fs.writeFileSync('test-results/pro/preview.html',html.replace('<script src="/pro-preview.js"></script>','<script>'+fs.readFileSync('native/pro-preview.js','utf8')+'</script>'));
 if(process.env.PRO_PREPARE_ONLY==='true')process.exit(0);
@@ -16,6 +16,7 @@ const server=http.createServer((req,res)=>{if(req.url==='/pro-preview.js'){res.s
  for(const view of ['happy','recipes','trip','journal','needs']){
   await page.evaluate(v=>window.TableRecProPreview.open(v),view);await page.waitForFunction(()=>!document.querySelector('#pro').textContent.includes('Getting your table ready'));
   if(view==='happy')await page.selectOption('#prDay','Mon');
+  if(view==='needs'){await page.click('[data-pro-action="filter"][data-value="sources"]');await page.screenshot({path:'test-results/pro/dietary-guides.png',fullPage:true});await page.click('[data-pro-action="filter"][data-value="all"]');}
   await page.screenshot({path:'test-results/pro/'+view+'.png',fullPage:true});
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow in '+view);
  }
