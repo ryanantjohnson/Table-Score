@@ -1,4 +1,4 @@
-import { mkdir, readFile, copyFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, copyFile, writeFile, rm } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import { dirname, resolve } from 'node:path';
 
@@ -42,9 +42,12 @@ if (build) {
   const html = await readFile(target, 'utf8');
   await writeFile(target, html.replace('<head>', '<head>\n<script>window.tableRecBuild=' + JSON.stringify(build) + ';</script>'));
 }
+// Remove the retired embedded page and any stale tester script on repeat builds.
+await rm(resolve(webDirectory, 'pro-preview.html'), { force: true });
+await rm(resolve(webDirectory, 'pro-preview.js'), { force: true });
 // Pro is bundled only for an explicitly selected tester build.
 if (process.env.TR_PRO_PREVIEW === 'true') {
-  for (const name of ['pro-preview.html', 'pro-preview.js']) {
+  for (const name of ['pro-preview.js']) {
     await copyFile(resolve(nativeDirectory, name), resolve(webDirectory, name));
   }
   const target = resolve(webDirectory, 'index.html');
