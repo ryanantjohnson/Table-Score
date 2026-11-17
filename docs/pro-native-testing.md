@@ -31,3 +31,6 @@ Hosted browser tests render the actual app HTML and CSS using isolated fixture r
 
 ## Private tester scope
 Happy Hours, Recipe Wheel, and Dining Needs are ready for private review once this revision passes checks. Reservations and paid signup are not included. Happy Hour coverage is six sourced locations and dietary guides are references, not verified-safe recommendations. Do not replace the public App Store candidate with this tester build.
+
+## Recipe and Pro presentation refinement
+Everyday favorites defaults to familiar dish-name families from the licensed catalog; Explore everything retains the full collection. Ingredient/category filters apply to both. This is a preference collection, not a dietary suitability filter. A server batch supplies 12 real candidates and the selected recipe; the reel cycles names, slows down, and reveals the result. Reduced-motion users skip the cycling. Repeated taps are blocked; leaving the screen or switching accounts discards a pending reveal. Pro entry cards now include benefit copy, feature icons and a stronger accent treatment.

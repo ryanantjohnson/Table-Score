@@ -21,7 +21,7 @@ const server=http.createServer((req,res)=>{if(req.url==='/pro-preview.js'){res.s
   assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Horizontal overflow in '+view);
  }
  await page.click('[data-pro-action="go"][data-value="edit"]');await page.screenshot({path:'test-results/pro/preferences.png',fullPage:true});
- await page.evaluate(()=>window.TableRecProPreview.open('recipes'));await page.click('[data-pro-action="spin"]');await page.waitForSelector('[data-pro-action="saveRecipe"]');await page.screenshot({path:'test-results/pro/recipe.png',fullPage:true});
+ await page.evaluate(()=>window.TableRecProPreview.open('recipes'));await page.click('[data-pro-action="spin"]');await page.waitForSelector('#prRecipeReel[data-spinning="true"]');await page.screenshot({path:'test-results/pro/recipe-running.png',fullPage:true});await page.waitForSelector('[data-pro-action="saveRecipe"]');await page.screenshot({path:'test-results/pro/recipe.png',fullPage:true});
  for(const width of [320,430,768]){await page.setViewportSize({width,height:844});for(const view of ['happy','recipes','needs']){await page.evaluate(v=>window.TableRecProPreview.open(v),view);assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),'Overflow '+width+' '+view);}}
  await page.setViewportSize({width:390,height:844});await page.evaluate(()=>{document.documentElement.dataset.theme='night';window.TableRecProPreview.open('recipes');});await page.screenshot({path:'test-results/pro/night.png',fullPage:true});
  assert.deepEqual(errors,[]);console.log('PASS: browser screenshots, actual TableRec styling, feature screens, and 320/390/430/768px overflow checks.');await browser.close();server.close();

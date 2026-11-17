@@ -24,9 +24,10 @@ function evaluate(v,needs){
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name)=>{const paths={needs:'M12 21s-8-5-8-12a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 7-8 12-8 12Z',happy:'M5 3h14l-7 9-7-9Zm7 9v9m-4 0h8',recipes:'M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1',trip:'M4 4h6v6H4V4Zm10 10h6v6h-6v-6ZM7 10v7h7',journal:'M5 3h14v18H5V3Zm4 5h6m-6 4h6m-6 4h4',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',plus:'M12 5v14M5 12h14',check:'m5 12 4 4L19 6'};return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.needs).split(/(?=M)/).map(d=>'<path d="'+d+'"/>').join('')+'</svg>';};
-const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeQuery:'',recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
+const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeCollection:'everyday',recipeQuery:'',recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
 let clearing=false,signingOut=false,epoch=0,loadPromise=null,loaded=false,access=false,revision=0,saveBusy=false,savePending=false,saveConflict=false,loading=false,errorText='',feature='home';
 const client=()=>{try{return typeof db!=='undefined'?db:null;}catch{return null;}};
+let recipeRunning=false;
 let state=initial(),account=null,screen=null,view='home',detail=null,recipeTimer=null;
 const titles={home:'TableRec Pro',needs:'Dining Needs',edit:'Your dining needs',venue:'Restaurant details',happy:'Happy Hours',recipes:'Recipe Wheel',recipe:'Your recipe',about:'About your access'};
 const venue=id=>VENUES.find(v=>v.id===id);
@@ -51,7 +52,7 @@ function open(next='home'){
 }
 function back(){const parent={edit:'needs',venue:'needs',recipe:'recipes'}[view];if(parent)return go(parent);if(view!=='home'&&view!==feature)return go('home');if(!root.tableRecBack?.())root.showScreen('profile');}
 function clear(){
- clearing=true;epoch++;clearTimeout(recipeTimer);recipeTimer=null;state=initial();loaded=false;loadPromise=null;loading=false;access=false;revision=0;saveBusy=false;saveConflict=false;errorText='';VENUES=[];DEALS=[];RECIPES=[];
+ clearing=true;epoch++;recipeRunning=false;clearTimeout(recipeTimer);recipeTimer=null;state=initial();loaded=false;loadPromise=null;loading=false;access=false;revision=0;saveBusy=false;saveConflict=false;errorText='';VENUES=[];DEALS=[];RECIPES=[];
  const wasActive=screen?.classList.contains('active');screen?.remove();screen=null;if(wasActive)root.showScreen('profile');
  document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>n.remove());clearing=false;
 }
@@ -95,13 +96,13 @@ function happyView(){
 }
 function recipesView(){
  const cats=['All',...state.recipeSummary.categories];
- return '<div class="pr-recipe-intro"><span class="pr-eyebrow">COOK AT HOME</span><h2>Let dinner come to you.</h2><p>'+Number(state.recipeSummary.count).toLocaleString()+' recipes. Your next favorite is in here.</p></div>'+field('What sounds good?','prCategory',select('prCategory',cats,state.category))+field('Ingredient or dish (optional)','prRecipeQuery','<input id="prRecipeQuery" maxlength="100" placeholder="Chicken, rice, pasta…" value="'+esc(state.recipeQuery)+'">')+
- '<div class="pr-wheel-card"><div class="pr-wheel" aria-hidden="true">'+icon('recipes')+'</div><h2>A little kitchen inspiration.</h2><p>Choose a category, or leave dinner to chance.</p>'+button('Spin the Recipe Wheel','spin','','primary')+'</div>'+note('Recipes are not allergy- or medical-diet screened. Check all ingredients and preparation steps yourself.')+
+ return '<div class="pr-recipe-intro"><span class="pr-eyebrow">COOK AT HOME</span><h2>Staying in? Run it.</h2><p>Comfort food, weeknight favorites, or something new. Let TableRec pick what’s for dinner.</p></div><div class="pr-collection" role="group" aria-label="Recipe collection">'+button('Everyday favorites','collection','everyday',state.recipeCollection==='everyday'?'chip active':'chip')+button('Explore everything','collection','all',state.recipeCollection==='all'?'chip active':'chip')+'</div>'+note(state.recipeCollection==='everyday'?'Start with familiar favorites: tacos, burgers, pasta, chicken dinners, and more.':Number(state.recipeSummary.count).toLocaleString()+' recipes across the full collection. Try a new direction.')+field('What sounds good?','prCategory',select('prCategory',cats,state.category))+field('Ingredient or dish (optional)','prRecipeQuery','<input id="prRecipeQuery" maxlength="100" placeholder="Chicken, rice, pasta…" value="'+esc(state.recipeQuery)+'">')+
+ '<div class="where-stage pr-recipe-stage" id="prRecipeReel"><div class="where-stage-label">TONIGHT’S HOME PICK</div><div class="where-stage-name" id="prRollingName">What’s cooking?</div><div class="where-stage-sub" id="prRollingCategory">Your next favorite is a spin away.</div><div class="pr-reel-neighbors" id="prRollingNext" aria-hidden="true">Pick your mood. We’ll pick the recipe.</div></div><div class="pr-spin-footer">'+button('RUN IT · COOK AT HOME','spin','','primary')+'</div>'+note('Recipes are not allergy- or medical-diet screened. Check all ingredients and preparation steps yourself.')+
  (state.savedRecipes.length?'<h3 class="pr-label">Your recipe collection</h3><div class="pr-group">'+state.savedRecipes.map(r=>row(r.name,r.category,'recipe',r.id)).join('')+'</div>':'');
 }
 function recipeView(){
  const r=state.recipe?.id===detail?state.recipe:state.savedRecipes.find(x=>x.id===detail);if(!r)return recipesView();
- return '<div class="pr-eyebrow">'+esc(r.category)+' · '+esc(r.time_text||'See recipe for timing')+'</div>'+heading(r.name,r.servings_text?'Serves '+r.servings_text:'Review quantities before cooking')+note('Check suitability for your own needs before cooking.')+'<h3 class="pr-label">Ingredients</h3><div class="pr-group">'+(r.ingredients||[]).map(x=>'<div class="pr-detail">'+esc(x)+'</div>').join('')+'</div><h3 class="pr-label">Method</h3><div class="pr-group">'+(r.steps||[]).map((x,i)=>'<div class="pr-method"><b>'+(i+1)+'</b><p>'+esc(x)+'</p></div>').join('')+'</div>'+(r.notes?.length?note(r.notes.join(' ')):'')+button(state.savedRecipes.some(x=>x.id===r.id)?'Saved to your recipes':'Save recipe','saveRecipe',r.id,'primary')+'<p class="pr-note">'+esc(r.attribution||'Wikibooks Cookbook contributors')+' · <a href="'+safeUrl(r.source_url)+'" target="_blank" rel="noopener noreferrer">Original recipe</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>';
+ return '<div class="pr-eyebrow">'+esc(r.category)+' · '+esc(r.time_text||'See recipe for timing')+'</div>'+heading(r.name,r.servings_text?'Serves '+r.servings_text:'Review quantities before cooking')+note('Check suitability for your own needs before cooking.')+'<h3 class="pr-label">Ingredients</h3><div class="pr-group">'+(r.ingredients||[]).map(x=>'<div class="pr-detail">'+esc(x)+'</div>').join('')+'</div><h3 class="pr-label">Method</h3><div class="pr-group">'+(r.steps||[]).map((x,i)=>'<div class="pr-method"><b>'+(i+1)+'</b><p>'+esc(x)+'</p></div>').join('')+'</div>'+(r.notes?.length?note(r.notes.join(' ')):'')+button('RUN IT AGAIN','again','','primary')+button(state.savedRecipes.some(x=>x.id===r.id)?'Saved to your recipes':'Save recipe','saveRecipe',r.id,'primary')+'<p class="pr-note">'+esc(r.attribution||'Wikibooks Cookbook contributors')+' · <a href="'+safeUrl(r.source_url)+'" target="_blank" rel="noopener noreferrer">Original recipe</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>';
 }
 function aboutView(){return heading(access?'Your Pro access is active':'A little more TableRec.','No payment is collected in this build.')+'<div class="pr-group"><div class="pr-detail"><strong>Built around your dining life</strong><p>Happy Hours in Discover. Dining Needs in Profile. Cook at home in Run It.</p></div><div class="pr-detail"><strong>Real coverage, clear limits</strong><p>Recipes use the attributed Wikibooks Cookbook collection. Happy Hours currently covers six source-linked Central Texas locations. An initial official-brand dietary guide library is available; reviewed local dish suitability is not yet established.</p></div><div class="pr-detail"><strong>Your private account</strong><p>Preferences, saved recipes, and saved specials use private account storage. No purchase flow is active. Run It stays free and unlimited.</p></div></div>';}
 function lockedView(){return '<div class="pr-empty">'+icon('needs')+'<h2>A little more with Pro.</h2><p>Discover specials and find your next home-cooked favorite. Membership purchases are not open yet. You have not been charged.</p>'+button('Membership details','go','about','primary')+'</div>';}
@@ -141,9 +142,27 @@ async function loadAccount(force=false){
  }catch(err){if(epoch===e)errorText=err.message;}finally{if(epoch===e){loading=false;loadPromise=null;render();}}})();return loadPromise;
 }
 async function spinLive(){
- const e=epoch,id=user()?.id;if(!access||!id)return;const b=screen.querySelector('[data-pro-action="spin"]');if(b){b.disabled=true;b.textContent='Finding your recipe…';}screen.querySelector('.pr-wheel')?.classList.add('pr-spinning');
- try{const r=await client().rpc('spin_pro_recipe',{p_category:state.category==='All'?null:state.category,p_query:state.recipeQuery,p_exclude:state.recipeHistory.slice(-50)});if(epoch!==e||user()?.id!==id)return;if(r.error)throw Error('Recipe search is unavailable. Try again.');if(!r.data){render();toast('No recipes match these filters. Try another ingredient or category.');return;}state.recipe=r.data;state.recipeHistory.push(r.data.id);go('recipe',r.data.id);}catch(err){if(epoch===e){render();toast(err.message);}}
+ const e=epoch,id=user()?.id;if(recipeRunning||!access||!id)return;recipeRunning=true;
+ const b=screen.querySelector('[data-pro-action="spin"]');if(b){b.disabled=true;b.textContent='RUNNING…';}
+ const stage=screen.querySelector('#prRecipeReel');stage?.classList.add('running');stage?.setAttribute('data-spinning','true');stage?.setAttribute('aria-busy','true');stage?.scrollIntoView?.({behavior:root.matchMedia?.('(prefers-reduced-motion: reduce)').matches?'auto':'smooth',block:'center'});
+ try{
+  const r=await client().rpc('spin_pro_recipe_round',{p_collection:state.recipeCollection,p_category:state.category==='All'?null:state.category,p_query:state.recipeQuery,p_exclude:state.recipeHistory.slice(-50)});
+  if(epoch!==e||user()?.id!==id)return;if(r.error)throw Error('Recipe search is unavailable. Try again.');
+  const candidates=r.data?.candidates||[];if(!candidates.length){render();toast('No recipes match these choices. Try another category or Explore everything.');return;}
+  const pick=candidates[0],reduced=root.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+  for(let i=0;i<(reduced?1:19);i++){
+   if(epoch!==e||user()?.id!==id||view!=='recipes')return;
+   const option=i===(reduced?0:18)?pick:candidates[(i+1)%candidates.length];
+   const name=screen.querySelector('#prRollingName'),category=screen.querySelector('#prRollingCategory'),next=screen.querySelector('#prRollingNext');
+   if(name)name.textContent=option.name;if(category)category.textContent=option.category;if(next)next.textContent=i===18?'Dinner is decided.':candidates[(i+2)%candidates.length].name;
+   if(!reduced)await new Promise(resolve=>setTimeout(resolve,55+i*9));
+  }
+  if(epoch!==e||user()?.id!==id||view!=='recipes')return;
+  state.recipe=pick;state.recipeHistory.push(pick.id);go('recipe',pick.id);
+ }catch(err){if(epoch===e){render();toast(err.message);}}
+ finally{if(epoch===e){recipeRunning=false;const button=screen?.querySelector('[data-pro-action="spin"]');if(button){button.disabled=false;button.textContent='RUN IT · COOK AT HOME';}screen?.querySelector('#prRecipeReel')?.classList.remove('running');screen?.querySelector('#prRecipeReel')?.removeAttribute('data-spinning');screen?.querySelector('#prRecipeReel')?.removeAttribute('aria-busy');}}
 }
+
 async function savePreferences(clear=false){const e=epoch,id=user()?.id;if(!id)return;if(!clear&&!screen.querySelector('#prDietConsent')?.checked){toast('Please agree to private storage before saving.');return;}
  const needs=clear?[]:[...screen.querySelectorAll('[data-need]:checked')].map(x=>x.dataset.need);const notes=clear?'':screen.querySelector('#prDietNotes').value.trim();
  const b=screen.querySelector('[data-pro-action="saveNeeds"]');if(b)b.disabled=true;
@@ -155,6 +174,8 @@ function action(act,val){
  if(act==='saveNeeds')return void savePreferences();if(act==='clearNeeds')return void savePreferences(true);
  if(act==='filter'){state.filter=val;render();return;}
  if(!access)return;
+ if(act==='collection'){if(recipeRunning)return;state.recipeCollection=val==='all'?'all':'everyday';state.category='All';render();return;}
+ if(act==='again'){go('recipes');return void spinLive();}
  if(act==='spin')return void spinLive();
  if(act==='openRestaurant'){if(typeof root.openRestaurantById==='function')root.openRestaurantById(val);return;}
  if(act==='directions'){const d=DEALS.find(d=>d.id===val);if(d)root.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(d.address),'_blank','noopener,noreferrer');return;}
@@ -168,6 +189,7 @@ function bind(){
  screen.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='prGroupOn'){state.groupOn=t.checked;render();}
+  if(recipeRunning)return;
   if(t.id==='prCategory'){state.category=t.value;return;}
   if(t.id==='prRecipeQuery'){state.recipeQuery=t.value;return;}
   if(t.id==='prRadius'){state.radius=+t.value;render();return;}
@@ -176,13 +198,13 @@ function bind(){
   if(t.id==='prBudget'){state.budget=+t.value;render();}
  });
 }
-function entry(title,sub,next,ico){const n=document.createElement('div');n.className='card pr-profile-entry';n.dataset.trProEntry=next;n.innerHTML='<button type="button"><span class="pr-feature-icon">'+icon(ico||next)+'</span><span class="pr-row-text"><strong>'+esc(title)+' '+badge('PRO','pr-orange')+'</strong><small>'+esc(sub)+'</small></span>'+icon('arrow')+'</button>';n.querySelector('button').addEventListener('click',()=>open(next));return n;}
-function updateEntries(){document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>{const k=n.dataset.trProEntry;const b=n.querySelector('.pr-badge');if(b)b.textContent=loaded?(access?'PRO':'PRO · LOCKED'):'PRO';if(k==='needs'&&loaded){const small=n.querySelector('small');if(small)small.textContent=state.needs.length?state.needs.length+' private dining needs saved':'Allergies, medical needs, and dietary preferences';}});}
+function entry(title,sub,next,ico){const n=document.createElement('div');n.className='card pr-profile-entry';n.dataset.trProEntry=next;n.innerHTML='<button type="button"><span class="pr-feature-icon">'+icon(ico||next)+'</span><span class="pr-row-text"><span class="pr-feature-kicker">A LITTLE MORE WITH PRO</span><strong>'+esc(title)+'</strong><small>'+esc(sub)+'</small><span class="pr-feature-cta">'+(next==='happy'?'Find your next happy hour':next==='recipes'?'Let’s pick dinner':'Make it personal')+' ↗</span></span>'+icon('arrow')+'</button>';n.querySelector('button').addEventListener('click',()=>open(next));return n;}
+function updateEntries(){document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>{const k=n.dataset.trProEntry;const b=n.querySelector('.pr-badge');if(b)b.textContent=loaded?(access?'PRO':'PRO · LOCKED'):'PRO';const kkr=n.querySelector('.pr-feature-kicker');if(kkr)kkr.textContent=loaded&&!access?'UNLOCK WITH TABLEREC PRO':'A LITTLE MORE WITH PRO';if(k==='needs'&&loaded){const small=n.querySelector('small');if(small)small.textContent=state.needs.length?state.needs.length+' private dining needs saved':'Allergies, medical needs, and dietary preferences';}});}
 function mountEntries(){
  const add=(parent,title,sub,next,ico,anchor)=>{if(!parent||parent.querySelector('[data-tr-pro-entry="'+next+'"]'))return;const n=entry(title,sub,next,ico);if(anchor?.parentNode===parent)parent.insertBefore(n,anchor);else parent.append(n);};
  const p=document.getElementById('profile');add(p,'Your Dining Needs','Allergies, medical needs, and dietary preferences','needs','needs',document.getElementById('profileBadgeFolderCard'));
- const discover=document.getElementById('discover');add(discover,'Happy Hours','Find nearby specials, times, and a little more value','happy','happy',document.getElementById('locationCard'));
- const run=document.querySelector('#whereToEatModal .tr-modal-scroll');add(run,'Cook at home','Give the Recipe Wheel a spin','recipes','recipes',run?.firstElementChild);
+ const discover=document.getElementById('discover');add(discover,'Happy Hours','Good food. Better timing. Find nearby deals worth heading out for.','happy','happy',document.getElementById('locationCard'));
+ const run=document.querySelector('#whereToEatModal .tr-modal-scroll');add(run,'Cook at home','Tacos tonight? Pasta? Let thousands of recipes surprise you.','recipes','recipes',run?.firstElementChild);
  updateEntries();
 }
 function sync(){
@@ -194,6 +216,9 @@ const style=document.createElement('style');style.textContent="\n.pr-screen{padd
 const extra=document.createElement('style');extra.textContent=`
 .pr-profile-entry{border-radius:18px!important;margin:14px 0!important}.pr-feature-icon{background:var(--heroSoft)!important}.pr-recipe-intro{padding:8px 2px 14px}.pr-recipe-intro h2{font-size:30px;letter-spacing:-1px;line-height:1.1;margin:8px 0 12px}.pr-recipe-intro p{color:var(--muted);font-size:14px;line-height:1.6}.pr-coverage{display:flex;align-items:center;gap:8px;margin:20px 0 14px;flex-wrap:wrap}.pr-coverage>span:last-child{color:var(--muted);font-size:11px}.pr-source-card>p{font-size:13px;line-height:1.6;color:var(--muted)}.pr-source-card h2{font-size:22px;margin:0 0 12px}.pr-source-card>a{font-size:12px}.pr-source{font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.pr-consent{display:flex;gap:10px;font-size:12px;line-height:1.6;margin:18px 0}.pr-consent input{width:22px!important;flex:none}.pr-screen .pr-wheel{background:conic-gradient(from 15deg,var(--gold) 0 60deg,var(--card2) 60deg 120deg,var(--gold) 120deg 180deg,var(--card2) 180deg 240deg,var(--gold) 240deg 300deg,var(--card2) 300deg);width:160px;height:160px;box-shadow:inset 0 0 0 7px var(--card),0 0 0 1px var(--line);color:var(--ink)}.pr-wheel svg{background:var(--card);border-radius:50%;padding:15px;width:85px!important;height:85px!important}.pr-screen .pr-wheel-card{background:var(--heroSoft)}.pr-profile-entry>button{min-height:85px}.pr-profile-entry>button:hover{background:var(--heroSoft)}.pr-screen .pr-deal{padding:20px}.pr-screen .pr-deal h2{font-size:24px;line-height:1.15}.pr-screen .pr-deal>p{line-height:1.6}.pr-screen .pr-deal-bottom a{font-size:12px;text-align:right}.pr-screen .pr-deal button{min-height:40px}.pr-screen .pr-empty{padding:40px 16px}.pr-screen .pr-result-bottom{margin-top:15px}.pr-screen .linkbtn{min-height:40px}.pr-screen .pr-backline{position:sticky;top:0;z-index:5;background:var(--bg)}
 `;document.head.append(extra);
+const polish=document.createElement('style');polish.textContent=`
+.pr-profile-entry{position:relative;overflow:hidden;border:1.5px solid var(--gold)!important;box-shadow:0 5px 0 var(--line)!important;background:linear-gradient(120deg,var(--heroSoft),var(--card))!important}.pr-profile-entry:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gold)}.pr-profile-entry>button{padding:22px 18px!important;gap:16px!important}.pr-profile-entry .pr-feature-icon{width:56px;height:56px;border-radius:18px;border:1px solid var(--line);transform:rotate(-7deg)}.pr-profile-entry .pr-feature-icon svg{width:30px;height:30px;transform:rotate(7deg)}.pr-feature-kicker{display:block;font-size:9px;font-weight:950;letter-spacing:.12em;color:var(--gold);margin-bottom:7px}.pr-profile-entry .pr-row-text strong{font-size:23px;line-height:1.1;letter-spacing:-.6px}.pr-feature-cta{display:block;color:var(--gold);font-size:12px;font-weight:900;margin-top:12px}.pr-collection{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.pr-collection button{min-height:42px}.pr-recipe-stage{margin:22px 0 0;text-align:center;min-height:205px;padding:26px 20px!important;border:2px solid var(--gold)!important;border-radius:22px!important;background:var(--heroSoft)!important;box-shadow:0 6px 0 var(--line)!important}.pr-recipe-stage .where-stage-name{font-size:30px;line-height:1.15;min-height:72px;display:grid;place-items:center;overflow-wrap:anywhere}.pr-reel-neighbors{border-top:1px solid var(--line);padding-top:14px;margin-top:18px;font-size:12px;color:var(--muted);min-height:30px}.pr-spin-footer{padding:20px 0 5px}.pr-spin-footer button{width:100%;min-height:54px;font-weight:950;letter-spacing:.06em;font-size:15px}.pr-recipe-intro h2{font-size:34px}.pr-screen>.primary+.primary{margin-top:10px}@media(prefers-reduced-motion:reduce){.pr-recipe-stage.running .where-stage-name{animation:none}}
+`;document.head.append(polish);
 const origRender=root.renderProfile;if(typeof origRender==='function')root.renderProfile=function(){const r=origRender.apply(this,arguments);sync();return r;};
 const origSignOut=root.signOut;if(typeof origSignOut==='function')root.signOut=async function(){signingOut=true;clear();account=null;try{return await origSignOut.apply(this,arguments);}finally{signingOut=false;sync();}};
 const origBack=root.tableRecBack;if(typeof origBack==='function')root.tableRecBack=function(){const parent=({edit:'needs',venue:'needs',recipe:'recipes'})[view];if(screen?.classList.contains('active')&&parent){go(parent);return true;}return origBack.apply(this,arguments);};

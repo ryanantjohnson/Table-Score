@@ -7,7 +7,7 @@ new(require('node:vm').Script)(source);
 const recipe=fixture.recipes[0];
 function setup({enabled=true,active=true,delay=0}={}){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadges"><span>Existing badge</span></div><div id="profileBadgeFolderCard"></div></section><section id="discover" class="screen"><div id="locationCard"></div><div id="discoverPeopleCard"></div></section><section id="saved" class="screen"><div id="savedList"></div></section></div><nav class="nav">Main navigation</nav><section id="whereToEatModal" class="hidden"><div class="tr-modal-scroll"><div>Free Run It</div></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
- const w=dom.window;w.scrollTo=()=>{};w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
+ const w=dom.window;w.scrollTo=()=>{};w.matchMedia=()=>({matches:true});w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
  w.currentTableScoreCoords=()=>({latitude:30.53,longitude:-97.69});
  w.showScreen=id=>{const prev=w.document.querySelector('.screen.active')?.id;if(prev!==id)stack.push(prev);w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));if(id==='profile')w.renderProfile();};
  w.tableRecBack=()=>{const prev=stack.pop()||'profile';w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===prev));return true;};
@@ -18,7 +18,7 @@ function setup({enabled=true,active=true,delay=0}={}){
   const id=w.currentUser?.id;
   if(name==='has_tablerec_pro')return result(active);
   if(name==='pro_recipe_summary')return result(fixture.summary);
-  if(name==='spin_pro_recipe'){w.__spin=args;return result(recipe);}
+  if(name==='spin_pro_recipe_round'){w.__spin=args;return result({candidates:[recipe],count:1});}
   if(name==='save_pro_notebook'){
    w.__writes.push({id,args:JSON.parse(JSON.stringify(args))});
    if(w.__conflict)return {error:{code:'40001'}};
@@ -41,10 +41,10 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  assert(doc.querySelector('#whereToEatModal [data-tr-pro-entry="recipes"]'));
  assert(!doc.querySelector('[data-tr-pro-entry="journal"]'));assert(!doc.querySelector('[data-tr-pro-entry="trip"]'));
  assert(!doc.querySelector('#settingsModal [data-tr-pro-entry]'));
- await open('recipes');assert(doc.querySelector('#pro').textContent.includes('3,796'));
+ await open('recipes');assert(doc.querySelector('#pro').textContent.includes('Everyday favorites'));click('collection','all');assert(doc.querySelector('#pro').textContent.includes('3,796'));click('collection','everyday');
  assert(!doc.querySelector('#pro iframe'));assert(doc.querySelector('.topbar'));assert(doc.querySelector('.nav'));
  change('prCategory',fixture.summary.categories[0]);change('prRecipeQuery','lemon');click('spin');await flush();
- assert.equal(w.__spin.p_query,'lemon');assert.equal(w.__spin.p_category,fixture.summary.categories[0]);
+ assert.equal(w.__spin.p_collection,'everyday');assert.equal(w.__spin.p_query,'lemon');assert.equal(w.__spin.p_category,fixture.summary.categories[0]);
  assert(doc.querySelector('#pro').textContent.includes(recipe.name));assert(doc.querySelector('#pro a[href*="creativecommons"]'));
  click('saveRecipe');await flush();assert.equal(w.__books.a.document.savedRecipes[0].id,recipe.id);
  await open('needs');click('go','edit');
