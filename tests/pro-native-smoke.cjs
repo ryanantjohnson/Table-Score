@@ -13,6 +13,7 @@ function setup({enabled=true,active=true,delay=0}={}){
  w.showScreen=id=>{const prev=w.document.querySelector('.screen.active')?.id;if(prev!==id)stack.push(prev);w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));if(id==='profile')w.renderProfile();};
  w.tableRecBack=()=>{const prev=stack.pop()||'profile';w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===prev));return true;};
  w.signOut=async()=>{w.currentUser=null;};w.closeSettings=()=>{};w.closeWhereToEat=()=>{};
+ w.__restaurantSearch=[];w.tableRecInvokeRestaurant=async(name,args)=>{w.__restaurantSearch.push(args);return {data:{restaurants:[{place_id:'test-chipotle',name:'Chipotle Mexican Grill',address:'Georgetown, TX'},{place_id:'unrelated-cava',name:'Cava Mezze',address:'Washington, DC'}]},error:null};};
  w.__books={};w.__prefs={};w.__writes=[];w.__error=false;w.__conflict=false;
  const result=async data=>{if(delay)await new Promise(r=>setTimeout(r,delay));return w.__error?{error:{code:'offline'}}:{data,error:null};};
  w.db={rpc:async(name,args)=>{
@@ -28,7 +29,7 @@ function setup({enabled=true,active=true,delay=0}={}){
    const r=await result(book.revision);if(!r.error)w.__books[id]=book;return r;
   }throw Error(name);
  },from(table){let action='select',value,owner;const q=new Proxy({}, {get(_,key){if(key==='then')return (resolve,reject)=>{let data;if(table==='pro_notebooks')data=w.__books[owner]||null;else if(table==='user_dining_preferences'){if(action==='upsert')w.__prefs[value.user_id]=value;if(action==='delete')delete w.__prefs[owner];data=w.__prefs[owner]||null;}else if(table==='restaurants')data=fixture.places;else if(table==='happy_hour_offers')data=fixture.offers;else throw Error(table);return result(data).then(resolve,reject);};return(...args)=>{if(key==='eq'&&args[0]==='user_id')owner=args[1];if(['upsert','delete'].includes(key)){action=key;value=args[0];}return q;};}});return q;}};
- w.eval(fs.readFileSync('native/dining-sources.js','utf8'));w.tableRecProPreviewEnabled=enabled;w.eval(source);return dom;
+ w.eval(fs.readFileSync('native/dining-sources.js','utf8'));w.eval(fs.readFileSync('native/dining-evidence.js','utf8'));w.tableRecProPreviewEnabled=enabled;w.eval(source);return dom;
 }
 const flush=()=>new Promise(r=>setTimeout(r,15));
 (async()=>{
@@ -55,8 +56,12 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  click('filter','sources');assert(w.document.querySelector('#pro').textContent.includes('Chick-fil-A'));assert(w.document.querySelector('#pro').textContent.includes('refined peanut oil'));click('filter','documented');assert.equal(doc.querySelectorAll('.pr-restaurant').length,0);
  click('filter','all');click('venue',fixture.places[0].id);assert(doc.querySelector('#pro').textContent.includes('No reviewed evidence'));
  assert(doc.querySelector('#pro').textContent.includes('arachis/peanut'));
+ await open('needs');click('filter','documented');assert.equal(doc.querySelectorAll('.pr-dish').length,11);assert(doc.querySelector('#pro').textContent.includes('Conflicts with your needs'));
+ click('filter','all');const search=doc.getElementById('prSearch');search.value='Chipotle Georgetown';search.dispatchEvent(new w.Event('input',{bubbles:true}));click('searchDining');await flush();assert.equal(w.__restaurantSearch.length,1);assert.deepEqual(Object.keys(w.__restaurantSearch[0].body).sort(),['latitude','longitude','mode','query']);click('venue','lookup:test-chipotle');assert.equal(doc.querySelectorAll('.pr-dish').length,3);assert(doc.querySelector('#pro').textContent.includes('More information needed'));assert(!doc.querySelector('[data-pro-action="openRestaurant"]'));click('back');click('venue','lookup:unrelated-cava');assert.equal(doc.querySelectorAll('.pr-dish').length,0,'A similar restaurant name must not inherit chain dish evidence');
+ await open('needs');click('go','edit');for(const x of doc.querySelectorAll('[data-need]'))x.checked=x.dataset.need==='Vegan';doc.getElementById('prDietConsent').checked=true;click('saveNeeds');await flush();click('filter','documented');const sq=doc.getElementById('prSearch');sq.value='';sq.dispatchEvent(new w.Event('input',{bubbles:true}));assert(doc.querySelector('#pro').textContent.includes('Published ingredients fit'));
  await open('happy');assert(doc.getElementById('prHappyMap'));const map=w.__maps.at(-1);assert(map);map.center={lat:0,lng:0};click('mapArea');await flush();assert.equal(doc.querySelectorAll('.pr-deal').length,0);click('resetMap');await flush();assert(map.disposed);change('prDay','Mon');change('prBudget','0');assert(doc.querySelectorAll('.pr-deal').length>0);
  assert(doc.querySelector('.pr-deal a').href.startsWith('https://'));
+ const RealDate=w.Date;w.Date=class extends RealDate{constructor(...args){super(...(args.length?args:['2026-11-16T21:45:00Z']));}};change('prDay','Sun');change('prOpen','Active now');assert(doc.querySelectorAll('.pr-deal').length>0,'Active now ignores the browse weekday');w.Date=RealDate;change('prOpen','Scheduled');change('prDay','Mon');
  change('prBudget','5');assert(!doc.querySelector('#pro').textContent.includes('Half-price starters'));
  change('prBudget','0');click('deal',fixture.offers[0].id);await flush();assert(w.__books.a.document.savedDeals.includes(fixture.offers[0].id));
  // Legacy private content is retained without offering retired features.

@@ -1,0 +1,343 @@
+{
+  "version": 1,
+  "coverage": "Initial US brand evidence; not a local kitchen assessment",
+  "dishes": [
+    {
+      "id": "cava-spicy-lamb-avocado",
+      "brand": "cava",
+      "name": "Spicy Lamb + Avocado Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-steak-harissa",
+      "brand": "cava",
+      "name": "Steak + Harissa Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-harissa-avocado",
+      "brand": "cava",
+      "name": "Harissa Avocado Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "contains",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-chicken-rice",
+      "brand": "cava",
+      "name": "Chicken + Rice Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-greek-salad",
+      "brand": "cava",
+      "name": "Greek Salad Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "not-listed",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-falafel-crunch",
+      "brand": "cava",
+      "name": "Falafel Crunch Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "contains",
+        "Milk": "contains",
+        "Soy": "contains",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "not-listed",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": true
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-salmon-yogurt",
+      "brand": "cava",
+      "name": "Salmon + Yogurt Dill Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "not-listed",
+        "Peanut": "not-listed",
+        "Fish": "contains",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "cava-pomegranate-salmon",
+      "brand": "cava",
+      "name": "Pomegranate Glazed Salmon Bowl",
+      "kind": "Published menu dish",
+      "country": "US",
+      "scope": "Standard US recipe; local availability and preparation must be confirmed",
+      "source_url": "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf",
+      "source_page": 4,
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Wheat": "not-listed",
+        "Milk": "contains",
+        "Soy": "not-listed",
+        "Egg": "not-listed",
+        "Tree nuts": "not-listed",
+        "Sesame": "contains",
+        "Peanut": "not-listed",
+        "Fish": "contains",
+        "Crustacean shellfish": "not-listed"
+      },
+      "diets": {
+        "Vegan": false,
+        "Vegetarian": false
+      },
+      "cross_contact": "shared",
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+    },
+    {
+      "id": "chipotle-rice-bean-bowl",
+      "brand": "chipotle",
+      "name": "Rice, beans & guacamole bowl",
+      "kind": "TableRec custom order idea",
+      "components": [
+        "Rice",
+        "Beans",
+        "Fajita vegetables",
+        "Salsa",
+        "Guacamole"
+      ],
+      "country": "US",
+      "scope": "Standard US ingredients; excludes limited-time and test items",
+      "source_url": "https://www.chipotle.com/allergens",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Peanut": "reported-absent",
+        "Tree nuts": "reported-absent",
+        "Egg": "reported-absent",
+        "Sesame": "reported-absent",
+        "Fish": "reported-absent",
+        "Crustacean shellfish": "reported-absent",
+        "Molluscs": "reported-absent",
+        "Mustard": "reported-absent"
+      },
+      "diets": {
+        "Vegan": true,
+        "Vegetarian": true
+      },
+      "cross_contact": "shared",
+      "order_notes": "Ask for the listed ingredients only. Leave off meat, cheese, queso, sour cream and honey vinaigrette. Confirm availability and preparation."
+    },
+    {
+      "id": "chipotle-sofritas-bowl",
+      "brand": "chipotle",
+      "name": "Sofritas & rice bowl",
+      "kind": "TableRec custom order idea",
+      "components": [
+        "Sofritas",
+        "Rice",
+        "Beans",
+        "Fajita vegetables",
+        "Salsa",
+        "Guacamole"
+      ],
+      "country": "US",
+      "scope": "Standard US ingredients; excludes limited-time and test items",
+      "source_url": "https://www.chipotle.com/allergens",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Peanut": "reported-absent",
+        "Tree nuts": "reported-absent",
+        "Egg": "reported-absent",
+        "Sesame": "reported-absent",
+        "Fish": "reported-absent",
+        "Crustacean shellfish": "reported-absent",
+        "Molluscs": "reported-absent",
+        "Mustard": "reported-absent"
+      },
+      "diets": {
+        "Vegan": true,
+        "Vegetarian": true
+      },
+      "cross_contact": "shared",
+      "order_notes": "Ask for the listed ingredients only. Leave off meat, cheese, queso, sour cream and honey vinaigrette. Confirm availability and preparation."
+    },
+    {
+      "id": "chipotle-veggie-burrito",
+      "brand": "chipotle",
+      "name": "Vegetable & bean burrito",
+      "kind": "TableRec custom order idea",
+      "components": [
+        "Flour tortilla",
+        "Rice",
+        "Beans",
+        "Fajita vegetables",
+        "Salsa",
+        "Guacamole"
+      ],
+      "country": "US",
+      "scope": "Standard US ingredients; excludes limited-time and test items",
+      "source_url": "https://www.chipotle.com/allergens",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "allergens": {
+        "Peanut": "reported-absent",
+        "Tree nuts": "reported-absent",
+        "Egg": "reported-absent",
+        "Sesame": "reported-absent",
+        "Fish": "reported-absent",
+        "Crustacean shellfish": "reported-absent",
+        "Molluscs": "reported-absent",
+        "Mustard": "reported-absent",
+        "Wheat": "contains"
+      },
+      "diets": {
+        "Vegan": true,
+        "Vegetarian": true
+      },
+      "cross_contact": "shared",
+      "order_notes": "Ask for the listed ingredients only. Leave off meat, cheese, queso, sour cream and honey vinaigrette. Confirm availability and preparation."
+    }
+  ]
+}

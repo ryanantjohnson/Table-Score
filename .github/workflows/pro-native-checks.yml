@@ -4,7 +4,10 @@ on:
     paths:
       - 'native/pro-preview.*'
       - 'native/dining-sources.js'
-      - 'data/dining-sources.json'
+      - 'data/dining-*.json'
+      - 'native/dining-evidence.js'
+      - 'native/build-dining-data.mjs'
+      - 'tests/dining-evidence.cjs'
       - 'native/prepare-web.mjs'
       - 'tests/pro-native-smoke.cjs'
       - 'tests/pro-browser.cjs'
@@ -27,12 +30,17 @@ jobs:
           node-version: '22'
       - name: Install isolated test dependency
         run: npm install --prefix "$RUNNER_TEMP/pro-test-deps" --no-audit --no-fund --no-package-lock jsdom@26.1.0 playwright@1.62.1
+      - name: Check dietary evidence and generated data
+        run: |
+          node native/build-dining-data.mjs
+          git diff --exit-code native/dining-sources.js
+          node tests/dining-evidence.cjs
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs
       - name: Check tester and standard bundle separation
         run: |
           TR_PRO_PREVIEW=true node native/prepare-web.mjs
-          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
+          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js','dining-sources.js','dining-evidence.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
           TR_PRO_PREVIEW=false node native/prepare-web.mjs
           node -e "const fs=require('fs'); if(fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled'))throw Error('Pro leaked into standard build');"
       - name: Install browser for layout checks

@@ -92,5 +92,140 @@
     "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
     "min_price": null,
     "source_url": "https://salttraderscc.com/location/austin-zilker/"
+  },
+  {
+    "id": "north-italia-domain",
+    "name": "North Italia \u00b7 The Domain",
+    "address": "11506 Century Oaks Terrace, Suite 124, Austin, TX 78758",
+    "latitude": 30.40278,
+    "longitude": -97.72587,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
+    "min_price": 10,
+    "source_url": "https://www.northitalia.com/locations/austin-tx-the-domain/?menu=happy-hour",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
+    "id": "north-italia-2nd-street",
+    "name": "North Italia \u00b7 2nd Street",
+    "address": "500 W 2nd St, #120, Austin, TX 78701",
+    "latitude": 30.26588,
+    "longitude": -97.74892,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
+    "min_price": 10,
+    "source_url": "https://www.northitalia.com/locations/austin-tx-2nd-street/?menu=happy-hour",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
+    "id": "league-avery-ranch",
+    "name": "The League Kitchen & Tavern \u00b7 Avery Ranch",
+    "address": "10526 W Parmer Lane, Austin, TX 78717",
+    "latitude": 30.496737637485,
+    "longitude": -97.77487807378,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Weekday specials: appetizers half off, cocktails $1 off, wine by the glass and 22-ounce draft beers $2 off. Confirm current menu and any exclusions with the location.",
+    "min_price": null,
+    "source_url": "https://www.leaguekitchen.com/",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
+    "id": "league-bee-cave",
+    "name": "The League Kitchen & Tavern \u00b7 Bee Cave",
+    "address": "13420 Galleria Circle, Suite A-128, Bee Cave, TX 78738",
+    "latitude": 30.310281876186,
+    "longitude": -97.940620607031,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Weekday specials: appetizers half off, cocktails $1 off, wine by the glass and 22-ounce draft beers $2 off. Confirm current menu and any exclusions with the location.",
+    "min_price": null,
+    "source_url": "https://www.leaguekitchen.com/",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
+    "id": "league-belterra",
+    "name": "The League Kitchen & Tavern \u00b7 Belterra",
+    "address": "166 Hargraves Drive, Suite B300, Austin, TX 78737",
+    "latitude": 30.20489571769,
+    "longitude": -97.978991235551,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Weekday specials: appetizers half off, cocktails $1 off, wine by the glass and 22-ounce draft beers $2 off. Confirm current menu and any exclusions with the location.",
+    "min_price": null,
+    "source_url": "https://www.leaguekitchen.com/",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
   }
 ]

@@ -15,7 +15,7 @@ The existing Supabase project provides 3,796 attributed Wikibooks recipes, sourc
 
 The dietary source library contains 16 published US restaurant/brand guides. Restaurant references are matched conservatively by brand name, with additional Austin scope checks for local entries. This is source-linked guidance, not dish-level approval, certification validation, or a guarantee of suitability. No fictional restaurant evidence is used.
 
-See data/dining-sources.json and docs/dietary-data-coverage.md for source scope and limitations. Reviewed dishes, current certification details, broad local coverage, and production payments remain unfinished.
+See data/dining-sources.json and docs/dietary-data-coverage.md for source scope and limitations. Initial dish evidence is now integrated; current local certification details, broad local coverage, and production payments remain unfinished.
 
 ## Private TestFlight installation
 
@@ -30,10 +30,13 @@ A live database transaction verified recipe access, private preference writes, r
 Hosted browser tests render the actual app HTML and CSS using isolated fixture responses at 320, 390, 430, and 768 pixel widths. They capture screenshots for review. These tests do not replace native iPhone/TestFlight testing, keyboard testing, or App Review.
 
 ## Private tester scope
-Happy Hours, Recipe Wheel, and Dining Needs are ready for private review once this revision passes checks. Reservations and paid signup are not included. Happy Hour coverage is six sourced locations and dietary guides are references, not verified-safe recommendations. Do not replace the public App Store candidate with this tester build.
+Happy Hours, Recipe Wheel, and Dining Needs are ready for private review once this revision passes checks. Reservations and paid signup are not included. Happy Hour coverage remains a limited Central Texas catalog, and dietary evidence is not a verified-safe recommendation. Do not replace the public App Store candidate with this tester build.
 
 ## Recipe and Pro presentation refinement
 Everyday favorites defaults to familiar dish-name families from the licensed catalog; Explore everything retains the full collection. Ingredient/category filters apply to both. This is a preference collection, not a dietary suitability filter. A server batch supplies 12 real candidates and the selected recipe; the reel cycles names, slows down, and reveals the result. Reduced-motion users skip the cycling. Repeated taps are blocked; leaving the screen or switching accounts discards a pending reveal. Pro entry cards now include benefit copy, feature icons and a stronger accent treatment.
 
 ## Happy Hour map and source expansion
-Map uses the existing Google Maps integration, shows filtered listing pins, supports Search this area and return to the TableRec browsing area, and keeps the list usable when map loading fails. Sources added November 17: Fish City Grill Georgetown and Salt Traders Round Rock/Zilker. Total catalog is nine locations, still insufficient for broad paid-service coverage. New source records and review dates are in data/happy-hour-expansion.json. Fish City marker uses a Census address match; Salt Traders coordinates are published by the restaurant. $2.99/month is the approved consumer Pro price direction; no real checkout is active.
+Map uses the existing Google Maps integration, shows filtered listing pins, supports Search this area and return to the TableRec browsing area, and keeps the list usable when map loading fails. Sources added November 17: Fish City Grill Georgetown and Salt Traders Round Rock/Zilker. North Italia Domain and 2nd Street are also checked with their own bar-only menus and official coordinates. The League Avery Ranch, Bee Cave and Belterra are included using the official shared specials and listed open locations; their map coordinates are Census address estimates. Total catalog is 14 locations. Coverage remains insufficient for broad paid-service release. New source records and review dates are in data/happy-hour-expansion.json. Fish City marker uses a Census address match; Salt Traders coordinates are published by the restaurant. $2.99/month is the approved consumer Pro price direction; no real checkout is active.
+
+## Dining Needs matching and search
+The first 11 dish records are eight current CAVA bowls and three explicitly labelled Chipotle custom-order ideas. Dish suggestions compare all selected needs, show conflicts and unknowns, disclose shared preparation, retain dated source links, and block a full match for additional free-text needs. A restaurant search reaches Places beyond the initial saved-restaurant list without transmitting dietary preferences. No local kitchen or medical safety approval is implied. Active-now Happy Hours now use the restaurant’s current local day even when the browsing day differs.

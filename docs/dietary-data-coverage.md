@@ -18,8 +18,16 @@ Each record includes country, scope, aliases, source URL, check date, and review
 - Medical targets such as carbohydrate, sodium, potassium, phosphorus, FODMAP, and alpha-gal need individual review. Saving them does not activate an automated clinical recommender.
 - Free-text requirements are stored privately but are not interpreted as automated matching rules.
 
-## Remaining work before suitability recommendations
+## Dish-level matching added November 17
+
+The first catalog has 11 US records: eight CAVA menu bowls using the allergen PDF currently linked by CAVA, and three explicitly labelled TableRec custom-order ideas built from Chipotle’s published vegan ingredients. Data is versioned in data/dining-dishes.json; native/build-dining-data.mjs regenerates the bundled public catalogs. These are initial references, not broad local coverage.
+
+Every selected need is evaluated separately. Published conflicts stay visible. Unmarked allergens become “Ask before ordering,” never allergen-free. Missing requirements, stale evidence, free-text needs and unsupported medical targets block a full ingredients-fit result. Vegan labels do not establish milk-allergy suitability. Certification requires dated evidence for the exact dish and location; no halal or kosher dish in this catalog is marked supported.
+
+The Profile screen offers restaurant search through the existing Places service, with no dietary preferences or notes sent in the request. Exact-location results can open available brand dish evidence; no local kitchen is marked verified. The dish library can also be searched directly and explains every result.
+
+## Remaining work before broad suitability recommendations
 
 Obtain current item-level ingredient/allergen tables with reuse terms, map them to exact dishes and locations, retain source versions and changes, document oils and preparation separately, validate certification scope/expiry, review rules professionally, and expand primary-source coverage. Expired or missing data must stay unknown. Ingredient absence is not enough for an all-needs match.
 
-The Pro app currently supplies the official reference library, known published concerns, private preferences, and questions to ask. It does not claim all major conditions are covered or suggest that a restaurant is medically safe.
+The Pro app supplies the official reference library, initial dish comparisons, known published concerns, private preferences, and questions to ask. It does not claim all major conditions are covered or suggest that a restaurant is medically safe.

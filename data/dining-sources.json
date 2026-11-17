@@ -104,7 +104,7 @@
     },
     {
       "id": "mcdonalds",
-      "name": "McDonald’s",
+      "name": "McDonald\u2019s",
       "aliases": [
         "mcdonalds",
         "mcdonald s"
@@ -139,7 +139,7 @@
             "Kosher"
           ],
           "status": "no certification claim",
-          "note": "McDonald’s USA does not certify or claim its US menu items meet halal, kosher, or other religious requirements."
+          "note": "McDonald\u2019s USA does not certify or claim its US menu items meet halal, kosher, or other religious requirements."
         }
       ],
       "additional_sources": []
@@ -153,11 +153,13 @@
       "country": "US",
       "scope": "US brand guidance; location and dish suitability unverified",
       "source_url": "https://cava.com/nutrition",
-      "checked_on": "2026-11-16",
-      "review_due": "2026-12-16",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
       "summary": "Official nutrition and allergen guides are available. Supplier variation, shared preparation, and substitutions limit allergen and animal-product assurances.",
       "claims": [],
-      "additional_sources": []
+      "additional_sources": [
+        "https://assets.ctfassets.net/kugm9fp9ib18/Ki4gri5pvT2rtPcjBQPjR/c78bed9be8448e2ab700f440f6faa83e/KT6_26_AN_ANGUIDE_RETAIL_T_MKTAN11724.pdf"
+      ]
     },
     {
       "id": "sweetgreen",
@@ -177,7 +179,7 @@
     },
     {
       "id": "pfchangs",
-      "name": "P.F. Chang’s",
+      "name": "P.F. Chang\u2019s",
       "aliases": [
         "p f chang s",
         "pf changs",
@@ -219,7 +221,7 @@
     },
     {
       "id": "jersey-mikes",
-      "name": "Jersey Mike’s",
+      "name": "Jersey Mike\u2019s",
       "aliases": [
         "jersey mike s",
         "jersey mikes"
@@ -326,7 +328,7 @@
     },
     {
       "id": "cabobobs",
-      "name": "Cabo Bob’s",
+      "name": "Cabo Bob\u2019s",
       "aliases": [
         "cabo bob s",
         "cabo bobs"
@@ -365,7 +367,7 @@
     },
     {
       "id": "picnik",
-      "name": "Picnik · Austin",
+      "name": "Picnik \u00b7 Austin",
       "aliases": [
         "picnik"
       ],
@@ -398,7 +400,7 @@
     },
     {
       "id": "pitapita",
-      "name": "Pita Pita · Illinois",
+      "name": "Pita Pita \u00b7 Illinois",
       "aliases": [
         "pita pita"
       ],
@@ -421,7 +423,7 @@
     },
     {
       "id": "austin-kosher",
-      "name": "H-E-B Kosher Deli · Austin",
+      "name": "H-E-B Kosher Deli \u00b7 Austin",
       "aliases": [
         "h e b kosher deli",
         "heb kosher deli"
