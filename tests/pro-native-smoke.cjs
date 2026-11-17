@@ -47,7 +47,7 @@ function setup(enabled){
  dom.window.close();
  dom=new JSDOM(html,{url:'https://app.test/pro-preview.html',runScripts:'outside-only'});
  const p=dom.window;
- for(const [,code] of scripts)p.eval(code);
+ for(const [,code] of scripts)p.eval(code + '\nObject.assign(window,{runChecks,state,render,toggleNeed,activeNeeds,openVenue,addStopDay,changeDays,saveDeal,pickRecipe,saveRecipe,addJournal,deleteJournal});');
  const checks=p.runChecks();assert(checks.every(c=>c.pass));
  for(const tab of ['overview','needs','happy','recipes','trip','journal']){
   p.state.tab=tab;p.render();assert(p.document.getElementById('content').textContent.length>50);
