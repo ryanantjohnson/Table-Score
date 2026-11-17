@@ -8,6 +8,8 @@ on:
       - 'native/dining-evidence.js'
       - 'native/build-dining-data.mjs'
       - 'tests/dining-evidence.cjs'
+      - 'supabase/pro/pantry-matching.sql'
+      - 'tests/pro-pantry.sql'
       - 'native/prepare-web.mjs'
       - 'tests/pro-native-smoke.cjs'
       - 'tests/pro-browser.cjs'
