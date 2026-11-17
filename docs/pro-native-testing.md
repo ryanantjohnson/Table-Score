@@ -1,46 +1,21 @@
-# TableRec Pro: testing inside the iPhone app
+# TableRec Pro app testing
 
-This branch now integrates Pro into the native TableRec bundle. The standalone browser prototype is an earlier reference, not the intended phone test route.
+Pro is now rendered inside the existing TableRec app document as the `pro` screen. It uses the app header, bottom navigation, theme variables, cards, fields, and existing drill-screen/back-gesture handling. It does not use an iframe, duplicate site header, or separate page.
 
-## What changed
-- A TableRec Pro card appears in Profile and Settings for signed-in users of the dedicated tester build.
-- Pro opens inside TableRec as full-screen screens, with a Back control.
-- The existing TableRec wordmark is used, with orange/cream styling and dark-theme context.
-- Feature navigation: Overview, Dining needs, Happy hours, Recipe Wheel, Trip planner, Dining journal.
-- Closing/reopening Pro retains the same in-memory session while signed in. Switching accounts or signing out destroys that session.
-- The Pro frame is sandboxed without same-origin privileges. It receives only the public display name and appearance, not account tokens or dietary data from the parent.
-- Run It remains free/unlimited. No reservations or payment prompts are added.
+## iPhone installation
+Run TableRec iOS Release on branch `pro/dining-needs-spec`, with `signed_release` and `upload_to_apple` enabled. After processing, assign the build only to Ryan's private TestFlight group. Keep automatic distribution off. Do not replace the 29.1 App Store submission.
 
-## Create the TestFlight tester build
-1. In GitHub Actions, open **TableRec iOS Release**.
-2. Click **Run workflow**.
-3. Choose branch **pro/dining-needs-spec** (not main).
-4. Enable **signed_release** and **upload_to_apple** using the existing signing/upload setup.
-5. Run the workflow and wait for its success and Apple processing.
-6. In App Store Connect, find the new TestFlight build and assign it to the intended testing group. Complete any required Apple testing review steps.
-7. Update through TestFlight. Sign in and open **Profile > TableRec Pro**.
-8. Confirm the installed build number is the newly generated tester build.
+## Features
+Profile → TableRec Pro opens the membership screen. Dining Needs has multi-selection, an optional additional diner's requirement, result filters, and per-dish evidence with ingredient/oil/preparation details. Happy Hours has day/budget filters and saving. Recipe Wheel has category selection, recipes, and a saved collection. Trip Planner has editable stops, times, estimates, day counts, and a budget. Dining Journal supports private session entries and deletion.
 
-Pro is enabled automatically only when the native workflow runs from refs/heads/pro/dining-needs-spec. The same workflow on main leaves it disabled. No merge is needed to test this branch. Do not replace the public-release submission with this prototype build.
+Run It stays free and unlimited. No reservations or billing are included.
 
-## Android option
-Run **TableRec Native Builds** on the same branch. Enable build_play_bundle only when a signed Google Play bundle is needed. Install the generated test app or upload the signed bundle to the intended closed-test track through the existing process.
+## Data boundaries
+The restaurant, special, and evidence collection is illustrative and is labeled as such. No actual allergy suitability determination is made. Unknown, stale, conflicting, manual-review, and scope-limited evidence remains visible. Recipes are not dietary matched.
 
-## Phone acceptance checks
-- Pro card appears only after sign-in in the explicit preview build.
-- Back returns to TableRec. Close/reopen retains the test session.
-- Switching accounts and sign-out remove the prior Pro session.
-- Appearance matches light/dark context.
-- Forms, dialogs, keyboard scrolling, safe areas, and Recipe Wheel work on device.
-- Profiles combine all selected requirements; no source is treated as a safety guarantee.
-- Deals/recipes/trip edits/journal actions work without presenting a reservation.
-- Standard build does not expose Pro.
-
-## Data and functionality boundaries
-This is an in-app prototype, not a completed commercial Pro service. Restaurant/evidence/deal records are fictional and explicitly labeled. Medical placeholders remain manual-review-only. The derivative dictionary is not clinically validated.
-Recipes and deals are not allergy-filtered. Dietary/profile/journal edits are in memory only, with no cloud persistence or payment entitlement.
-A prototype with finished presentation cannot make fictional data real. Real source collection, qualified review, private storage and billing remain separate work.
+Data remains in memory for the app session and clears on account change/sign-out. No live sourcing, account persistence, clinical rule review, or subscription integration is connected. These are required before public release.
 
 ## Validation
-Combined prototype scripts and loader parse. Twelve sample-data logic checks and additional state/render checks passed in the available JavaScript evaluator. Native packaging simulation confirmed preview assets/entry are included with TR_PRO_PREVIEW=true and absent from the standard entry when false.
-GitHub Actions runs real Node/jsdom smoke checks and native packaging checks; consult its latest result before building. Native archive/upload, on-phone layout, gestures and end-to-end behavior remain unverified until the new build is run and installed.
+Automated jsdom checks cover existing app chrome, no iframe, navigation/back, multi-need filtering, peanut-oil warnings, happy-hour filtering/saving, recipe selection/saving, trip edits, journal text escaping, and clearing across accounts. Bundle checks verify the retired HTML page is excluded and standard builds have no Pro entry.
+
+On-device visual validation is still required: narrow and wide iPhone screens; scrolling with keyboard; night/electric themes; native back swipe; leaving and reopening Pro; account change. The current assistant environment cannot render the app or run an iOS simulator. Automated checks do not establish visual quality or App Store readiness.
