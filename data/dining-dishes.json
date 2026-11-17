@@ -20,16 +20,15 @@
         "Egg": "not-listed",
         "Tree nuts": "not-listed",
         "Sesame": "contains",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-steak-harissa",
@@ -49,16 +48,15 @@
         "Egg": "not-listed",
         "Tree nuts": "not-listed",
         "Sesame": "contains",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-harissa-avocado",
@@ -78,16 +76,15 @@
         "Egg": "contains",
         "Tree nuts": "not-listed",
         "Sesame": "contains",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-chicken-rice",
@@ -107,16 +104,15 @@
         "Egg": "not-listed",
         "Tree nuts": "not-listed",
         "Sesame": "contains",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-greek-salad",
@@ -136,16 +132,15 @@
         "Egg": "not-listed",
         "Tree nuts": "not-listed",
         "Sesame": "not-listed",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-falafel-crunch",
@@ -165,16 +160,15 @@
         "Egg": "not-listed",
         "Tree nuts": "not-listed",
         "Sesame": "contains",
-        "Peanut": "not-listed",
-        "Fish": "not-listed",
-        "Crustacean shellfish": "not-listed"
+        "Peanut": "not-listed"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": true
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-salmon-yogurt",
@@ -195,15 +189,15 @@
         "Tree nuts": "not-listed",
         "Sesame": "not-listed",
         "Peanut": "not-listed",
-        "Fish": "contains",
-        "Crustacean shellfish": "not-listed"
+        "Fish": "contains"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "cava-pomegranate-salmon",
@@ -224,15 +218,15 @@
         "Tree nuts": "not-listed",
         "Sesame": "contains",
         "Peanut": "not-listed",
-        "Fish": "contains",
-        "Crustacean shellfish": "not-listed"
+        "Fish": "contains"
       },
       "diets": {
         "Vegan": false,
         "Vegetarian": false
       },
       "cross_contact": "shared",
-      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check."
+      "order_notes": "Standard recipe only. Substitutions and extra sauces need a new check.",
+      "source_limits": "Fish and shellfish columns cover salmon and shrimp respectively. Other fish and shellfish are not established by those columns."
     },
     {
       "id": "chipotle-rice-bean-bowl",
