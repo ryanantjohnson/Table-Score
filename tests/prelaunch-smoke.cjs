@@ -179,6 +179,16 @@ const originalAutomaticArea=w.updateAutomaticBrowseArea;
  w.eval('tableScoreLocation={latitude:30.7,longitude:-97.7,capturedAt:Date.now()}');
  finishCity('Round Rock, TX');await pendingCity;await new Promise(resolve=>setTimeout(resolve,0));
  assert.equal(cityLookups,2);assert.equal(w.eval('area'),'Georgetown, TX');
+ // Pro's Cook at home card must not push the restaurant reel off screen.
+ const scroller=w.document.querySelector('.where-eat-sheet .tr-modal-scroll');
+ const result=w.document.getElementById('whereEatResult');
+ const proCard=w.document.createElement('div');proCard.textContent='Cook at home';scroller.prepend(proCard);
+ scroller.scrollTop=70;scroller.getBoundingClientRect=()=>({top:100});result.getBoundingClientRect=()=>({top:510});
+ let scrollCalls=[];scroller.scrollTo=options=>scrollCalls.push(options);
+ await w.focusWhereEatResult();assert.equal(scrollCalls.at(-1).top,470);
+ assert(w.document.querySelector('.where-eat-sheet').classList.contains('where-result-focus'));
+ w.eval('loadWhereEatPool=async()=>{window.__focusedBeforeSearch=document.getElementById("whereEatResult").textContent.includes("Finding your options");return [];}');
+ await w.spinWhereToEat();assert.equal(w.__focusedBeforeSearch,true);assert(scrollCalls.length>=2);assert.equal(w.document.getElementById('whereEatSpinBtn').disabled,false);
  assert.deepEqual(errors,[]);
  dom.window.close();
  // Test native bridge without invoking browser geolocation.

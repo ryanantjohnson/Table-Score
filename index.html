@@ -11320,6 +11320,16 @@ async function openWhereEatRatings(){
   closeWhereToEat();
   await openRestaurantById(id);
 }
+function focusWhereEatResult(){
+  const sheet=document.querySelector(".where-eat-sheet");
+  const result=document.getElementById("whereEatResult");
+  sheet?.classList.add("where-result-focus");
+  return new Promise(resolve=>requestAnimationFrame(()=>{
+    const scroller=sheet?.querySelector(".tr-modal-scroll");
+    if(scroller&&result)scroller.scrollTo({top:scroller.scrollTop+result.getBoundingClientRect().top-scroller.getBoundingClientRect().top-10,behavior:"instant"});
+    resolve();
+  }));
+}
 function sleepWhere(ms){return new Promise(resolve=>setTimeout(resolve,ms))}
 function whereBurstMarkup(){
   const bits=["&#127860;","&#127922;","&#10024;","&#127828;","&#127860;"];
@@ -11335,6 +11345,7 @@ async function animateWhereRestaurant(pool,finalPick,labelText){
     <div id="whereStageName" class="where-stage-name">RUNNING IT...</div>
     <div id="whereStageSub" class="where-stage-sub">TableRec is shuffling the table.</div>
   </div>`;
+  await focusWhereEatResult();
   const name=document.getElementById("whereStageName");
   const delays=[85,90,95,105,115,130,150,175,205,245,300,380];
   for(let i=0;i<delays.length;i++){
@@ -11357,6 +11368,7 @@ async function animateWhereCuisine(label){
   const result=document.getElementById("whereEatResult");
   const labels=WHERE_EAT_CUISINES.map(x=>x[0]);
   result.innerHTML=`<div id="whereStage" class="where-stage running"><div class="where-stage-label">WHAT ARE WE EATING?</div><div id="whereStageName" class="where-stage-name">...</div></div>`;
+  await focusWhereEatResult();
   const name=document.getElementById("whereStageName");
   for(const delay of [90,100,115,135,160,200,250,330]){
     name.textContent=labels[Math.floor(Math.random()*labels.length)];
@@ -11436,6 +11448,8 @@ async function spinWhereToEat(){
   btn.disabled=true;
   btn.textContent="RUNNING...";
   try{
+    document.getElementById("whereEatResult").innerHTML='<div class="where-stage"><div class="where-stage-label">GETTING THE TABLE READY...</div><div class="where-stage-name">Finding your options</div></div>';
+    await focusWhereEatResult();
     const all=await loadWhereEatPool(whereEatMode==="cuisine"?whereEatCuisine:"");
     if(!all.length)throw new Error("No restaurants found in that radius.");
 
