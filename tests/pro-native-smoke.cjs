@@ -5,7 +5,7 @@ const source=fs.readFileSync('native/pro-preview.js','utf8');
 new(require('node:vm').Script)(source);
 function setup(enabled=true){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadgeFolderCard"></div></section><section id="home" class="screen"></section></div><nav class="nav">Main navigation</nav><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
- const w=dom.window;w.scrollTo=()=>{};w.currentUser={id:'a'};w.renderProfile=()=>{};
+ const w=dom.window;w.scrollTo=()=>{};w.Date.now=()=>Date.UTC(2026,10,16);w.currentUser={id:'a'};w.renderProfile=()=>{};
  w.showScreen=id=>{w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));if(id==='profile')w.renderProfile();};
  w.tableRecBack=()=>{w.showScreen('profile');return true;};
  w.signOut=async()=>{w.currentUser=null;};w.closeSettings=()=>w.document.getElementById('settingsModal').classList.add('hidden');
@@ -47,4 +47,4 @@ function setup(enabled=true){
  assert(!/createElement\(['"]iframe|postMessage|pro-preview\.html/.test(source));
  console.log('Integrated Pro navigation, real app chrome, dietary evidence, recipe, trip, journal, and account isolation checks passed.');
  w.close();
-})().catch(e=>{console.error(e);process.exitCode=1;});
+})().catch(e=>{console.error(e);process.exit(1);});
