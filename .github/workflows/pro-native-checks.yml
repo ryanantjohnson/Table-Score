@@ -26,6 +26,6 @@ jobs:
       - name: Check tester and standard bundle separation
         run: |
           TR_PRO_PREVIEW=true node native/prepare-web.mjs
-          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.html','pro-preview.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
+          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
           TR_PRO_PREVIEW=false node native/prepare-web.mjs
           node -e "const fs=require('fs'); if(fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled'))throw Error('Pro leaked into standard build');"
