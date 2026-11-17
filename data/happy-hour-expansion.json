@@ -1,0 +1,96 @@
+[
+  {
+    "timezone": "America/Chicago",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "id": "fish-city-georgetown",
+    "name": "Fish City Grill \u00b7 Georgetown",
+    "address": "1019 W University Ave, Georgetown, TX 78628",
+    "latitude": 30.632919900529,
+    "longitude": -97.695763068295,
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          7
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Selected oysters $2, Gold Margaritas and draft beers $5, selected wines half off; food offers include $7 fried pickles and $12 calamari. Confirm current menu with the restaurant.",
+    "min_price": 2,
+    "source_url": "https://www.fishcitygrill.com/locations/georgetown"
+  },
+  {
+    "timezone": "America/Chicago",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "id": "salt-traders-rr",
+    "name": "Salt Traders \u00b7 Round Rock",
+    "address": "2850 N Interstate Hwy 35, Round Rock, TX 78681",
+    "latitude": 30.5398343,
+    "longitude": -97.6931579,
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 930,
+        "end": 1260
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 930,
+        "end": 1110
+      }
+    ],
+    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
+    "min_price": null,
+    "source_url": "https://salttraderscc.com/location/round-rock/"
+  },
+  {
+    "timezone": "America/Chicago",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "id": "salt-traders-zilker",
+    "name": "Salt Traders \u00b7 Zilker",
+    "address": "1101 S Mopac Expressway, Austin, TX 78746",
+    "latitude": 30.2653143,
+    "longitude": -97.781001,
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 930,
+        "end": 1260
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 930,
+        "end": 1110
+      }
+    ],
+    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
+    "min_price": null,
+    "source_url": "https://salttraderscc.com/location/austin-zilker/"
+  }
+]

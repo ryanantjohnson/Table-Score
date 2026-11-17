@@ -8,6 +8,7 @@ const recipe=fixture.recipes[0];
 function setup({enabled=true,active=true,delay=0}={}){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadges"><span>Existing badge</span></div><div id="profileBadgeFolderCard"></div></section><section id="discover" class="screen"><div id="locationCard"></div><div id="discoverPeopleCard"></div></section><section id="saved" class="screen"><div id="savedList"></div></section></div><nav class="nav">Main navigation</nav><section id="whereToEatModal" class="hidden"><div class="tr-modal-scroll"><div>Free Run It</div></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
  const w=dom.window;w.scrollTo=()=>{};w.matchMedia=()=>({matches:true});w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
+ w.__maps=[];w.loadGoogleMaps=async()=>{};w.google={maps:{Map:class{constructor(host,opts){this.center=opts.center;this.ready=Promise.resolve();w.__maps.push(this);}getCenter(){return {lat:()=>this.center.lat,lng:()=>this.center.lng};}async syncState(){}dispose(){this.disposed=true;}},Marker:class{setMap(){}addListener(){}}}};
  w.currentTableScoreCoords=()=>({latitude:30.53,longitude:-97.69});
  w.showScreen=id=>{const prev=w.document.querySelector('.screen.active')?.id;if(prev!==id)stack.push(prev);w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));if(id==='profile')w.renderProfile();};
  w.tableRecBack=()=>{const prev=stack.pop()||'profile';w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===prev));return true;};
@@ -54,7 +55,7 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  click('filter','sources');assert(w.document.querySelector('#pro').textContent.includes('Chick-fil-A'));assert(w.document.querySelector('#pro').textContent.includes('refined peanut oil'));click('filter','documented');assert.equal(doc.querySelectorAll('.pr-restaurant').length,0);
  click('filter','all');click('venue',fixture.places[0].id);assert(doc.querySelector('#pro').textContent.includes('No reviewed evidence'));
  assert(doc.querySelector('#pro').textContent.includes('arachis/peanut'));
- await open('happy');change('prDay','Mon');change('prBudget','0');assert(doc.querySelectorAll('.pr-deal').length>0);
+ await open('happy');assert(doc.getElementById('prHappyMap'));const map=w.__maps.at(-1);assert(map);map.center={lat:0,lng:0};click('mapArea');await flush();assert.equal(doc.querySelectorAll('.pr-deal').length,0);click('resetMap');await flush();assert(map.disposed);change('prDay','Mon');change('prBudget','0');assert(doc.querySelectorAll('.pr-deal').length>0);
  assert(doc.querySelector('.pr-deal a').href.startsWith('https://'));
  change('prBudget','5');assert(!doc.querySelector('#pro').textContent.includes('Half-price starters'));
  change('prBudget','0');click('deal',fixture.offers[0].id);await flush();assert(w.__books.a.document.savedDeals.includes(fixture.offers[0].id));

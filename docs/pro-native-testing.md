@@ -11,7 +11,7 @@ The feature screens live in TableRec's existing app document, use its header, bo
 
 ## Connected services
 
-The existing Supabase project provides 3,796 attributed Wikibooks recipes, six source-linked Central Texas happy-hour locations, server-checked Pro access, private dietary preferences, and revision-protected private notebook saves. Recipe and special saves survive app reloads. Legacy notebook fields are preserved, but Journal and Trip Planner interfaces are removed. Edits on another device cause an explicit conflict rather than silently overwriting that device's changes. Account changes discard in-memory state and stale requests.
+The existing Supabase project provides 3,796 attributed Wikibooks recipes, source-linked Central Texas happy-hour locations, server-checked Pro access, private dietary preferences, and revision-protected private notebook saves. Recipe and special saves survive app reloads. Legacy notebook fields are preserved, but Journal and Trip Planner interfaces are removed. Edits on another device cause an explicit conflict rather than silently overwriting that device's changes. Account changes discard in-memory state and stale requests.
 
 The dietary source library contains 16 published US restaurant/brand guides. Restaurant references are matched conservatively by brand name, with additional Austin scope checks for local entries. This is source-linked guidance, not dish-level approval, certification validation, or a guarantee of suitability. No fictional restaurant evidence is used.
 
@@ -34,3 +34,6 @@ Happy Hours, Recipe Wheel, and Dining Needs are ready for private review once th
 
 ## Recipe and Pro presentation refinement
 Everyday favorites defaults to familiar dish-name families from the licensed catalog; Explore everything retains the full collection. Ingredient/category filters apply to both. This is a preference collection, not a dietary suitability filter. A server batch supplies 12 real candidates and the selected recipe; the reel cycles names, slows down, and reveals the result. Reduced-motion users skip the cycling. Repeated taps are blocked; leaving the screen or switching accounts discards a pending reveal. Pro entry cards now include benefit copy, feature icons and a stronger accent treatment.
+
+## Happy Hour map and source expansion
+Map uses the existing Google Maps integration, shows filtered listing pins, supports Search this area and return to the TableRec browsing area, and keeps the list usable when map loading fails. Sources added November 17: Fish City Grill Georgetown and Salt Traders Round Rock/Zilker. Total catalog is nine locations, still insufficient for broad paid-service coverage. New source records and review dates are in data/happy-hour-expansion.json. Fish City marker uses a Census address match; Salt Traders coordinates are published by the restaurant. $2.99/month is the approved consumer Pro price direction; no real checkout is active.
