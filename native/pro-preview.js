@@ -28,7 +28,7 @@ const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',qu
 let clearing=false,signingOut=false,epoch=0,loadPromise=null,loaded=false,access=false,revision=0,saveBusy=false,savePending=false,saveConflict=false,loading=false,errorText='',feature='home';
 const client=()=>{try{return typeof db!=='undefined'?db:null;}catch{return null;}};
 let state=initial(),account=null,screen=null,view='home',detail=null,recipeTimer=null;
-const titles={home:'TableRec Pro',needs:'Dining Needs',edit:'Your dining needs',venue:'Restaurant details',happy:'Happy Hours',recipes:'Recipe Wheel',recipe:'Your recipe',trip:'Trip Planner',journal:'Dining Journal',write:'Add a visit',about:'About your access'};
+const titles={home:'TableRec Pro',needs:'Dining Needs',edit:'Your dining needs',venue:'Restaurant details',happy:'Happy Hours',recipes:'Recipe Wheel',recipe:'Your recipe',about:'About your access'};
 const venue=id=>VENUES.find(v=>v.id===id);
 function user(){try{return typeof currentUser!=='undefined'?currentUser:null;}catch(_){return null;}}
 function activeNeeds(){return [...new Set([...state.needs,...(state.groupOn?state.group:[])])];}
@@ -39,15 +39,17 @@ function note(text){return '<p class="pr-note">'+esc(text)+'</p>';}
 function heading(text,sub){return '<div class="pr-heading"><h2>'+esc(text)+'</h2>'+(sub?'<p>'+esc(sub)+'</p>':'')+'</div>';}
 function field(label,id,html){return '<div class="field"><label for="'+id+'">'+esc(label)+'</label>'+html+'</div>';}
 function select(id,items,value){return '<select id="'+id+'">'+items.map(x=>'<option value="'+esc(x)+'"'+(String(x)===String(value)?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>';}
-function go(next,id){if(!user())return;feature=next;view=next;detail=id||null;render();root.scrollTo(0,0);screen.querySelector('h1')?.focus();}
+const supportedViews=new Set(['home','needs','edit','venue','happy','recipes','recipe','about']);
+function go(next,id){if(!user())return;if(!supportedViews.has(next))next='home';feature=next;view=next;detail=id||null;render();root.scrollTo(0,0);screen.querySelector('h1')?.focus();}
 function open(next='home'){
+ if(!supportedViews.has(next))next='home';
  sync();if(!user()||!screen){root.openAccount?.();return;}
  feature=next;view=next;detail=null;
  const settings=document.getElementById('settingsModal');if(settings&&!settings.classList.contains('hidden'))root.closeSettings?.();
  if(typeof root.closeWhereToEat==='function')root.closeWhereToEat();
  root.showScreen('pro');render();void loadAccount();
 }
-function back(){const parent={edit:'needs',venue:'needs',recipe:'recipes',write:'journal'}[view];if(parent)return go(parent);if(view!=='home'&&view!==feature)return go('home');if(!root.tableRecBack?.())root.showScreen('profile');}
+function back(){const parent={edit:'needs',venue:'needs',recipe:'recipes'}[view];if(parent)return go(parent);if(view!=='home'&&view!==feature)return go('home');if(!root.tableRecBack?.())root.showScreen('profile');}
 function clear(){
  clearing=true;epoch++;clearTimeout(recipeTimer);recipeTimer=null;state=initial();loaded=false;loadPromise=null;loading=false;access=false;revision=0;saveBusy=false;saveConflict=false;errorText='';VENUES=[];DEALS=[];RECIPES=[];
  const wasActive=screen?.classList.contains('active');screen?.remove();screen=null;if(wasActive)root.showScreen('profile');
@@ -55,12 +57,12 @@ function clear(){
 }
 function render(){
  if(!screen)return;
- const body=loading?'<div class="pr-empty"><h2>Getting your table ready…</h2><p>Loading your private account.</p></div>':errorText?'<div class="pr-empty"><h2>We couldn’t load this right now.</h2><p>'+esc(errorText)+'</p>'+button('Try again','retry','','primary')+'</div>':(!access&&!['home','about','edit','needs'].includes(view))?lockedView():{home:homeView,needs:needsView,edit:editView,venue:venueView,happy:happyView,recipes:recipesView,recipe:recipeView,trip:tripView,journal:journalView,write:writeView,about:aboutView}[view]();
+ const body=loading?'<div class="pr-empty"><h2>Getting your table ready…</h2><p>Loading your private account.</p></div>':errorText?'<div class="pr-empty"><h2>We couldn’t load this right now.</h2><p>'+esc(errorText)+'</p>'+button('Try again','retry','','primary')+'</div>':(!access&&!['home','about','edit','needs'].includes(view))?lockedView():{home:homeView,needs:needsView,edit:editView,venue:venueView,happy:happyView,recipes:recipesView,recipe:recipeView,about:aboutView}[view]();
  screen.innerHTML='<div class="backline pr-backline">'+button(icon('back'),'back','','backbtn')+'<span class="muted">'+(view==='home'?'Profile':'TableRec Pro')+'</span></div><div class="pr-title"><h1 class="page-title" tabindex="-1">'+titles[view]+'</h1>'+(view==='home'?badge('PRO','pr-orange'):'')+'</div>'+body+'<div class="pr-feedback" role="status" aria-live="polite"></div>';
 }
 function homeView(){
  return '<div class="pr-membership"><div class="pr-member-top">'+badge(access?'PRO ACCESS ACTIVE':'TABLEREC PRO','pr-orange')+button('Membership details','go','about','linkbtn')+'</div><h2>More ways to find your favorite.</h2><p>Your dining needs live in Profile. Find Happy Hours in Discover and the Recipe Wheel in Run It.</p></div><div class="pr-group">'+
- row('Dining Needs','Private preferences and restaurant evidence','go','needs')+row('Happy Hours','Nearby specials with sources and schedules','go','happy')+row('Cook at home','Thousands of recipes in the Recipe Wheel','go','recipes')+row('Trip Planner','Your day-by-day dining plans','go','trip')+row('Dining Journal','Private notes, saved to your account','go','journal')+'</div>'+note('Run It stays free and unlimited. No payments are collected in this build.');
+ row('Dining Needs','Private preferences and restaurant evidence','go','needs')+row('Happy Hours','Nearby specials with sources and schedules','go','happy')+row('Cook at home','Thousands of recipes in the Recipe Wheel','go','recipes')+'</div>'+note('Run It stays free and unlimited. No payments are collected in this build.');
 }
 function needsView(){
  const n=activeNeeds();let places=VENUES.filter(v=>!state.query||[v.name,v.cuisine,v.area].join(' ').toLowerCase().includes(state.query.toLowerCase()));
@@ -80,7 +82,7 @@ function editView(){
 }
 function venueView(){
  const v=venue(detail);if(!v)return needsView();const e=evaluate(v,activeNeeds());
- return heading(v.name,v.cuisine+' · '+v.area)+(officialFor(v)?sourceCard(officialFor(v)):'')+badge('NO REVIEWED DISH DATA')+'<div class="card"><h2 class="pr-dish-title">Before you order</h2>'+note('TableRec does not have reviewed ingredient or preparation information for this restaurant. Your preferences alone cannot establish suitability.')+(e.rows.length?e.rows.map(r=>'<div class="pr-evidence"><div><strong>'+esc(r.need)+'</strong>'+badge('Unknown')+'</div><p>'+esc(r.e.note)+'</p></div>').join(''):note('Choose dining needs in Profile to keep your questions together.'))+'</div><h3 class="pr-label">Questions for the restaurant</h3><div class="pr-group">'+['Ask about every ingredient, seasoning, sauce, and subingredient.','Ask which oils and derivatives are used, including arachis/peanut and gingelly/sesame oil.','Ask about shared fryers, grills, utensils, and preparation surfaces.','For halal or kosher, ask what the certificate covers and when it expires.'].map(t=>'<div class="pr-detail">'+esc(t)+'</div>').join('')+'</div>'+button('View restaurant','openRestaurant',v.id,'primary')+button('Add to trip','addStop',v.id,'secondary');
+ return heading(v.name,v.cuisine+' · '+v.area)+(officialFor(v)?sourceCard(officialFor(v)):'')+badge('NO REVIEWED DISH DATA')+'<div class="card"><h2 class="pr-dish-title">Before you order</h2>'+note('TableRec does not have reviewed ingredient or preparation information for this restaurant. Your preferences alone cannot establish suitability.')+(e.rows.length?e.rows.map(r=>'<div class="pr-evidence"><div><strong>'+esc(r.need)+'</strong>'+badge('Unknown')+'</div><p>'+esc(r.e.note)+'</p></div>').join(''):note('Choose dining needs in Profile to keep your questions together.'))+'</div><h3 class="pr-label">Questions for the restaurant</h3><div class="pr-group">'+['Ask about every ingredient, seasoning, sauce, and subingredient.','Ask which oils and derivatives are used, including arachis/peanut and gingelly/sesame oil.','Ask about shared fryers, grills, utensils, and preparation surfaces.','For halal or kosher, ask what the certificate covers and when it expires.'].map(t=>'<div class="pr-detail">'+esc(t)+'</div>').join('')+'</div>'+button('View restaurant','openRestaurant',v.id,'primary');
 }
 function happyView(){
  const coords=browseCoords();const now=new Date();const dayNum=DAY.indexOf(state.day)+1;
@@ -101,23 +103,8 @@ function recipeView(){
  const r=state.recipe?.id===detail?state.recipe:state.savedRecipes.find(x=>x.id===detail);if(!r)return recipesView();
  return '<div class="pr-eyebrow">'+esc(r.category)+' · '+esc(r.time_text||'See recipe for timing')+'</div>'+heading(r.name,r.servings_text?'Serves '+r.servings_text:'Review quantities before cooking')+note('Check suitability for your own needs before cooking.')+'<h3 class="pr-label">Ingredients</h3><div class="pr-group">'+(r.ingredients||[]).map(x=>'<div class="pr-detail">'+esc(x)+'</div>').join('')+'</div><h3 class="pr-label">Method</h3><div class="pr-group">'+(r.steps||[]).map((x,i)=>'<div class="pr-method"><b>'+(i+1)+'</b><p>'+esc(x)+'</p></div>').join('')+'</div>'+(r.notes?.length?note(r.notes.join(' ')):'')+button(state.savedRecipes.some(x=>x.id===r.id)?'Saved to your recipes':'Save recipe','saveRecipe',r.id,'primary')+'<p class="pr-note">'+esc(r.attribution||'Wikibooks Cookbook contributors')+' · <a href="'+safeUrl(r.source_url)+'" target="_blank" rel="noopener noreferrer">Original recipe</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>';
 }
-function tripView(){
- const total=state.trip.stops.reduce((a,s)=>a+s.cost,0);
- return '<div class="pr-group">'+field('Trip name','prTripName','<input id="prTripName" maxlength="60" value="'+esc(state.trip.name)+'">')+'<div class="pr-inline-fields">'+field('Days','prDays',select('prDays',[1,2,3,4,5],state.trip.days))+field('Food budget ($)','prTripBudget','<input id="prTripBudget" type="number" min="0" max="100000" value="'+state.trip.budget+'">')+'</div></div>'+
- '<div class="pr-budget"><div><small>PLANNED FOOD SPEND</small><strong>$'+total.toFixed(0)+'</strong></div><div><small>'+(total>state.trip.budget?'OVER BUDGET':'REMAINING')+'</small><strong>$'+Math.abs(state.trip.budget-total).toFixed(0)+'</strong></div></div>'+
- note('Your own estimates exclude tax, tip, and travel. Adding a stop does not make a reservation.')+
- Array.from({length:state.trip.days},(_,i)=>'<h3 class="pr-label">Day '+(i+1)+'</h3><div class="pr-group">'+state.trip.stops.filter(s=>s.day===i+1).sort((a,b)=>a.time.localeCompare(b.time)).map(s=>'<div class="pr-stop"><strong>'+esc(s.name||venue(s.venue)?.name||'Restaurant')+'</strong><div class="pr-inline-fields">'+field('Time','time'+s.id,'<input id="time'+s.id+'" type="time" data-stop="'+s.id+'" data-field="time" value="'+s.time+'">')+field('Estimate ($)','cost'+s.id,'<input id="cost'+s.id+'" type="number" min="0" max="100000" data-stop="'+s.id+'" data-field="cost" value="'+s.cost+'">')+'</div>'+button('Remove stop','removeStop',s.id,'linkbtn')+'</div>').join('')+'<label class="pr-add-stop">Add a restaurant<select aria-label="Add restaurant to day '+(i+1)+'" data-add-day="'+(i+1)+'"><option value="">Choose a place</option>'+VENUES.map(v=>'<option value="'+v.id+'">'+esc(v.name)+'</option>').join('')+'</select></label></div>').join('');
-}
-function journalView(){
- return '<div class="pr-journal-intro"><p class="muted">The meals, the company, the little details.</p>'+button(icon('plus')+' Add a visit','go','write','primary')+'</div>'+
- note('Private to your account. Entries never appear in your feed or on your public profile.')+
- (state.journal.length?state.journal.map(j=>'<article class="card"><div class="pr-eyebrow">'+esc(j.date)+'</div><h2>'+esc(j.place)+'</h2><p><strong>'+esc(j.dish)+'</strong></p><p class="pr-preserve">'+esc(j.notes)+'</p>'+button('Delete entry','deleteJournal',j.id,'linkbtn')+'</article>').join(''):'<div class="pr-empty">'+icon('journal')+'<h2>A table worth remembering.</h2><p>Save your first visit to start your own dining journal.</p></div>');
-}
-function writeView(){
- return '<form id="prJournalForm">'+field('Restaurant','prPlace','<input id="prPlace" maxlength="100" required placeholder="Where did you eat?">')+field('Date','prDate','<input id="prDate" type="date" required value="'+new Date().toLocaleDateString('en-CA')+'">')+field('What did you order?','prDish','<input id="prDish" maxlength="120" required placeholder="The dish worth remembering">')+field('Your notes','prNotes','<textarea id="prNotes" rows="5" maxlength="1500" placeholder="Who you went with, what you loved, what to try next…"></textarea>')+note('Saved privately to your TableRec account. Nothing is posted publicly.')+'<button class="primary" type="submit">Save visit</button></form>';
-}
-function aboutView(){return heading(access?'Your Pro access is active':'A little more TableRec.','No payment is collected in this build.')+'<div class="pr-group"><div class="pr-detail"><strong>Built around your dining life</strong><p>Happy Hours in Discover. Dining Needs in Profile. Cook at home in Run It. Private trips and a dining journal in Saved.</p></div><div class="pr-detail"><strong>Real coverage, clear limits</strong><p>Recipes use the attributed Wikibooks Cookbook collection. Happy Hours currently covers six source-linked Central Texas locations. An initial official-brand dietary guide library is available; reviewed local dish suitability is not yet established.</p></div><div class="pr-detail"><strong>Your private account</strong><p>Preferences, recipes, plans, and journal entries use private account storage. No purchase flow is active. Run It stays free and unlimited.</p></div></div>';}
-function lockedView(){return '<div class="pr-empty">'+icon('needs')+'<h2>A little more with Pro.</h2><p>Discover specials, spin recipes, and keep your own dining plans. Membership purchases are not open yet. You have not been charged.</p>'+button('Membership details','go','about','primary')+'</div>';}
+function aboutView(){return heading(access?'Your Pro access is active':'A little more TableRec.','No payment is collected in this build.')+'<div class="pr-group"><div class="pr-detail"><strong>Built around your dining life</strong><p>Happy Hours in Discover. Dining Needs in Profile. Cook at home in Run It.</p></div><div class="pr-detail"><strong>Real coverage, clear limits</strong><p>Recipes use the attributed Wikibooks Cookbook collection. Happy Hours currently covers six source-linked Central Texas locations. An initial official-brand dietary guide library is available; reviewed local dish suitability is not yet established.</p></div><div class="pr-detail"><strong>Your private account</strong><p>Preferences, saved recipes, and saved specials use private account storage. No purchase flow is active. Run It stays free and unlimited.</p></div></div>';}
+function lockedView(){return '<div class="pr-empty">'+icon('needs')+'<h2>A little more with Pro.</h2><p>Discover specials and find your next home-cooked favorite. Membership purchases are not open yet. You have not been charged.</p>'+button('Membership details','go','about','primary')+'</div>';}
 function safeUrl(url){try{const u=new URL(url);return ['https:','http:'].includes(u.protocol)?esc(u.href):'#';}catch{return '#';}}
 function browseCoords(){try{return typeof currentTableScoreCoords==='function'?currentTableScoreCoords():null;}catch{return null;}}
 function miles(a,b,c,d){const rad=x=>x*Math.PI/180;const h=Math.sin(rad(c-a)/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(rad(d-b)/2)**2;return 3958.8*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
@@ -163,7 +150,6 @@ async function savePreferences(clear=false){const e=epoch,id=user()?.id;if(!id)r
  try{const r=clear?await client().from('user_dining_preferences').delete().eq('user_id',id):await client().from('user_dining_preferences').upsert({user_id:id,needs,notes,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(epoch!==e||user()?.id!==id)return;if(r.error)throw Error('Your dining needs could not be saved. Try again.');state.needs=needs;state.dietNotes=notes;go('needs');updateEntries();toast(clear?'Dining needs cleared':'Dining needs saved privately');}catch(err){if(epoch===e){toast(err.message);if(b)b.disabled=false;}}
 }
 function toast(s){const el=screen?.querySelector('.pr-feedback');if(el)el.textContent=s;}
-function addStop(id,day=1){const v=venue(id);if(!v)return;state.trip.stops.push({id:Date.now()+Math.floor(Math.random()*100000),venue:id,name:v.name,day,time:'18:00',cost:0});}
 function action(act,val){
  if(act==='retrySave')return void saveNotebook();if(act==='reload')return void loadAccount(true);if(act==='back')return back();if(act==='go')return go(val);if(act==='retry')return void loadAccount(true);if(act==='venue')return go('venue',val);if(act==='recipe')return go('recipe',val);
  if(act==='saveNeeds')return void savePreferences();if(act==='clearNeeds')return void savePreferences(true);
@@ -172,11 +158,8 @@ function action(act,val){
  if(act==='spin')return void spinLive();
  if(act==='openRestaurant'){if(typeof root.openRestaurantById==='function')root.openRestaurantById(val);return;}
  if(act==='directions'){const d=DEALS.find(d=>d.id===val);if(d)root.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(d.address),'_blank','noopener,noreferrer');return;}
- if(act==='addStop'){addStop(val);void saveNotebook();return;}
  if(act==='deal'){state.savedDeals=state.savedDeals.includes(val)?state.savedDeals.filter(x=>x!==val):[...state.savedDeals,val];}
  if(act==='saveRecipe'){const r=state.recipe?.id===val?state.recipe:state.savedRecipes.find(r=>r.id===val);if(r&&!state.savedRecipes.some(x=>x.id===val))state.savedRecipes.push(r);}
- if(act==='removeStop')state.trip.stops=state.trip.stops.filter(s=>String(s.id)!==val);
- if(act==='deleteJournal')state.journal=state.journal.filter(j=>String(j.id)!==val);
  render();void saveNotebook();
 }
 function bind(){
@@ -191,14 +174,7 @@ function bind(){
   if(t.id==='prOpen'){state.openNow=t.value==='Active now';render();return;}
   if(t.id==='prDay'){state.day=t.value;render();}
   if(t.id==='prBudget'){state.budget=+t.value;render();}
-  if(t.id==='prTripName')state.trip.name=t.value;
-  if(t.id==='prDays'){state.trip.days=+t.value;state.trip.stops.forEach(s=>s.day=Math.min(s.day,state.trip.days));render();}
-  if(t.id==='prTripBudget'){state.trip.budget=Math.max(0,Math.min(100000,+t.value||0));render();}
-  if(t.dataset.addDay&&t.value){addStop(t.value,+t.dataset.addDay);render();}
-  if(t.id==='prTripName'||t.id==='prTripBudget'||t.id==='prDays'||t.dataset.addDay)void saveNotebook();
-  if(t.dataset.stop){const s=state.trip.stops.find(x=>String(x.id)===t.dataset.stop);if(s){s[t.dataset.field]=t.dataset.field==='cost'?Math.max(0,Math.min(100000,+t.value||0)):t.value;render();void saveNotebook();}}
  });
- screen.addEventListener('submit',e=>{if(e.target.id!=='prJournalForm'||!access)return;e.preventDefault();const get=id=>screen.querySelector('#'+id).value.trim();if(!get('prPlace')||!get('prDish'))return;state.journal.unshift({id:Date.now(),place:get('prPlace'),dish:get('prDish'),notes:get('prNotes'),date:get('prDate')});go('journal');void saveNotebook();});
 }
 function entry(title,sub,next,ico){const n=document.createElement('div');n.className='card pr-profile-entry';n.dataset.trProEntry=next;n.innerHTML='<button type="button"><span class="pr-feature-icon">'+icon(ico||next)+'</span><span class="pr-row-text"><strong>'+esc(title)+' '+badge('PRO','pr-orange')+'</strong><small>'+esc(sub)+'</small></span>'+icon('arrow')+'</button>';n.querySelector('button').addEventListener('click',()=>open(next));return n;}
 function updateEntries(){document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>{const k=n.dataset.trProEntry;const b=n.querySelector('.pr-badge');if(b)b.textContent=loaded?(access?'PRO':'PRO · LOCKED'):'PRO';if(k==='needs'&&loaded){const small=n.querySelector('small');if(small)small.textContent=state.needs.length?state.needs.length+' private dining needs saved':'Allergies, medical needs, and dietary preferences';}});}
@@ -206,10 +182,7 @@ function mountEntries(){
  const add=(parent,title,sub,next,ico,anchor)=>{if(!parent||parent.querySelector('[data-tr-pro-entry="'+next+'"]'))return;const n=entry(title,sub,next,ico);if(anchor?.parentNode===parent)parent.insertBefore(n,anchor);else parent.append(n);};
  const p=document.getElementById('profile');add(p,'Your Dining Needs','Allergies, medical needs, and dietary preferences','needs','needs',document.getElementById('profileBadgeFolderCard'));
  const discover=document.getElementById('discover');add(discover,'Happy Hours','Find nearby specials, times, and a little more value','happy','happy',document.getElementById('locationCard'));
- add(discover,'Plan a food trip','Build your next day around a good meal','trip','trip',document.getElementById('discoverPeopleCard'));
  const run=document.querySelector('#whereToEatModal .tr-modal-scroll');add(run,'Cook at home','Give the Recipe Wheel a spin','recipes','recipes',run?.firstElementChild);
- const saved=document.getElementById('saved');add(saved,'Your Dining Journal','The little details worth remembering','journal','journal',document.getElementById('savedList'));
- add(saved,'Your Trip Planner','Your restaurants, days, and food budget','trip','trip',document.getElementById('savedList'));
  updateEntries();
 }
 function sync(){
@@ -223,7 +196,7 @@ const extra=document.createElement('style');extra.textContent=`
 `;document.head.append(extra);
 const origRender=root.renderProfile;if(typeof origRender==='function')root.renderProfile=function(){const r=origRender.apply(this,arguments);sync();return r;};
 const origSignOut=root.signOut;if(typeof origSignOut==='function')root.signOut=async function(){signingOut=true;clear();account=null;try{return await origSignOut.apply(this,arguments);}finally{signingOut=false;sync();}};
-const origBack=root.tableRecBack;if(typeof origBack==='function')root.tableRecBack=function(){const parent=({edit:'needs',venue:'needs',recipe:'recipes',write:'journal'})[view];if(screen?.classList.contains('active')&&parent){go(parent);return true;}return origBack.apply(this,arguments);};
+const origBack=root.tableRecBack;if(typeof origBack==='function')root.tableRecBack=function(){const parent=({edit:'needs',venue:'needs',recipe:'recipes'})[view];if(screen?.classList.contains('active')&&parent){go(parent);return true;}return origBack.apply(this,arguments);};
 root.TableRecProPreview={open,close:back,sync,reload:()=>loadAccount(true)};
 setInterval(sync,1000);sync();
 })(window);
