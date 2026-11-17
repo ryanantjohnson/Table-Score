@@ -3,8 +3,14 @@ on:
   pull_request:
     paths:
       - 'native/pro-preview.*'
+      - 'native/dining-sources.js'
+      - 'data/dining-sources.json'
       - 'native/prepare-web.mjs'
       - 'tests/pro-native-smoke.cjs'
+      - 'tests/pro-browser.cjs'
+      - 'tests/pro-fixture.json'
+      - 'index.html'
+      - 'app-intro.js'
       - '.github/workflows/pro-native-checks.yml'
   workflow_dispatch:
 permissions:
@@ -20,7 +26,7 @@ jobs:
         with:
           node-version: '22'
       - name: Install isolated test dependency
-        run: npm install --prefix "$RUNNER_TEMP/pro-test-deps" --no-audit --no-fund --no-package-lock jsdom@26
+        run: npm install --prefix "$RUNNER_TEMP/pro-test-deps" --no-audit --no-fund --no-package-lock jsdom@26.1.0 playwright@1.62.1
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs
       - name: Check tester and standard bundle separation
@@ -29,3 +35,12 @@ jobs:
           node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
           TR_PRO_PREVIEW=false node native/prepare-web.mjs
           node -e "const fs=require('fs'); if(fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled'))throw Error('Pro leaked into standard build');"
+      - name: Install browser for layout checks
+        run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" "$RUNNER_TEMP/pro-test-deps/node_modules/.bin/playwright" install --with-deps chromium
+      - name: Check Pro mobile layouts
+        run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-browser.cjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pro-layout-review
+          path: test-results/pro/*.png

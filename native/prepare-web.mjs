@@ -45,15 +45,17 @@ if (build) {
 // Remove the retired embedded page and any stale tester script on repeat builds.
 await rm(resolve(webDirectory, 'pro-preview.html'), { force: true });
 await rm(resolve(webDirectory, 'pro-preview.js'), { force: true });
+await rm(resolve(webDirectory, 'dining-sources.js'), { force: true });
 // Pro is bundled only for an explicitly selected tester build.
 if (process.env.TR_PRO_PREVIEW === 'true') {
-  for (const name of ['pro-preview.js']) {
+  for (const name of ['dining-sources.js', 'pro-preview.js']) {
     await copyFile(resolve(nativeDirectory, name), resolve(webDirectory, name));
   }
   const target = resolve(webDirectory, 'index.html');
   const html = await readFile(target, 'utf8');
-  const entry = '<script>window.tableRecProPreviewEnabled=true;</script><script src="pro-preview.js"></script>';
+  const entry = '<script src="dining-sources.js"></script><script src="pro-preview.js"></script>';
+  const flagged = html.replace('<head>', '<head>\n<script>window.tableRecProPreviewEnabled=true;</script>');
   if (!html.includes('</body>')) throw new Error('Cannot install Pro tester entry.');
-  await writeFile(target, html.replace('</body>', () => entry + '\n</body>'));
+  await writeFile(target, flagged.replace('</body>', () => entry + '\n</body>'));
 }
 console.log('TableRec web bundle prepared in native/www.');

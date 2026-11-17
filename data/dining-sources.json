@@ -1,0 +1,448 @@
+{
+  "version": 1,
+  "reviewed_on": "2026-11-16",
+  "coverage": "Initial US official-source reference library; no local inspections or suitability guarantees",
+  "sources": [
+    {
+      "id": "chipotle",
+      "name": "Chipotle",
+      "aliases": [
+        "chipotle"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.chipotle.com/content/chipotle/us/en/allergens.html",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The brand publishes an allergen matrix and special-diet notes. It warns that preparation cross-contact and test-menu exceptions can occur.",
+      "claims": [
+        {
+          "needs": [
+            "Peanut",
+            "Tree nuts",
+            "Egg",
+            "Sesame",
+            "Fish",
+            "Crustacean shellfish",
+            "Molluscs",
+            "Mustard"
+          ],
+          "status": "brand-reported absence",
+          "note": "Chipotle reports these are not ingredients in its standard food. This is not an allergen-free restaurant guarantee; limited-time or test products may differ."
+        },
+        {
+          "needs": [
+            "No pork"
+          ],
+          "status": "reported ingredient",
+          "note": "Carnitas contains pork."
+        }
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "chick-fil-a",
+      "name": "Chick-fil-A",
+      "aliases": [
+        "chick fil a",
+        "chickfila"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.chick-fil-a.com/nutrition-allergens",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "Ingredients vary with products, suppliers, and locations. Shared preparation areas prevent an allergen-free guarantee.",
+      "claims": [
+        {
+          "needs": [
+            "Peanut"
+          ],
+          "status": "reported derivative",
+          "note": "Hand-breaded chicken is cooked in fully refined peanut oil. Keep this peanut-derived oil visible even when allergen-label rules exempt highly refined oils. TableRec makes no individual suitability determination."
+        }
+      ],
+      "additional_sources": [
+        "https://www.chick-fil-a.com/customer-support/our-food/nutrition-and-allergens/does-chick-fil-a-use-peanut-oil"
+      ]
+    },
+    {
+      "id": "five-guys",
+      "name": "Five Guys",
+      "aliases": [
+        "five guys"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.fiveguys.com/nutritional-allergy-information/",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The official ingredient FAQ covers buns, frying oil, and equipment. Cross-contact remains possible.",
+      "claims": [
+        {
+          "needs": [
+            "Peanut"
+          ],
+          "status": "reported derivative",
+          "note": "Fries use refined peanut oil; peanuts are also served in restaurants. The brand reports fryers used only for fries. Dedicated equipment does not establish personal suitability."
+        },
+        {
+          "needs": [
+            "Wheat",
+            "Milk",
+            "Egg",
+            "Soy",
+            "Sesame"
+          ],
+          "status": "reported ingredient",
+          "note": "The published bun ingredient list includes wheat flour, milk, egg, soy-containing shortening, and sesame."
+        }
+      ],
+      "additional_sources": [
+        "https://www.fiveguys.com/support-hub/faqs/"
+      ]
+    },
+    {
+      "id": "mcdonalds",
+      "name": "McDonald’s",
+      "aliases": [
+        "mcdonalds",
+        "mcdonald s"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.mcdonalds.com/us/en-us/product/medium-french-fries.html",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "This record concerns US French Fries, not international recipes. Shared equipment and ingredient changes remain relevant.",
+      "claims": [
+        {
+          "needs": [
+            "Milk",
+            "Wheat",
+            "Celiac / gluten"
+          ],
+          "status": "reported derivative",
+          "note": "US fries list natural beef flavor with hydrolyzed wheat and milk starting ingredients. The product declares wheat and milk."
+        },
+        {
+          "needs": [
+            "Vegan",
+            "Vegetarian"
+          ],
+          "status": "reported ingredient",
+          "note": "US fries include natural beef flavor; do not infer that they meet a vegetarian or vegan requirement."
+        },
+        {
+          "needs": [
+            "Halal",
+            "Kosher"
+          ],
+          "status": "no certification claim",
+          "note": "McDonald’s USA does not certify or claim its US menu items meet halal, kosher, or other religious requirements."
+        }
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "cava",
+      "name": "CAVA",
+      "aliases": [
+        "cava"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://cava.com/nutrition",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "Official nutrition and allergen guides are available. Supplier variation, shared preparation, and substitutions limit allergen and animal-product assurances.",
+      "claims": [],
+      "additional_sources": []
+    },
+    {
+      "id": "sweetgreen",
+      "name": "sweetgreen",
+      "aliases": [
+        "sweetgreen",
+        "sweet green"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.sweetgreen.com/nutrition/",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The official guide requires choosing a location for item-level nutrition, allergens, and ingredients. A location selection is required before importing item claims.",
+      "claims": [],
+      "additional_sources": []
+    },
+    {
+      "id": "pfchangs",
+      "name": "P.F. Chang’s",
+      "aliases": [
+        "p f chang s",
+        "pf changs",
+        "p f changs"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.pfchangs.com/nutrition/allergens-to-go",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The takeout matrix covers allergens and additional sensitivities. Shared cooking prevents a no-cross-contact guarantee. Dine-in and takeout scopes must not be mixed.",
+      "claims": [
+        {
+          "needs": [
+            "Celiac / gluten"
+          ],
+          "status": "reported procedure",
+          "note": "The separate gluten-free menu describes gluten-free ingredients and preparation procedures. It still asks guests to notify staff; this is not a celiac-safety certification."
+        }
+      ],
+      "additional_sources": [
+        "https://www.pfchangs.com/menu/gluten-free"
+      ]
+    },
+    {
+      "id": "panera",
+      "name": "Panera Bread",
+      "aliases": [
+        "panera"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.panerabread.com/en-us/menu/nutritious-eating/allergen-and-nutrition-information.html",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The official page links US allergen and nutrition guides. Item and location scope must be checked; no individual dish claims have been imported.",
+      "claims": [],
+      "additional_sources": []
+    },
+    {
+      "id": "jersey-mikes",
+      "name": "Jersey Mike’s",
+      "aliases": [
+        "jersey mike s",
+        "jersey mikes"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.jerseymikes.com/menu/nutrition",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The brand warns that shared equipment, supplier changes, substitutions, and regional differences can affect allergen information. Item details require the current official tool.",
+      "claims": [],
+      "additional_sources": []
+    },
+    {
+      "id": "red-robin",
+      "name": "Red Robin",
+      "aliases": [
+        "red robin"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.redrobin.com/allergen-menu",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "An official interactive menu supports allergen-based modifications. Staff describe an allergy-order kit and identification procedure; verify implementation locally.",
+      "claims": [
+        {
+          "needs": [
+            "Wheat",
+            "Milk",
+            "Egg",
+            "Soy",
+            "Fish",
+            "Crustacean shellfish"
+          ],
+          "status": "reported cross-contact concern",
+          "note": "The FAQ cautions that steak fries may encounter allergens at the fryer station despite dedicated fryers. Dedicated fryer does not mean no cross-contact."
+        }
+      ],
+      "additional_sources": [
+        "https://www.redrobin.com/faq?field_type_target_id=7"
+      ]
+    },
+    {
+      "id": "olive-garden",
+      "name": "Olive Garden",
+      "aliases": [
+        "olive garden"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://www.olivegarden.com/nutrition/food-allergies",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The brand describes allergy-order procedures and shared fryers. Its gluten-sensitive wording is distinct from a gluten-free certification.",
+      "claims": [
+        {
+          "needs": [
+            "Wheat",
+            "Celiac / gluten",
+            "Milk",
+            "Soy",
+            "Egg",
+            "Crustacean shellfish"
+          ],
+          "status": "reported cross-contact concern",
+          "note": "Shared fryers can introduce wheat/gluten, milk, soy, egg, and shellfish. Gluten-free pasta has separate handling; that does not certify every dish or the kitchen."
+        }
+      ],
+      "additional_sources": [
+        "https://www.olivegarden.com/nutrition/gluten-sensitive-diet"
+      ]
+    },
+    {
+      "id": "first-watch",
+      "name": "First Watch",
+      "aliases": [
+        "first watch"
+      ],
+      "country": "US",
+      "scope": "US brand guidance; location and dish suitability unverified",
+      "source_url": "https://firstwatch.com/nutrition-and-allergens",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The brand warns about shared equipment, including a shared toaster, and asks guests to request its allergen-handling procedures.",
+      "claims": [
+        {
+          "needs": [
+            "Soy"
+          ],
+          "status": "reported derivative",
+          "note": "Highly refined soybean oil may not appear as a major-allergen flag. Preserve this oil information separately from the allergen chart."
+        },
+        {
+          "needs": [
+            "Celiac / gluten",
+            "Wheat"
+          ],
+          "status": "reported cross-contact concern",
+          "note": "Gluten-free products can be prepared on shared equipment. A gluten-free ingredient claim is not proof of celiac suitability."
+        }
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "cabobobs",
+      "name": "Cabo Bob’s",
+      "aliases": [
+        "cabo bob s",
+        "cabo bobs"
+      ],
+      "country": "US",
+      "scope": "US official guidance; verify current location and dish details",
+      "source_url": "https://cabobobs.com/our-story/",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The official FAQ discusses dietary choices and accommodations. Flour tortillas are made in the restaurant, so the environment is not gluten-free.",
+      "claims": [
+        {
+          "needs": [
+            "Celiac / gluten",
+            "Wheat"
+          ],
+          "status": "reported cross-contact concern",
+          "note": "Flour preparation can expose utensils and food pans to gluten. The brand describes glove changes and separately wrapped corn tortillas; local handling must be confirmed."
+        },
+        {
+          "needs": [
+            "Milk"
+          ],
+          "status": "reported ingredient",
+          "note": "The brand lists dairy in buttermilk and smoky-cheddar tortillas, fried-fish breading, queso, cheese, sour cream, chipotle crema, and Ancho Rancho."
+        },
+        {
+          "needs": [
+            "Vegan"
+          ],
+          "status": "restaurant-reported options",
+          "note": "The FAQ identifies certain tortillas, beans, rice, vegetables, and sauces as vegan. This is a published option claim, not confirmation of every ingredient or kitchen practice."
+        }
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "picnik",
+      "name": "Picnik · Austin",
+      "aliases": [
+        "picnik"
+      ],
+      "country": "US",
+      "scope": "Austin restaurant website guidance; verify the exact location and dish",
+      "source_url": "https://picnikaustin.com/our-philosophy",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The restaurant describes a menu without gluten or peanuts and lists avocado, coconut, and extra-virgin olive cooking oils. Treat these as restaurant claims, not independent inspection.",
+      "claims": [
+        {
+          "needs": [
+            "Peanut",
+            "Celiac / gluten"
+          ],
+          "status": "restaurant-reported absence",
+          "note": "The published menu claim is peanut-free and gluten-free. Individual kitchen verification, supplier details, and current cross-contact procedures are not established here."
+        },
+        {
+          "needs": [
+            "Milk",
+            "Vegan"
+          ],
+          "status": "reported ingredient",
+          "note": "The restaurant also describes grass-fed butter and honey in its approach. A peanut- or gluten-free menu does not make the entire menu dairy-free or vegan."
+        }
+      ],
+      "additional_sources": [],
+      "city": "austin"
+    },
+    {
+      "id": "pitapita",
+      "name": "Pita Pita · Illinois",
+      "aliases": [
+        "pita pita"
+      ],
+      "country": "US",
+      "scope": "Pita Pita Illinois business only; not Pita-Rita or Pita Pit",
+      "source_url": "https://www.pitapita.com/hfsaa-certified",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The restaurant publishes an HFSAA certification claim. This is a lead to verify with the certifier, not a checked certificate for every branch.",
+      "claims": [
+        {
+          "needs": [
+            "Halal"
+          ],
+          "status": "restaurant-reported certification",
+          "note": "Pita Pita states HFSAA certification. Certificate location, current validity, and scope must be verified; do not apply this to similarly named Pita-Rita or Pita Pit restaurants."
+        }
+      ],
+      "additional_sources": []
+    },
+    {
+      "id": "austin-kosher",
+      "name": "H-E-B Kosher Deli · Austin",
+      "aliases": [
+        "h e b kosher deli",
+        "heb kosher deli"
+      ],
+      "country": "US",
+      "scope": "Specific Austin kosher deli; no chain-wide designation",
+      "source_url": "https://www.yjpaustin.org/kosher",
+      "checked_on": "2026-11-16",
+      "review_due": "2026-12-16",
+      "summary": "The local Chabad resource describes the H-E-B kosher deli under Vaad Hakashrus of Austin supervision. This applies to the specified deli operation, not all H-E-B stores or all departments.",
+      "claims": [
+        {
+          "needs": [
+            "Kosher"
+          ],
+          "status": "community-reported supervision",
+          "note": "Check the current certificate, exact counter, meat/dairy classification, and operating hours. No general H-E-B-wide kosher designation is made."
+        }
+      ],
+      "additional_sources": [],
+      "city": "austin"
+    }
+  ]
+}

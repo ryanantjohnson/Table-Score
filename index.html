@@ -7981,6 +7981,7 @@ function renderProfile(){
   const username=profile?.username||"";
   const profileNameEl=document.getElementById("profileName");
   profileNameEl.textContent=name;
+  if(currentUser&&accountMarkCache.has(currentUser.id))decorateNameWithMark(profileNameEl,accountMarkCache.get(currentUser.id)||[]);
   if(currentUser){
     profileNameEl.dataset.userId=currentUser.id;
     profileNameEl.dataset.accountName="true";
@@ -8202,7 +8203,7 @@ async function loadFoodBadges(){
   if(!trAccountRequestCurrent(accountId,accountEpoch))return;
   if(defErr)console.error("profile badges:",defErr);
   if(eqErr)console.error("equipped badges:",eqErr);
-  availableBadges=defs?.length?defs.map(b=>({slug:b.slug,name:b.name,emoji:b.emoji})):STARTER_BADGES;
+  if(!defErr)availableBadges=defs?.length?defs.map(b=>({slug:b.slug,name:b.name,emoji:b.emoji})):STARTER_BADGES;
 
   // Preserve already-earned secret badges on every badge refresh.
   for(const r of (earnedSecretRewards||[]).filter(x=>x.reward_type==="badge")){
@@ -8215,7 +8216,7 @@ async function loadFoodBadges(){
     }
   }
 
-  equippedBadgeSlugs=(equipped||[]).map(x=>x.badge_slug).slice(0,4);
+  if(!eqErr)equippedBadgeSlugs=(equipped||[]).map(x=>x.badge_slug).slice(0,4);
   renderBadgePicker();
   renderOwnBadges();
 }
@@ -11757,7 +11758,7 @@ async function loadAccountMarks(userIds=[]){
       });
     }catch(err){
       console.warn("Account marks unavailable:", err?.message || err);
-      missing.forEach(id => accountMarkCache.set(id, []));
+      // A transient error must not cache an empty mark set. Retry on the next render.
     }
   }
   const out = {};
