@@ -1,5 +1,119 @@
 [
   {
+    "id": "blue-corn-rr",
+    "name": "Blue Corn Harvest · Round Rock",
+    "address": "2980 Joe Dimaggio Blvd, Suite 150, Round Rock, TX 78665",
+    "latitude": 30.524093,
+    "longitude": -97.637577,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1140
+      }
+    ],
+    "offer": "Half-price appetizers during the published weekday Happy Hour. This is the Round Rock location’s current specials calendar; other location offers are not assumed.",
+    "min_price": null,
+    "source_url": "https://bluecornharvest.com/round-rock-blue-corn-harvest-bar-and-grill-round-rock-happy-hours-specials",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-11-24",
+    "active": true,
+    "location_source_url": "https://bluecornharvest.com/",
+    "coordinate_source_url": "https://bluecornharvest.com/"
+  },
+  {
+    "id": "c3-austin",
+    "name": "COVER 3 · Anderson Lane",
+    "address": "2700 W Anderson Lane, Austin, TX 78757",
+    "latitude": 30.3600427,
+    "longitude": -97.7348498,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1140,
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Social-hour plates $7; selected drinks from $4.",
+    "min_price": "4",
+    "source_url": "https://cover-3.com/dining-spirits/social-hour",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
+    "active": true
+  },
+  {
+    "id": "c3-rr",
+    "name": "COVER 3 · Round Rock",
+    "address": "2800 N Interstate 35, Round Rock, TX 78681",
+    "latitude": 30.5384835,
+    "longitude": -97.6931963,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1140,
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Social-hour plates $7; selected drinks from $4.",
+    "min_price": "4",
+    "source_url": "https://cover-3.com/dining-spirits/social-hour",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
+    "active": true
+  },
+  {
+    "id": "carve-barton",
+    "name": "CARVE American Grille · Barton Creek",
+    "address": "7415 SW Parkway, Building 1, Austin, TX 78735",
+    "latitude": 30.256397,
+    "longitude": -97.870417,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "start": 900,
+        "end": 1110
+      }
+    ],
+    "offer": "$5 off five selected starters, five cocktails, five 7.5-ounce wine pours and Happy Hour pizzas. Dine-in at the CARVE bar and patio only. This entry is Barton Creek; Central Austin is temporarily closed.",
+    "min_price": null,
+    "source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/",
+    "coordinate_source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/"
+  },
+  {
     "timezone": "America/Chicago",
     "checked_on": "2026-11-17",
     "expires_on": "2026-12-17",
@@ -28,77 +142,11 @@
     "source_url": "https://www.fishcitygrill.com/locations/georgetown"
   },
   {
-    "timezone": "America/Chicago",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
-    "active": true,
-    "id": "salt-traders-rr",
-    "name": "Salt Traders · Round Rock",
-    "address": "2850 N Interstate Hwy 35, Round Rock, TX 78681",
-    "latitude": 30.5398343,
-    "longitude": -97.6931579,
-    "schedule": [
-      {
-        "days": [
-          1
-        ],
-        "start": 930,
-        "end": 1260
-      },
-      {
-        "days": [
-          2,
-          3,
-          4,
-          5
-        ],
-        "start": 930,
-        "end": 1110
-      }
-    ],
-    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
-    "min_price": null,
-    "source_url": "https://salttraderscc.com/location/round-rock/"
-  },
-  {
-    "timezone": "America/Chicago",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
-    "active": true,
-    "id": "salt-traders-zilker",
-    "name": "Salt Traders · Zilker",
-    "address": "1101 S Mopac Expressway, Austin, TX 78746",
-    "latitude": 30.2653143,
-    "longitude": -97.781001,
-    "schedule": [
-      {
-        "days": [
-          1
-        ],
-        "start": 930,
-        "end": 1260
-      },
-      {
-        "days": [
-          2,
-          3,
-          4,
-          5
-        ],
-        "start": 930,
-        "end": 1110
-      }
-    ],
-    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
-    "min_price": null,
-    "source_url": "https://salttraderscc.com/location/austin-zilker/"
-  },
-  {
-    "id": "north-italia-domain",
-    "name": "North Italia · The Domain",
-    "address": "11506 Century Oaks Terrace, Suite 124, Austin, TX 78758",
-    "latitude": 30.40278,
-    "longitude": -97.72587,
+    "id": "fresas-south-first",
+    "name": "Fresa’s · South First",
+    "address": "1703 S 1st St, Austin, TX 78704",
+    "latitude": 30.2477798,
+    "longitude": -97.7550324,
     "timezone": "America/Chicago",
     "schedule": [
       {
@@ -113,38 +161,209 @@
         "end": 1080
       }
     ],
-    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
-    "min_price": 10,
-    "source_url": "https://www.northitalia.com/locations/austin-tx-the-domain/?menu=happy-hour",
+    "offer": "$2 off aguas frescas, botanas, beer, wine and margaritas. Monday–Friday 3–6 PM. Published offer applies to dine-in, drive-thru and walk-up orders; confirm availability at this location.",
+    "min_price": null,
+    "source_url": "https://www.fresaschicken.com/",
     "checked_on": "2026-11-17",
     "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.fresaschicken.com/",
+    "coordinate_source_url": "https://www.fresaschicken.com/"
+  },
+  {
+    "id": "fresas-westlake",
+    "name": "Fresa’s · 360 & Westlake",
+    "address": "3600 N Capital of Texas Hwy, Suite A110, Austin, TX 78746",
+    "latitude": 30.3352932,
+    "longitude": -97.8074816,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "$2 off aguas frescas, botanas, beer, wine and margaritas. Monday–Friday 3–6 PM. Published offer applies to dine-in, drive-thru and walk-up orders; confirm availability at this location.",
+    "min_price": null,
+    "source_url": "https://www.fresaschicken.com/",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.fresaschicken.com/",
+    "coordinate_source_url": "https://www.fresaschicken.com/"
+  },
+  {
+    "id": "jak-360",
+    "name": "Jack Allen’s Kitchen · 360",
+    "address": "3600 N Capital of Texas Hwy, Austin, TX 78746",
+    "latitude": 30.3347897,
+    "longitude": -97.8079874,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1260,
+        "days": [
+          1
+        ],
+        "start": 900
+      },
+      {
+        "end": 1110,
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Half-price starters and $1 off drinks.",
+    "min_price": null,
+    "source_url": "https://jackallenskitchen.com/location/360-2/",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
     "active": true
   },
   {
-    "id": "north-italia-2nd-street",
-    "name": "North Italia · 2nd Street",
-    "address": "500 W 2nd St, #120, Austin, TX 78701",
-    "latitude": 30.26588,
-    "longitude": -97.74892,
+    "id": "jak-cp",
+    "name": "Jack Allen’s Kitchen · Cedar Park",
+    "address": "1345 E Whitestone Blvd, Cedar Park, TX 78613",
+    "latitude": 30.526787,
+    "longitude": -97.8134025,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1260,
+        "days": [
+          1
+        ],
+        "start": 900
+      },
+      {
+        "end": 1110,
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Half-price starters and $1 off drinks.",
+    "min_price": null,
+    "source_url": "https://jackallenskitchen.com/location/cedar-park/",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
+    "active": true
+  },
+  {
+    "id": "jak-hutto",
+    "name": "Jack Allen’s Kitchen · Hutto",
+    "address": "211 Co-Op Blvd, Hutto, TX 78634",
+    "latitude": 30.5442058,
+    "longitude": -97.5527642,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1260,
+        "days": [
+          1
+        ],
+        "start": 900
+      },
+      {
+        "end": 1110,
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Half-price starters and $1 off drinks.",
+    "min_price": null,
+    "source_url": "https://jackallenskitchen.com/location/hutto/",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
+    "active": true
+  },
+  {
+    "id": "jak-oak-hill",
+    "name": "Jack Allen’s Kitchen · Oak Hill",
+    "address": "7720 Highway 71 West, Austin, TX 78735",
+    "latitude": 30.2435734,
+    "longitude": -97.8825773,
     "timezone": "America/Chicago",
     "schedule": [
       {
         "days": [
-          1,
+          1
+        ],
+        "start": 900,
+        "end": 1260
+      },
+      {
+        "days": [
           2,
           3,
           4,
           5
         ],
         "start": 900,
-        "end": 1080
+        "end": 1110
       }
     ],
-    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
-    "min_price": 10,
-    "source_url": "https://www.northitalia.com/locations/austin-tx-2nd-street/?menu=happy-hour",
+    "offer": "Half-price starters and $1 off cocktails, beer and wine. Monday 3 PM until close, Tuesday–Friday 3–6:30 PM. Confirm exclusions and current closing time.",
+    "min_price": null,
+    "source_url": "https://jackallenskitchen.com/location/oak-hill/",
     "checked_on": "2026-11-17",
     "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://jackallenskitchen.com/",
+    "coordinate_source_url": "https://jackallenskitchen.com/"
+  },
+  {
+    "id": "jak-rr",
+    "name": "Jack Allen’s Kitchen · Round Rock",
+    "address": "2500 Hoppe Trail, Round Rock, TX 78681",
+    "latitude": 30.537724,
+    "longitude": -97.693777,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "end": 1260,
+        "days": [
+          1
+        ],
+        "start": 900
+      },
+      {
+        "end": 1110,
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900
+      }
+    ],
+    "offer": "Half-price starters and $1 off drinks.",
+    "min_price": null,
+    "source_url": "https://jackallenskitchen.com/location/round-rock/",
+    "checked_on": "2026-11-16",
+    "expires_on": "2026-12-16",
     "active": true
   },
   {
@@ -264,111 +483,6 @@
     "coordinate_source_url": "https://www.maudies.com/locations"
   },
   {
-    "id": "maudies-too",
-    "name": "Maudie’s · Too",
-    "address": "1212 S Lamar Blvd, Austin, TX 78704",
-    "latitude": 30.2547539,
-    "longitude": -97.7626165,
-    "timezone": "America/Chicago",
-    "schedule": [
-      {
-        "days": [
-          1
-        ],
-        "start": 900,
-        "end": 1290
-      },
-      {
-        "days": [
-          2,
-          3,
-          4,
-          5
-        ],
-        "start": 900,
-        "end": 1110
-      }
-    ],
-    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
-    "min_price": 6.5,
-    "source_url": "https://www.maudies.com/drinks",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
-    "active": true,
-    "location_source_url": "https://www.maudies.com/locations",
-    "coordinate_source_url": "https://www.maudies.com/location/maudies-too"
-  },
-  {
-    "id": "maudies-north-lamar",
-    "name": "Maudie’s · North Lamar",
-    "address": "10205 N Lamar Blvd, Austin, TX 78753",
-    "latitude": 30.3710684,
-    "longitude": -97.6914574,
-    "timezone": "America/Chicago",
-    "schedule": [
-      {
-        "days": [
-          1
-        ],
-        "start": 900,
-        "end": 1290
-      },
-      {
-        "days": [
-          2,
-          3,
-          4,
-          5
-        ],
-        "start": 900,
-        "end": 1110
-      }
-    ],
-    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
-    "min_price": 6.5,
-    "source_url": "https://www.maudies.com/drinks",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
-    "active": true,
-    "location_source_url": "https://www.maudies.com/locations",
-    "coordinate_source_url": "https://www.maudies.com/locations"
-  },
-  {
-    "id": "maudies-milagro",
-    "name": "Maudie’s · Milagro",
-    "address": "3801 N Capital of Texas Hwy, Austin, TX 78746",
-    "latitude": 30.33691,
-    "longitude": -97.803367,
-    "timezone": "America/Chicago",
-    "schedule": [
-      {
-        "days": [
-          1
-        ],
-        "start": 900,
-        "end": 1260
-      },
-      {
-        "days": [
-          2,
-          3,
-          4,
-          5
-        ],
-        "start": 900,
-        "end": 1110
-      }
-    ],
-    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
-    "min_price": 6.5,
-    "source_url": "https://www.maudies.com/drinks",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
-    "active": true,
-    "location_source_url": "https://www.maudies.com/locations",
-    "coordinate_source_url": "https://www.maudies.com/locations"
-  },
-  {
     "id": "maudies-hacienda",
     "name": "Maudie’s · Hacienda",
     "address": "9911 Brodie Lane, Austin, TX 78748",
@@ -439,6 +553,165 @@
     "coordinate_source_url": "https://www.maudies.com/locations"
   },
   {
+    "id": "maudies-milagro",
+    "name": "Maudie’s · Milagro",
+    "address": "3801 N Capital of Texas Hwy, Austin, TX 78746",
+    "latitude": 30.33691,
+    "longitude": -97.803367,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 900,
+        "end": 1260
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1110
+      }
+    ],
+    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
+    "min_price": 6.5,
+    "source_url": "https://www.maudies.com/drinks",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.maudies.com/locations",
+    "coordinate_source_url": "https://www.maudies.com/locations"
+  },
+  {
+    "id": "maudies-north-lamar",
+    "name": "Maudie’s · North Lamar",
+    "address": "10205 N Lamar Blvd, Austin, TX 78753",
+    "latitude": 30.3710684,
+    "longitude": -97.6914574,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 900,
+        "end": 1290
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1110
+      }
+    ],
+    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
+    "min_price": 6.5,
+    "source_url": "https://www.maudies.com/drinks",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.maudies.com/locations",
+    "coordinate_source_url": "https://www.maudies.com/locations"
+  },
+  {
+    "id": "maudies-too",
+    "name": "Maudie’s · Too",
+    "address": "1212 S Lamar Blvd, Austin, TX 78704",
+    "latitude": 30.2547539,
+    "longitude": -97.7626165,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 900,
+        "end": 1290
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1110
+      }
+    ],
+    "offer": "Selected dips and bites $6.50; selected signature margaritas $8.50 and fancy margaritas $10.50. Monday runs from 3 PM until the published closing time; Tuesday–Friday until 6:30 PM. Confirm menu exclusions and current hours.",
+    "min_price": 6.5,
+    "source_url": "https://www.maudies.com/drinks",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "location_source_url": "https://www.maudies.com/locations",
+    "coordinate_source_url": "https://www.maudies.com/location/maudies-too"
+  },
+  {
+    "id": "north-italia-2nd-street",
+    "name": "North Italia · 2nd Street",
+    "address": "500 W 2nd St, #120, Austin, TX 78701",
+    "latitude": 30.26588,
+    "longitude": -97.74892,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
+    "min_price": 10,
+    "source_url": "https://www.northitalia.com/locations/austin-tx-2nd-street/?menu=happy-hour",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
+    "id": "north-italia-domain",
+    "name": "North Italia · The Domain",
+    "address": "11506 Century Oaks Terrace, Suite 124, Austin, TX 78758",
+    "latitude": 30.40278,
+    "longitude": -97.72587,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Bar area only. Selected small plates and flatbreads $10; selected plates $12; spritz-and-snack pairing $15. Confirm the location menu and exclusions.",
+    "min_price": 10,
+    "source_url": "https://www.northitalia.com/locations/austin-tx-the-domain/?menu=happy-hour",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true
+  },
+  {
     "id": "pinthouse-burnet",
     "name": "Pinthouse Pizza · Burnet",
     "address": "4729 Burnet Road, Austin, TX 78756",
@@ -497,11 +770,669 @@
     "coordinate_source_url": "https://pinthouse.com/pizza-south-lamar"
   },
   {
-    "id": "carve-barton",
-    "name": "CARVE American Grille · Barton Creek",
-    "address": "7415 SW Parkway, Building 1, Austin, TX 78735",
-    "latitude": 30.256397,
-    "longitude": -97.870417,
+    "timezone": "America/Chicago",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "id": "salt-traders-rr",
+    "name": "Salt Traders · Round Rock",
+    "address": "2850 N Interstate Hwy 35, Round Rock, TX 78681",
+    "latitude": 30.5398343,
+    "longitude": -97.6931579,
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 930,
+        "end": 1260
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 930,
+        "end": 1110
+      }
+    ],
+    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
+    "min_price": null,
+    "source_url": "https://salttraderscc.com/location/round-rock/"
+  },
+  {
+    "timezone": "America/Chicago",
+    "checked_on": "2026-11-17",
+    "expires_on": "2026-12-17",
+    "active": true,
+    "id": "salt-traders-zilker",
+    "name": "Salt Traders · Zilker",
+    "address": "1101 S Mopac Expressway, Austin, TX 78746",
+    "latitude": 30.2653143,
+    "longitude": -97.781001,
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 930,
+        "end": 1260
+      },
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 930,
+        "end": 1110
+      }
+    ],
+    "offer": "$5 off Beginnings and $1 off oysters. The location also publishes a weekend oyster hour; see its website for that separate offer.",
+    "min_price": null,
+    "source_url": "https://salttraderscc.com/location/austin-zilker/"
+  },
+  {
+    "id": "torchys-264916",
+    "name": "Torchy’s Tacos · Anderson Mill",
+    "address": "11521 RR 620 N E-1000 Austin, TX 78726",
+    "latitude": 30.4540619,
+    "longitude": -97.826668,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264925",
+    "name": "Torchy’s Tacos · Arbor Trails",
+    "address": "4301 West William Cannon Drive Bldg. G, Suite 400 Austin, TX 78749",
+    "latitude": 30.2220886,
+    "longitude": -97.8398875,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264914",
+    "name": "Torchy’s Tacos · Belterra",
+    "address": "166 Hargraves Dr. Suite J100 Austin, TX 78737",
+    "latitude": 30.204195,
+    "longitude": -97.9808976,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264924",
+    "name": "Torchy’s Tacos · Burnet",
+    "address": "5119 Burnet Road Austin, TX 78756",
+    "latitude": 30.3233752,
+    "longitude": -97.7391883,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264858",
+    "name": "Torchy’s Tacos · Cedar Park",
+    "address": "1468 E. Whitestone Blvd. Suite 100 Cedar Park, TX 78613",
+    "latitude": 30.5267809,
+    "longitude": -97.8087862,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264827",
+    "name": "Torchy’s Tacos · Congress",
+    "address": "1822 S Congress Ave Austin, TX 78704",
+    "latitude": 30.2454486,
+    "longitude": -97.7515268,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264878",
+    "name": "Torchy’s Tacos · Escarpment",
+    "address": "5900 W. Slaughter Lane Suite 550 Austin, TX 78749",
+    "latitude": 30.2017359,
+    "longitude": -97.8788779,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264835",
+    "name": "Torchy’s Tacos · HEB - Ronald Reagan",
+    "address": "19392 Ronald W. Reagan Blvd Suite 530 Georgetown, TX 78628",
+    "latitude": 30.6361064,
+    "longitude": -97.8260964,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264818",
+    "name": "Torchy’s Tacos · HEB Slaughter",
+    "address": "8601 South Congress Suite 250 Austin, TX 78748",
+    "latitude": 30.1717812,
+    "longitude": -97.7851616,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264810",
+    "name": "Torchy’s Tacos · Kyle",
+    "address": "19100 IH-35 Kyle, TX 78640",
+    "latitude": 30.0303668,
+    "longitude": -97.8495,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264819",
+    "name": "Torchy’s Tacos · Lakeway",
+    "address": "1945 Medical Dr. Suite 100 Austin, TX 78734",
+    "latitude": 30.346959,
+    "longitude": -97.9672252,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264848",
+    "name": "Torchy’s Tacos · Mueller",
+    "address": "1801 E. 51st St Building D Austin, TX 78723",
+    "latitude": 30.3009022,
+    "longitude": -97.6985157,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264866",
+    "name": "Torchy’s Tacos · Northshore",
+    "address": "110 San Antonio Street Unit 120 Austin, TX 78701",
+    "latitude": 30.2653566,
+    "longitude": -97.7491832,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264867",
+    "name": "Torchy’s Tacos · Pflugerville Stonehill",
+    "address": "18817 Limestone Commercial Dr Suite 100 Pflugerville, TX 78660",
+    "latitude": 30.468882,
+    "longitude": -97.5955858,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264895",
+    "name": "Torchy’s Tacos · Round Rock",
+    "address": "2150 E. Palm Valley Blvd. Suite 100 Round Rock, TX 78665",
+    "latitude": 30.5190604,
+    "longitude": -97.652056,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264825",
+    "name": "Torchy’s Tacos · Round Rock IH-35",
+    "address": "1500 North Interstate Highway 35 Round Rock, TX 78681",
+    "latitude": 30.5220901,
+    "longitude": -97.6902981,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264923",
+    "name": "Torchy’s Tacos · South Lamar",
+    "address": "3005 South Lamar Blvd. Suite D116 Austin, TX 78704",
+    "latitude": 30.2412959,
+    "longitude": -97.7836964,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "torchys-264931",
+    "name": "Torchy’s Tacos · Spicewood",
+    "address": "4211 Spicewood Springs Road Austin, TX 78759",
+    "latitude": 30.3706996,
+    "longitude": -97.7562913,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 840,
+        "end": 1020
+      }
+    ],
+    "offer": "Hooky Hour: half-price house margaritas and beer, weekdays 2–5pm. Brand-published promotion; confirm selection and availability at this location.",
+    "min_price": null,
+    "source_url": "https://torchystacos.com/hooky-hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "restaurant",
+    "coordinate_source": "https://torchystacos.com/locations/",
+    "location_source_url": "https://torchystacos.com/locations/",
+    "source_scope": "Shared brand promotion joined to official location directory; local availability requires confirmation."
+  },
+  {
+    "id": "vacancy-brewing",
+    "name": "Vacancy Brewing",
+    "address": "415 E St Elmo Rd, 1-D2, Austin, TX 78745",
+    "latitude": 30.2144228,
+    "longitude": -97.7624679,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1
+        ],
+        "start": 990,
+        "end": 1320
+      },
+      {
+        "days": [
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Monday: $4 Vacancy Classic pints. Wednesday: $5 select pints, seltzers and Salam’s Grill fries. Thursday: $6 beer and jello-shot combo. Friday: $5 frozen cocktails. Deals vary by day; Salam’s Grill food offer is Wednesday only.",
+    "min_price": 4,
+    "source_url": "https://www.vacancybrewing.com/happy-hour",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "brewery",
+    "coordinate_source": "https://maps.app.goo.gl/RHCt5KLbzoAssxAcA"
+  },
+  {
+    "id": "champions-austin",
+    "name": "Champions Restaurant & Sports Bar",
+    "address": "300 E 4th St, Suite 1, Austin, TX 78701",
+    "latitude": 30.26548223405297,
+    "longitude": -97.74023058465663,
     "timezone": "America/Chicago",
     "schedule": [
       {
@@ -514,60 +1445,155 @@
           6,
           7
         ],
-        "start": 900,
-        "end": 1110
+        "start": 960,
+        "end": 1080
       }
     ],
-    "offer": "$5 off five selected starters, five cocktails, five 7.5-ounce wine pours and Happy Hour pizzas. Dine-in at the CARVE bar and patio only. This entry is Barton Creek; Central Austin is temporarily closed.",
-    "min_price": null,
-    "source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
+    "offer": "Daily 4–6pm: $5 draft beer, $8 draft cocktails, and $6 house Chardonnay or Cabernet. Other daily promotions have separate conditions.",
+    "min_price": 5,
+    "source_url": "https://www.championsrestaurantatx.com/austin-events",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
     "active": true,
-    "location_source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/",
-    "coordinate_source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/"
+    "venue_type": "sports_bar",
+    "coordinate_source": "https://www.championsrestaurantatx.com/"
   },
   {
-    "id": "jak-oak-hill",
-    "name": "Jack Allen’s Kitchen · Oak Hill",
-    "address": "7720 Highway 71 West, Austin, TX 78735",
-    "latitude": 30.2435734,
-    "longitude": -97.8825773,
+    "id": "brewtorium-highland",
+    "name": "The Brewtorium Brewery & Kitchen",
+    "address": "6015 Dillard Circle, Suite A, Austin, TX 78752",
+    "latitude": 30.3259178,
+    "longitude": -97.7168271,
     "timezone": "America/Chicago",
     "schedule": [
       {
         "days": [
-          1
+          1,
+          2,
+          3,
+          4
         ],
-        "start": 900,
-        "end": 1260
+        "start": 960,
+        "end": 1080
       },
       {
         "days": [
+          7
+        ],
+        "start": 1140,
+        "end": 1260
+      }
+    ],
+    "offer": "$4 Bat City Blonde Ale, $5 select house beers, $7 frozen cocktails or mocktails. $7 cheeseburgers and select shareables during weekday Happy Hour only. Sunday 7–9pm is drinks only. Friday start time conflicts across the official page; Friday schedule is withheld.",
+    "min_price": 4,
+    "source_url": "https://thebrewtorium.com/services/happy-hour",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "brewpub",
+    "coordinate_source": "https://thebrewtorium.com/services/happy-hour",
+    "review_notes": "Official Friday start times are noon in body and 11am in footer; Friday withheld pending clarification."
+  },
+  {
+    "id": "cedar-door",
+    "name": "Cedar Door Patio Bar & Grill",
+    "address": "201 Brazos St, Building A, Austin, TX 78701",
+    "latitude": 30.2640626,
+    "longitude": -97.742629,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4
+        ],
+        "start": 900,
+        "end": 1080
+      }
+    ],
+    "offer": "Monday–Thursday 3–6pm: $5 draft beers and wells, $7 calls and wine, $10 Original Mexican Martinis, and $2 off specialty Mexican Martinis. Light bites are also offered; confirm food pricing.",
+    "min_price": 5,
+    "source_url": "https://cedardooraustin.com/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "bar_and_grill",
+    "coordinate_source": "https://cedardooraustin.com/"
+  },
+  {
+    "id": "hopfields",
+    "name": "Hopfields",
+    "address": "3110 Guadalupe St, Unit 400, Austin, TX 78705",
+    "latitude": 30.2985231,
+    "longitude": -97.7409648,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
           2,
           3,
           4,
           5
         ],
-        "start": 900,
-        "end": 1110
+        "start": 960,
+        "end": 1080
       }
     ],
-    "offer": "Half-price starters and $1 off cocktails, beer and wine. Monday 3 PM until close, Tuesday–Friday 3–6:30 PM. Confirm exclusions and current closing time.",
+    "offer": "Weekdays 4–6pm: Monday half-price oysters and bubbles; Tuesday half-price pints; Wednesday half-price wine; Thursday and Friday $2 off wine and pints. Specials differ by day.",
     "min_price": null,
-    "source_url": "https://jackallenskitchen.com/location/oak-hill/",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
+    "source_url": "https://hopfieldsaustin.com/happy-hour",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
     "active": true,
-    "location_source_url": "https://jackallenskitchen.com/",
-    "coordinate_source_url": "https://jackallenskitchen.com/"
+    "venue_type": "pub",
+    "coordinate_source": "https://maps.app.goo.gl/aqkJUdikSaMYhxcv8"
   },
   {
-    "id": "blue-corn-rr",
-    "name": "Blue Corn Harvest · Round Rock",
-    "address": "2980 Joe Dimaggio Blvd, Suite 150, Round Rock, TX 78665",
-    "latitude": 30.524093,
-    "longitude": -97.637577,
+    "id": "drinkwell",
+    "name": "DrinkWell",
+    "address": "207 E 53rd St, Austin, TX 78751",
+    "latitude": 30.3172381,
+    "longitude": -97.7206249,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3
+        ],
+        "start": 960,
+        "end": 1050
+      },
+      {
+        "days": [
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1050
+      }
+    ],
+    "offer": "Monday–Friday until 5:30pm: $10 featured classic cocktails, $8 house wine glasses, 25% off wine bottles, $5 drafts, and $2 off snacks and small plates. Opens 4pm Monday–Wednesday and 3pm Thursday–Friday. Automatic 20% Employee Wellness Fee applies. Saturday timing is inconsistent across official pages and is withheld.",
+    "min_price": 5,
+    "source_url": "https://www.drinkwellaustin.com/faqs",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "cocktail_bar",
+    "coordinate_source": "https://www.drinkwellaustin.com/",
+    "location_source_url": "https://www.drinkwellaustin.com/",
+    "review_notes": "Homepage hero mentions Saturday, footer/FAQ says Monday–Friday. Publish weekdays only."
+  },
+  {
+    "id": "little-woodrows-burnet",
+    "name": "Little Woodrow’s · Burnet",
+    "address": "5425 Burnet Rd, Austin, TX 78756",
+    "latitude": 30.3291303,
+    "longitude": -97.7395908,
     "timezone": "America/Chicago",
     "schedule": [
       {
@@ -582,21 +1608,21 @@
         "end": 1140
       }
     ],
-    "offer": "Half-price appetizers during the published weekday Happy Hour. This is the Round Rock location’s current specials calendar; other location offers are not assumed.",
-    "min_price": null,
-    "source_url": "https://bluecornharvest.com/round-rock-blue-corn-harvest-bar-and-grill-round-rock-happy-hours-specials",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-11-24",
+    "offer": "Weekdays 3–7pm: $4 wells and $5 domestic 22oz mugs. 21+ after 6pm; younger guests before 6pm require a parent/guardian. Additional select $2 draft offers have separate hours; confirm selection.",
+    "min_price": 4,
+    "source_url": "https://littlewoodrows.com/locations/burnet/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
     "active": true,
-    "location_source_url": "https://bluecornharvest.com/",
-    "coordinate_source_url": "https://bluecornharvest.com/"
+    "venue_type": "bar",
+    "coordinate_source": "https://littlewoodrows.com/locations/burnet/"
   },
   {
-    "id": "fresas-south-first",
-    "name": "Fresa’s · South First",
-    "address": "1703 S 1st St, Austin, TX 78704",
-    "latitude": 30.2477798,
-    "longitude": -97.7550324,
+    "id": "little-woodrows-tech-ridge",
+    "name": "Little Woodrow’s · Tech Ridge",
+    "address": "12601 Tech Ridge Blvd, Suite 700, Austin, TX 78753",
+    "latitude": 30.4006442,
+    "longitude": -97.6579541,
     "timezone": "America/Chicago",
     "schedule": [
       {
@@ -608,24 +1634,63 @@
           5
         ],
         "start": 900,
-        "end": 1080
+        "end": 1140
       }
     ],
-    "offer": "$2 off aguas frescas, botanas, beer, wine and margaritas. Monday–Friday 3–6 PM. Published offer applies to dine-in, drive-thru and walk-up orders; confirm availability at this location.",
-    "min_price": null,
-    "source_url": "https://www.fresaschicken.com/",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
+    "offer": "Weekdays 3–7pm: $4 wells and $5 domestic 22oz mugs. Strictly 21+ at all times. Additional select $2 draft offers have separate hours; confirm selection.",
+    "min_price": 4,
+    "source_url": "https://littlewoodrows.com/locations/tech-ridge/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
     "active": true,
-    "location_source_url": "https://www.fresaschicken.com/",
-    "coordinate_source_url": "https://www.fresaschicken.com/"
+    "venue_type": "bar",
+    "coordinate_source": "https://maps.app.goo.gl/argT69pZMEn6vKpw7"
   },
   {
-    "id": "fresas-westlake",
-    "name": "Fresa’s · 360 & Westlake",
-    "address": "3600 N Capital of Texas Hwy, Suite A110, Austin, TX 78746",
-    "latitude": 30.3352932,
-    "longitude": -97.8074816,
+    "id": "house-wine",
+    "name": "House Wine",
+    "address": "1711 S 1st St, Austin, TX 78704",
+    "latitude": 30.248298443082,
+    "longitude": -97.755466290125,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          4,
+          5,
+          6,
+          7
+        ],
+        "start": 900,
+        "end": 1080
+      },
+      {
+        "days": [
+          3
+        ],
+        "start": 900,
+        "end": 1350
+      }
+    ],
+    "offer": "$2 off wine glasses and $6 off bottles during daily 3–6pm Happy Hour; Wednesday continues until closing. Separate daily 3–4pm early-bird offer lists $7 select wine glasses and $5 snacks. Map pin is address-geocoded; use the street address to find the entrance.",
+    "min_price": 5,
+    "source_url": "https://www.housewineaustin.com/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "wine_bar",
+    "coordinate_source": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=1711+S+1st+St%2C+Austin%2C+TX+78704&benchmark=Public_AR_Current&format=json",
+    "coordinate_method": "US Census address interpolation; not a surveyed building entrance",
+    "coordinate_precision": "approximate"
+  },
+  {
+    "id": "bar-toti",
+    "name": "Bar Toti",
+    "address": "2113 Manor Rd, Austin, TX 78722",
+    "latitude": 30.284152046697,
+    "longitude": -97.719688195391,
     "timezone": "America/Chicago",
     "schedule": [
       {
@@ -634,19 +1699,86 @@
           2,
           3,
           4,
-          5
+          5,
+          6,
+          7
         ],
-        "start": 900,
+        "start": 1020,
         "end": 1080
       }
     ],
-    "offer": "$2 off aguas frescas, botanas, beer, wine and margaritas. Monday–Friday 3–6 PM. Published offer applies to dine-in, drive-thru and walk-up orders; confirm availability at this location.",
+    "offer": "Daily 5–6pm: $5 off aperitivos and select signature cocktails; $2 off wine glasses and menu snacks; half-price smashburgesas. Monday burger and Tuesday wine-bottle specials also run all evening; confirm terms. Map pin is address-geocoded; use the street address to find the entrance.",
     "min_price": null,
-    "source_url": "https://www.fresaschicken.com/",
-    "checked_on": "2026-11-17",
-    "expires_on": "2026-12-17",
+    "source_url": "https://www.bartoti.com/event/apero_hour/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
     "active": true,
-    "location_source_url": "https://www.fresaschicken.com/",
-    "coordinate_source_url": "https://www.fresaschicken.com/"
+    "venue_type": "bar",
+    "coordinate_source": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2113+Manor+Rd%2C+Austin%2C+TX+78722&benchmark=Public_AR_Current&format=json",
+    "coordinate_method": "US Census address interpolation; not a surveyed building entrance",
+    "coordinate_precision": "approximate"
+  },
+  {
+    "id": "haymaker",
+    "name": "Haymaker",
+    "address": "2310 Manor Rd, Austin, TX 78722",
+    "latitude": 30.28453178953,
+    "longitude": -97.718030671356,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          1,
+          2,
+          3,
+          4,
+          5,
+          6,
+          7
+        ],
+        "start": 660,
+        "end": 1440
+      }
+    ],
+    "offer": "Daily drink specials: Monday $2 off signature cocktails; Tuesday $2 off Texas pints and liquors; Wednesday $2 off whiskey and $1 off pints; Thursday $3 Mexi-cans and $2 off tequila; Friday $4 frozen margaritas; Saturday $4 wells and select canned beers; Sunday $4 mimosas, sangria and Bloody Marys. Offers differ by day. Map pin is address-geocoded; use the street address to find the entrance.",
+    "min_price": 3,
+    "source_url": "https://haymakeraustin.com/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "bar_and_grill",
+    "coordinate_source": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=2310+Manor+Rd%2C+Austin%2C+TX+78722&benchmark=Public_AR_Current&format=json",
+    "coordinate_method": "US Census address interpolation; not a surveyed building entrance",
+    "coordinate_precision": "approximate"
+  },
+  {
+    "id": "flutterfly",
+    "name": "FlutterFly Sports Bar & Food Truck Park",
+    "address": "4806 E Yager Ln, Manor, TX 78653",
+    "latitude": 30.370629060236,
+    "longitude": -97.626350412186,
+    "timezone": "America/Chicago",
+    "schedule": [
+      {
+        "days": [
+          2,
+          3,
+          4,
+          5
+        ],
+        "start": 900,
+        "end": 1140
+      }
+    ],
+    "offer": "Tuesday–Friday 3–7pm: $4 beer special and $3 off craft cocktails at the bar. $4 frozen margaritas while the bar is open. Food trucks on the property operate separately; these bar prices do not apply to every truck. Map pin is address-geocoded; use the street address to find the entrance.",
+    "min_price": 4,
+    "source_url": "https://www.flutter-fly.com/",
+    "checked_on": "2026-11-18",
+    "expires_on": "2026-12-02",
+    "active": true,
+    "venue_type": "sports_bar",
+    "coordinate_source": "https://geocoding.geo.census.gov/geocoder/locations/onelineaddress?address=4806+E+Yager+Ln%2C+Manor%2C+TX+78653&benchmark=Public_AR_Current&format=json",
+    "coordinate_method": "US Census address interpolation; not a surveyed building entrance",
+    "coordinate_precision": "approximate"
   }
 ]

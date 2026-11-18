@@ -3,6 +3,18 @@ const offers=require('../data/happy-hour-expansion.json');
 const dishes=require('../data/dining-dishes.json').dishes;
 const unique=rows=>assert.equal(new Set(rows.map(x=>x.id)).size,rows.length,'Duplicate catalog IDs');
 unique(offers);unique(dishes);
+assert(offers.length>=57,'Expanded collection must retain the 57 checked locations');
+const locations=offers.map(o=>o.address.toLowerCase().replace(/[^a-z0-9]/g,''));
+assert.equal(new Set(locations).size,offers.length,'Multiple specials must not inflate location counts');
+const additions=offers.filter(o=>o.checked_on==='2026-11-18');
+assert.equal(additions.length,30);
+for(const kind of ['bar','bar_and_grill','brewery','brewpub','wine_bar','sports_bar','cocktail_bar'])assert(additions.some(o=>o.venue_type===kind),kind);
+for(const o of additions){assert(o.coordinate_source.startsWith('https://'));assert(o.expires_on==='2026-12-02');if(o.coordinate_precision==='approximate'){assert(o.coordinate_source.startsWith('https://geocoding.geo.census.gov/'));assert(o.offer.includes('address-geocoded'));}}
+assert(!offers.find(o=>o.id==='vacancy-brewing').schedule.some(s=>s.days.includes(2)),'Vacancy is closed Tuesday');
+assert(!offers.find(o=>o.id==='brewtorium-highland').schedule.some(s=>s.days.includes(5)),'Disputed Friday start must stay out');
+assert(!offers.find(o=>o.id==='drinkwell').schedule.some(s=>s.days.includes(6)),'Disputed Saturday schedule must stay out');
+assert.equal(offers.filter(o=>o.id.startsWith('torchys-')).length,18);
+
 for(const o of offers){
  assert(o.source_url.startsWith('https://'));assert(o.checked_on<=o.expires_on);
  assert(o.latitude>29&&o.latitude<32&&o.longitude<-96&&o.longitude>-99,'Central Texas coordinate check');

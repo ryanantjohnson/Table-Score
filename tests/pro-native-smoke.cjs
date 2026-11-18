@@ -5,7 +5,7 @@ const fixture=require('./pro-fixture.json');
 const source=fs.readFileSync('native/pro-preview.js','utf8');
 new(require('node:vm').Script)(source);
 const recipe=fixture.recipes[0];
-function setup({enabled=true,active=true,delay=0,native=false}={}){
+function setup({enabled=true,active=true,delay=0,native=false,offers=fixture.offers}={}){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadges"><span>Existing badge</span></div><div id="profileBadgeFolderCard"></div></section><section id="discover" class="screen"><div id="locationCard"></div><div id="discoverPeopleCard"></div></section><section id="saved" class="screen"><div id="savedList"></div></section></div><nav class="nav">Main navigation</nav><section id="whereToEatModal" class="hidden"><div class="tr-modal-scroll"><div>Free Run It</div></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
  const w=dom.window;w.scrollTo=()=>{};w.HTMLElement.prototype.scrollIntoView=function(){w.__scrolledTo=this.id;};w.matchMedia=()=>({matches:true});w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
  w.__maps=[];w.__markers=[];w.loadGoogleMaps=async()=>{};w.google={maps:{tableRecNativeBridge:native,Map:class{
@@ -34,7 +34,7 @@ function setup({enabled=true,active=true,delay=0,native=false}={}){
    const book={document:JSON.parse(JSON.stringify(args.p_document)),revision:args.p_revision+1};
    const r=await result(book.revision);if(!r.error)w.__books[id]=book;return r;
   }throw Error(name);
- },from(table){let action='select',value,owner;const q=new Proxy({}, {get(_,key){if(key==='then')return (resolve,reject)=>{let data;if(table==='pro_notebooks')data=w.__books[owner]||null;else if(table==='user_dining_preferences'){if(action==='upsert')w.__prefs[value.user_id]=value;if(action==='delete')delete w.__prefs[owner];data=w.__prefs[owner]||null;}else if(table==='restaurants')data=fixture.places;else if(table==='happy_hour_offers')data=fixture.offers;else throw Error(table);return result(data).then(resolve,reject);};return(...args)=>{if(key==='eq'&&args[0]==='user_id')owner=args[1];if(['upsert','delete'].includes(key)){action=key;value=args[0];}return q;};}});return q;}};
+ },from(table){let action='select',value,owner;const q=new Proxy({}, {get(_,key){if(key==='then')return (resolve,reject)=>{let data;if(table==='pro_notebooks')data=w.__books[owner]||null;else if(table==='user_dining_preferences'){if(action==='upsert')w.__prefs[value.user_id]=value;if(action==='delete')delete w.__prefs[owner];data=w.__prefs[owner]||null;}else if(table==='restaurants')data=fixture.places;else if(table==='happy_hour_offers')data=offers;else throw Error(table);return result(data).then(resolve,reject);};return(...args)=>{if(key==='eq'&&args[0]==='user_id')owner=args[1];if(['upsert','delete'].includes(key)){action=key;value=args[0];}return q;};}});return q;}};
  w.eval(fs.readFileSync('native/dining-sources.js','utf8'));w.eval(fs.readFileSync('native/dining-evidence.js','utf8'));w.eval(fs.readFileSync('native/pantry-input.js','utf8'));w.tableRecProPreviewEnabled=enabled;w.eval(source);return dom;
 }
 const flush=()=>new Promise(r=>setTimeout(r,15));
@@ -101,5 +101,12 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  d=setup({active:false});w=d.window;w.TableRecProPreview.open('recipes');await flush();assert(w.document.querySelector('#pro').textContent.includes('purchases are not open'));assert(!w.document.querySelector('#pro [data-pro-action="findRecipes"]'));d.window.close();
  d=setup({delay:30});w=d.window;w.TableRecProPreview.open('recipes');w.currentUser={id:'new-account'};w.TableRecProPreview.sync();await new Promise(r=>setTimeout(r,80));assert(!w.document.getElementById('pro').textContent.includes('Private note'));d.window.close();
  d=setup({native:true});w=d.window;w.TableRecProPreview.open('happy');await flush();const nm=w.__maps.at(-1);assert(w.document.querySelectorAll('.pr-deal').length>0,'Native Mercator viewport must retain Central Texas offers');nm.receive({event:'state',center:{lat:0,lng:0},zoom:12});await new Promise(r=>setTimeout(r,210));assert.equal(w.document.querySelectorAll('.pr-deal').length,0,'Native idle bridge updates viewport results');assert.equal(w.__maps.length,1);w.close();
+ // The expanded live-shaped catalog must render every in-bounds location and keep snapshots usable.
+ const expandedOffers=JSON.parse(fs.readFileSync('data/happy-hour-expansion.json','utf8'));
+ d=setup({offers:expandedOffers});w=d.window;w.TableRecProPreview.open('happy');await flush();
+ const expandedMap=w.__maps.at(-1);expandedMap.getBounds=()=>({getNorthEast:()=>({lat:()=>30.8,lng:()=>-97.3}),getSouthWest:()=>({lat:()=>30,lng:()=>-98.1})});expandedMap.emit('idle');await new Promise(r=>setTimeout(r,210));
+ assert.equal(w.document.querySelectorAll('.pr-deal').length,expandedOffers.length);assert.equal(w.__markers.filter(m=>m.map).length,expandedOffers.length);
+ for(const id of ['vacancy-brewing','house-wine','flutterfly']){w.document.querySelector('[data-pro-action="happyDetail"][data-value="'+id+'"]').click();assert(w.document.querySelector('[role="dialog"]').textContent.includes(expandedOffers.find(o=>o.id===id).offer));w.document.querySelector('[data-pro-action="closeHappy"]').click();}
+ w.close();
  console.log('PASS: Pro placement, server access, real recipe collection, attributed recipes, consent/private preferences, honest unknowns, source-linked specials, persistent saves, conflicts, and account isolation.');
 })().catch(e=>{console.error(e);process.exit(1);});
