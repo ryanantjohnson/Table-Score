@@ -21,6 +21,9 @@ begin
   assert length(m->'recipe'->>'source_url')>0;
   assert jsonb_array_length(m->'recipe'->'steps')>0;
  end loop;
+ result:=public.match_pro_pantry_recipes_v3(array['pasta','milk','cheese','marinara','beef','chicken','garlic','flour','sugar'],false,true,null,20,'everyday');
+ assert (result->>'count')::int>0,'Exact tester pantry must return recipes';
+ assert exists(select 1 from jsonb_array_elements(result->'matches') as entry(value) where entry.value->'recipe'->>'name'='Chicken and Pasta Alfredo'),'Practical meal must be included for the exact tester pantry';
  assert fallback_count>0,'Below-half pantry options must not be discarded';
  result:=public.match_pro_pantry_recipes_v3(array['chicken','peanut butter','regression ingredient xyz'],true,false,null,20,'everyday');
  assert jsonb_array_length(result->'matches')=0,'Use every ingredient must remain strict, including collection fallback';

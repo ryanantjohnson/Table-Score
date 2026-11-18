@@ -3,6 +3,8 @@ on:
   pull_request:
     paths:
       - 'native/pro-preview.*'
+      - 'native/pantry-input.js'
+      - 'tests/pantry-input.cjs'
       - 'native/dining-sources.js'
       - 'data/dining-*.json'
       - 'native/dining-evidence.js'
@@ -48,13 +50,14 @@ jobs:
           git diff --exit-code native/dining-sources.js
           node tests/dining-evidence.cjs
           node tests/pro-coverage.cjs
+          node tests/pantry-input.cjs
           node tests/recipe-generation.cjs
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs
       - name: Check tester and standard bundle separation
         run: |
           TR_PRO_PREVIEW=true node native/prepare-web.mjs
-          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js','dining-sources.js','dining-evidence.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
+          node -e "const fs=require('fs'); if(!fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled=true')) throw Error('Missing tester entry'); for(const n of ['pro-preview.js','dining-sources.js','dining-evidence.js','pantry-input.js']) if(!fs.existsSync('native/www/'+n))throw Error(n);"
           TR_PRO_PREVIEW=false node native/prepare-web.mjs
           node -e "const fs=require('fs'); if(fs.readFileSync('native/www/index.html','utf8').includes('tableRecProPreviewEnabled'))throw Error('Pro leaked into standard build');"
       - name: Install browser for layout checks
