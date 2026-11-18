@@ -67,11 +67,13 @@ begin
  ), ranked as (
   select s.*,u.used from scored s join used_items u using(id) where total>0 and matched>0
  ), candidates as (
-  select *,round(100.0*matched/total)::int as percent from ranked where cardinality(used)>0 and (not coalesce(p_require_all,false) or cardinality(used)=cardinality(pantry))
+  select *,round(100.0*matched/total)::int as percent,
+   case when record->>'name' ~* '(taco|pizza|burger|meatloaf|pot roast|fried chicken|roast chicken|spaghetti|macaroni.*cheese|lasagna|chili|fajita|enchilada|quesadilla|grilled cheese|sandwich|chicken noodle|pot pie|pancake|waffle|french toast|biscuit|salmon|steak|carbonara|stir.fry|fried rice|pulled pork|stroganoff|chicken parmesan|chicken alfredo|baked potato|chicken tender|scrambled egg|omelet|mashed potato|crepe|crêpe)' then 1 else 0 end as familiar
+   from ranked where cardinality(used)>0 and (not coalesce(p_require_all,false) or cardinality(used)=cardinality(pantry))
  ), limited as (
-  select * from candidates order by 1.0*matched/total desc,cardinality(used) desc,total-matched,record->>'name',id limit p_limit
+  select * from candidates order by 1.0*matched/total desc,familiar desc,cardinality(used) desc,total-matched,record->>'name',id limit p_limit
  ) select jsonb_build_object('count',(select count(*) from candidates),'pantry',to_jsonb(pantry),'assumed_staples',case when p_assume_staples then jsonb_build_array('water','salt','black pepper') else '[]'::jsonb end,
- 'matches',coalesce((select jsonb_agg(jsonb_build_object('recipe',record,'matched_count',matched,'required_count',total,'percent',percent,'have',have,'missing',missing,'optional',optional,'used',used,'unused',array(select p from unnest(pantry) p where not(p=any(used)))) order by 1.0*matched/total desc,cardinality(used) desc,total-matched,record->>'name',id) from limited),'[]'::jsonb)) into result;
+ 'matches',coalesce((select jsonb_agg(jsonb_build_object('recipe',record,'matched_count',matched,'required_count',total,'percent',percent,'have',have,'missing',missing,'optional',optional,'used',used,'unused',array(select p from unnest(pantry) p where not(p=any(used)))) order by 1.0*matched/total desc,familiar desc,cardinality(used) desc,total-matched,record->>'name',id) from limited),'[]'::jsonb)) into result;
  return result;
 end;$$;
 revoke all on function public.pro_ingredient_normalize(text),public.pro_ingredient_name_matches(text,text),public.pro_ingredient_line_matches(text,text[]) from public,anon;

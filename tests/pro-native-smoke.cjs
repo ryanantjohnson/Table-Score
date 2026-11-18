@@ -5,7 +5,7 @@ const fixture=require('./pro-fixture.json');
 const source=fs.readFileSync('native/pro-preview.js','utf8');
 new(require('node:vm').Script)(source);
 const recipe=fixture.recipes[0];
-function setup({enabled=true,active=true,delay=0,native=false,generation=true}={}){
+function setup({enabled=true,active=true,delay=0,native=false}={}){
  const dom=new JSDOM('<html><head></head><body><div class="app"><header class="topbar">TableRec</header><section id="profile" class="screen active"><div id="profileBadges"><span>Existing badge</span></div><div id="profileBadgeFolderCard"></div></section><section id="discover" class="screen"><div id="locationCard"></div><div id="discoverPeopleCard"></div></section><section id="saved" class="screen"><div id="savedList"></div></section></div><nav class="nav">Main navigation</nav><section id="whereToEatModal" class="hidden"><div class="tr-modal-scroll"><div>Free Run It</div></div></section><section id="settingsModal" class="hidden"><div class="tr-modal-scroll"></div></section></body></html>',{url:'https://app.test',runScripts:'outside-only'});
  const w=dom.window;w.scrollTo=()=>{};w.matchMedia=()=>({matches:true});w.currentUser={id:'a'};w.renderProfile=()=>{};const stack=[];
  w.__maps=[];w.__markers=[];w.loadGoogleMaps=async()=>{};w.google={maps:{tableRecNativeBridge:native,Map:class{
@@ -18,15 +18,15 @@ function setup({enabled=true,active=true,delay=0,native=false,generation=true}={
  w.currentTableScoreCoords=()=>({latitude:30.53,longitude:-97.69});
  w.showScreen=id=>{const prev=w.document.querySelector('.screen.active')?.id;if(prev!==id)stack.push(prev);w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===id));if(id==='profile')w.renderProfile();};
  w.tableRecBack=()=>{const prev=stack.pop()||'profile';w.document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('active',s.id===prev));return true;};
- w.signOut=async()=>{w.currentUser=null;};w.closeSettings=()=>{};w.closeWhereToEat=()=>{};
+ w.signOut=async()=>{w.currentUser=null;};w.closeSettings=()=>{};w.closeWhereToEat=()=>{};w.openWhereToEat=()=>{w.__restaurantOpened=true;};
  w.__restaurantSearch=[];w.tableRecInvokeRestaurant=async(name,args)=>{w.__restaurantSearch.push(args);return {data:{restaurants:[{place_id:'test-chipotle',name:'Chipotle Mexican Grill',address:'Georgetown, TX 78628'},{place_id:'unrelated-cava',name:'Cava Mezze',address:'Washington, DC'}]},error:null};};
  w.__books={};w.__prefs={};w.__writes=[];w.__error=false;w.__conflict=false;
  const result=async data=>{if(delay)await new Promise(r=>setTimeout(r,delay));return w.__error?{error:{code:'offline'}}:{data,error:null};};
- w.db={functions:{invoke:async(name,args)=>{if(name!=='generate-pro-recipes')throw Error('Unexpected function');if(args.body.action==='status')return result({available:generation});w.__generation=args.body;if(w.__generationError)return {error:{message:'offline'}};return result({state:'ready',message:'Created from your pantry.',recipes:[{...recipe,id:'ai-test-recipe',generated:true,source_url:undefined,summary:'A test recipe idea.',pantry_used:args.body.pantry,pantry_unused:[]}]});}},rpc:async(name,args)=>{
+ w.__functionCalls=[];w.db={functions:{invoke:async(name)=>{w.__functionCalls.push(name);throw Error('Cook at Home must not call a paid generation service');}},rpc:async(name,args)=>{
   const id=w.currentUser?.id;
   if(name==='has_tablerec_pro')return result(active);
   if(name==='pro_recipe_summary')return result(fixture.summary);
-  if(name==='match_pro_pantry_recipes'){w.__matchArgs=args;if(w.__matchError)return {error:{message:'offline'}};return result({count:w.__matchEmpty?0:1,matches:w.__matchEmpty?[]:[{recipe,matched_count:2,required_count:5,percent:40,have:[recipe.ingredients[0],recipe.ingredients[4]],missing:recipe.ingredients.slice(1,4),optional:[],used:['lemon','milk'],unused:[]}]});}
+  if(name==='match_pro_pantry_recipes'){w.__matchArgs=args;if(w.__matchError)return {error:{message:'offline'}};return result({count:w.__matchEmpty?0:1,matches:w.__matchEmpty?[]:[{recipe,matched_count:w.__lowMatch?1:w.__fullMatch?5:3,required_count:5,percent:60,have:recipe.ingredients.slice(0,3),missing:w.__fullMatch?[]:recipe.ingredients.slice(3),optional:[],used:['lemon','milk'],unused:[]}]});}
   if(name==='save_pro_notebook'){
    w.__writes.push({id,args:JSON.parse(JSON.stringify(args))});
    if(w.__conflict)return {error:{code:'40001'}};
@@ -49,16 +49,18 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  assert(doc.querySelector('#whereToEatModal [data-tr-pro-entry="recipes"]'));
  assert(!doc.querySelector('[data-tr-pro-entry="journal"]'));assert(!doc.querySelector('[data-tr-pro-entry="trip"]'));
  assert(!doc.querySelector('#settingsModal [data-tr-pro-entry]'));
- await open('recipes');await flush();assert(doc.querySelector('#pro').textContent.includes('What have you got?'));click('recipeMode','library');assert(doc.querySelector('#pro').textContent.includes('Your ingredients.'));
+ await open('recipes');await flush();assert(doc.querySelector('#pro').textContent.includes('Your ingredients.'));assert(!doc.querySelector('[data-pro-action="generateRecipes"]'));assert.equal(w.__functionCalls.length,0);
  assert(!doc.querySelector('#pro iframe'));assert(doc.querySelector('.topbar'));assert(doc.querySelector('.nav'));
  click('findRecipes');assert(!w.__matchArgs,'Empty pantry is rejected');
- doc.getElementById('prPantry').value='milk, lemon';doc.getElementById('prPantry').dispatchEvent(new w.Event('input',{bubbles:true}));doc.getElementById('prRequireAll').checked=true;doc.getElementById('prRequireAll').dispatchEvent(new w.Event('change',{bubbles:true}));
+ doc.getElementById('prPantry').value='I have milk and lemon';doc.getElementById('prPantry').dispatchEvent(new w.Event('input',{bubbles:true}));doc.getElementById('prRequireAll').checked=true;doc.getElementById('prRequireAll').dispatchEvent(new w.Event('change',{bubbles:true}));
  click('findRecipes');await flush();assert.equal(w.__matchArgs.p_pantry.join(','),'milk,lemon');assert.equal(w.__matchArgs.p_require_all,true);assert.equal(w.__matchArgs.p_assume_staples,false);
- assert(doc.querySelector('#pro').textContent.includes('Missing 3'));assert(doc.querySelector('#pro').textContent.includes(recipe.name));
- click('matchedRecipe',recipe.id);assert(doc.querySelector('#pro a[href*="creativecommons"]'));assert(doc.querySelector('#pro').textContent.includes('Still needed'));
+ assert(doc.querySelector('#pro').textContent.includes('Missing 2'));assert(doc.querySelector('#pro').textContent.includes(recipe.name));
+ click('spinRecipes');await flush();assert.equal(doc.querySelector('#prRecipeStageName').textContent,recipe.name);assert(doc.querySelector('#prOpenRecipePick'));click('matchedRecipe',recipe.id);assert(doc.querySelector('#pro a[href*="creativecommons"]'));assert(doc.querySelector('#pro').textContent.includes('Still needed'));
  click('saveRecipe');await flush();assert.equal(w.__books.a.document.savedRecipes[0].id,recipe.id);click('again');assert.equal(doc.querySelectorAll('.pr-recipe-match').length,1);
  const editPantry=doc.getElementById('prPantry');editPantry.value='rice';editPantry.dispatchEvent(new w.Event('input',{bubbles:true}));assert.equal(doc.querySelectorAll('.pr-recipe-match').length,0,'Editing clears stale matches');
  w.__matchError=true;click('findRecipes');await flush();assert.equal(doc.getElementById('prPantry').value,'rice');assert(doc.querySelector('.pr-feedback').textContent.includes('unavailable'));w.__matchError=false;
+ w.__lowMatch=true;click('findRecipes');await flush();assert(!doc.querySelector('[data-pro-action="spinRecipes"]'));assert(doc.querySelector('#pro').textContent.includes('No close matches'));w.__lowMatch=false;
+ w.__fullMatch=true;click('findRecipes');await flush();assert(doc.querySelector('#pro').textContent.includes('YOU HAVE EVERYTHING'));click('spinRecipes');await flush();assert.equal(doc.querySelector('#prRecipeStageName').textContent,recipe.name);w.__fullMatch=false;
  w.__matchEmpty=true;click('findRecipes');await flush();assert(doc.querySelector('#pro').textContent.includes('No close matches'));w.__matchEmpty=false;
  await open('needs');click('go','edit');
  for(const n of ['Peanut','Milk','Wheat'])[...doc.querySelectorAll('[data-need]')].find(x=>x.dataset.need===n).checked=true;
@@ -81,13 +83,13 @@ const flush=()=>new Promise(r=>setTimeout(r,15));
  w.__books.a.document.journal=[{notes:'Legacy private note'}];await w.TableRecProPreview.reload();await flush();click('happyDetail',fixture.offers[0].id);
  click('deal',fixture.offers[0].id);await flush();assert.equal(w.__books.a.document.journal[0].notes,'Legacy private note');
  w.__conflict=true;click('deal',fixture.offers[0].id);await flush();assert(doc.querySelector('.pr-snapshot-feedback').textContent.includes('another device'));w.__conflict=false;
- await open('recipes');click('recipeMode','create');await flush();const pantry=doc.getElementById('prPantry');pantry.value='bread, butter';pantry.dispatchEvent(new w.Event('input',{bubbles:true}));click('generateRecipes');await flush();assert.equal(w.__generation.pantry.join(','),'bread,butter');assert(w.__generation.request_id);assert.equal(w.__generation.servings,2);assert(!('needs' in w.__generation));click('generatedRecipe','ai-test-recipe');assert(!doc.querySelector('#pro a[href*="creativecommons"]'),'Generated recipes must not inherit catalog licensing');assert(doc.querySelector('#pro').textContent.includes('AI-generated'));click('again');click('recipeMode','create');assert(doc.querySelector('#prGeneratedResults').textContent.includes('Created from your pantry'));
- await open('home');assert(!doc.querySelector('#pro').textContent.includes('Trip Planner'));assert(!doc.querySelector('#pro').textContent.includes('Dining Journal'));
+ await open('recipes');assert.equal(w.__functionCalls.length,0,'No AI API status or generation calls');
+ click('restaurants');assert(w.__restaurantOpened);assert(doc.getElementById('home')?.classList.contains('active')||!doc.getElementById('pro').classList.contains('active'));await open('home');assert(!doc.querySelector('#pro').textContent.includes('Trip Planner'));assert(!doc.querySelector('#pro').textContent.includes('Dining Journal'));
  await open('trip');assert(doc.querySelector('#pro').textContent.includes('More ways to find your favorite'));
  assert.equal(doc.getElementById('profileBadges').textContent,'Existing badge');
  w.currentUser={id:'b'};w.TableRecProPreview.sync();await open('recipes');assert(!doc.querySelector('#pro').textContent.includes('Legacy private note'));
  await w.signOut();assert(!doc.getElementById('pro'));assert(doc.querySelector('#discover [data-tr-pro-entry]'));d.window.close();
- d=setup({generation:false});w=d.window;w.TableRecProPreview.open('recipes');await flush();await flush();assert(w.document.querySelector('[data-pro-action="generateRecipes"]').disabled);assert(w.document.querySelector('#pro').textContent.includes('getting ready'));w.close();
+ d=setup();w=d.window;w.matchMedia=()=>({matches:false});w.TableRecProPreview.open('recipes');await flush();const animatedPantry=w.document.getElementById('prPantry');animatedPantry.value='milk, lemon';animatedPantry.dispatchEvent(new w.Event('input',{bubbles:true}));w.document.querySelector('[data-pro-action="findRecipes"]').click();await flush();w.document.querySelector('[data-pro-action="spinRecipes"]').click();assert(w.document.querySelector('#prRecipeStage.running'));assert(w.document.querySelector('#prPantry').disabled,'Inputs locked during recipe shuffle');w.TableRecProPreview.open('happy');await new Promise(r=>setTimeout(r,130));assert(!w.document.querySelector('#prRecipeStage'),'Navigating cancels the old round');w.TableRecProPreview.open('recipes');assert(!w.document.querySelector('#prPantry').disabled);w.close();
  d=setup({active:false});w=d.window;w.TableRecProPreview.open('recipes');await flush();assert(w.document.querySelector('#pro').textContent.includes('purchases are not open'));assert(!w.document.querySelector('#pro [data-pro-action="findRecipes"]'));d.window.close();
  d=setup({delay:30});w=d.window;w.TableRecProPreview.open('recipes');w.currentUser={id:'new-account'};w.TableRecProPreview.sync();await new Promise(r=>setTimeout(r,80));assert(!w.document.getElementById('pro').textContent.includes('Private note'));d.window.close();
  d=setup({native:true});w=d.window;w.TableRecProPreview.open('happy');await flush();const nm=w.__maps.at(-1);nm.receive({event:'state',center:{lat:0,lng:0},zoom:12});await new Promise(r=>setTimeout(r,210));assert.equal(w.document.querySelectorAll('.pr-deal').length,0,'Native idle bridge updates viewport results');assert.equal(w.__maps.length,1);w.close();

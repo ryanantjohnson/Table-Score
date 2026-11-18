@@ -26,7 +26,7 @@ function evaluate(v,needs){
 }
 const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const icon=(name)=>{const paths={needs:'M12 21s-8-5-8-12a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 7-8 12-8 12Z',happy:'M5 3h14l-7 9-7-9Zm7 9v9m-4 0h8',recipes:'M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1',trip:'M4 4h6v6H4V4Zm10 10h6v6h-6v-6ZM7 10v7h7',journal:'M5 3h14v18H5V3Zm4 5h6m-6 4h6m-6 4h4',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',plus:'M12 5v14M5 12h14',check:'m5 12 4 4L19 6'};return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.needs).split(/(?=M)/).map(d=>'<path d="'+d+'"/>').join('')+'</svg>';};
-const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',diningResults:null,diningSearching:false,diningMessage:'',diningRequest:0,day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeCollection:'everyday',recipeQuery:'',pantryText:'',requireAll:false,assumeStaples:false,recipeMatches:[],recipeMatchCount:0,recipeSearching:false,recipeResultsReady:false,recipeRequest:0,recipeError:'',recipeMode:'create',generationAvailable:null,generationStatusBusy:false,generationBusy:false,generationSerial:0,generationRequestId:null,generationPending:false,generatedRecipes:[],generationMessage:'',generationServings:2,recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,happyCenter:null,happyBounds:null,happyZoom:11,happySelected:null,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
+const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',diningResults:null,diningSearching:false,diningMessage:'',diningRequest:0,day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeCollection:'everyday',recipeQuery:'',pantryText:'',requireAll:false,assumeStaples:false,recipeMatches:[],recipeMatchCount:0,recipeSearching:false,recipeResultsReady:false,recipeRequest:0,recipeError:'',recipeRoundPick:null,recipeRoundSerial:0,recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,happyCenter:null,happyBounds:null,happyZoom:11,happySelected:null,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
 let clearing=false,signingOut=false,epoch=0,loadPromise=null,loaded=false,access=false,revision=0,saveBusy=false,savePending=false,saveConflict=false,loading=false,errorText='',feature='home';
 const client=()=>{try{return typeof db!=='undefined'?db:null;}catch{return null;}};
 let happyMap=null,happyMarkers=[],happyMapVersion=0,happyMapTimer=null,happyMapListener=null;
@@ -49,8 +49,9 @@ function heading(text,sub){return '<div class="pr-heading"><h2>'+esc(text)+'</h2
 function field(label,id,html){return '<div class="field"><label for="'+id+'">'+esc(label)+'</label>'+html+'</div>';}
 function select(id,items,value){return '<select id="'+id+'">'+items.map(x=>'<option value="'+esc(x)+'"'+(String(x)===String(value)?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>';}
 const supportedViews=new Set(['home','needs','edit','venue','happy','happyDetail','recipes','recipe','about']);
-function go(next,id){if(!user())return;if(!supportedViews.has(next))next='home';feature=next;view=next;detail=id||null;render();root.scrollTo(0,0);screen.querySelector('h1')?.focus();}
+function go(next,id){if(!user())return;invalidateRecipeRound();if(!supportedViews.has(next))next='home';feature=next;view=next;detail=id||null;render();root.scrollTo(0,0);screen.querySelector('h1')?.focus();}
 function open(next='home'){
+ invalidateRecipeRound();
  if(!supportedViews.has(next))next='home';
  sync();if(!user()||!screen){root.openAccount?.();return;}
  feature=next;view=next;detail=null;
@@ -69,7 +70,7 @@ function render(){
  const body=loading?'<div class="pr-empty"><h2>Getting your table ready…</h2><p>Loading your private account.</p></div>':errorText?'<div class="pr-empty"><h2>We couldn’t load this right now.</h2><p>'+esc(errorText)+'</p>'+button('Try again','retry','','primary')+'</div>':(!access&&!['home','about','edit','needs'].includes(view))?lockedView():{home:homeView,needs:needsView,edit:editView,venue:venueView,happy:happyView,happyDetail:happyDetailView,recipes:recipesView,recipe:recipeView,about:aboutView}[view]();
  screen.innerHTML='<div class="backline pr-backline">'+button(icon('back'),'back','','backbtn')+'<span class="muted">'+(view==='home'?'Profile':'TableRec Pro')+'</span></div><div class="pr-title"><h1 class="page-title" tabindex="-1">'+titles[view]+'</h1>'+(view==='home'?badge('PRO','pr-orange'):'')+'</div>'+body+'<div class="pr-feedback" role="status" aria-live="polite"></div>';
  if(view==='happy'&&access&&!loading&&!errorText)void mountHappyMap();
- const generatorButton=screen.querySelector('[data-pro-action="generateRecipes"]');if(generatorButton)generatorButton.disabled=state.generationAvailable!==true||state.generationBusy;
+ screen.querySelectorAll('#prPantry,#prCategory,#prRequireAll,#prStaples,[data-pro-action="findRecipes"],[data-pro-action="spinRecipes"]').forEach(el=>{el.disabled=recipeRunning||state.recipeSearching;});
 }
 function homeView(){
  return '<div class="pr-membership"><div class="pr-member-top">'+badge(access?'PRO ACCESS ACTIVE':'TABLEREC PRO','pr-orange')+button('Membership details','go','about','linkbtn')+'</div><h2>More ways to find your favorite.</h2><p>Your dining needs live in Profile. Find Happy Hours in Discover and Cook at Home in Run It.</p></div><div class="pr-group">'+
@@ -182,54 +183,48 @@ async function mountHappyMap(){
   await map.ready;if(version!==happyMapVersion)return;updateHappyViewport(version);
  }catch{if(host.isConnected&&version===happyMapVersion){host.innerHTML='<div class="pr-empty"><h3>Map unavailable right now</h3><p>You can still open specials from the list.</p></div>';const status=screen.querySelector('#prMapStatus');if(status)status.textContent='Showing saved browsing-area results.';}}
 }
-function recipesView(){return '<div class="pr-segments pr-recipe-modes" role="group" aria-label="Cooking options">'+button('Create from my pantry','recipeMode','create',state.recipeMode==='create'?'chip active':'chip')+button('Browse existing recipes','recipeMode','library',state.recipeMode==='library'?'chip active':'chip')+'</div>'+(state.recipeMode==='create'?generationView():libraryRecipesView());}
-function generationView(){
- const ready=state.generationAvailable===true,label=state.generationBusy?'Creating your recipes…':state.generationPending?'CHECK MY RECIPES':state.generatedRecipes.length?'CREATE MORE IDEAS':'CREATE MY RECIPES';
- return '<div class="pr-recipe-intro"><span class="pr-eyebrow">MADE AROUND YOUR PANTRY</span><h2>What have you got?</h2><p>List what’s in your kitchen. Create recipe ideas using those ingredients, with quantities and steps for your table.</p></div>'+field('Your ingredients','prPantry','<textarea id="prPantry" rows="4" maxlength="3500" placeholder="Chicken, rice, spinach, garlic, butter, lemon…">'+esc(state.pantryText)+'</textarea>')+note('Separate ingredient names with commas or new lines. Up to 40 ingredients. Recipes use sensible combinations from your list; they don’t need to use every item.')+field('Servings','prServings',select('prServings',[1,2,3,4,5,6,7,8],state.generationServings))+'<div class="pr-pantry-options"><label><input id="prStaples" type="checkbox"'+(state.assumeStaples?' checked':'')+'>I also have water, salt and black pepper</label></div>'+button(label,'generateRecipes','','primary')+
- (state.generationAvailable===null?note('Checking recipe creation…'):!ready?'<div class="card pr-generator-status" role="status"><strong>Custom recipe creation is getting ready.</strong><p>It isn’t available in this test build yet. Your ingredient list stays here; you can browse existing recipes while setup is completed.</p>'+button('Check availability','generationStatus','','linkbtn')+'</div>':'')+note('Your entered ingredients are sent to recipe generation. Your profile, saved allergies and dietary restrictions are not sent or applied. Review every ingredient, quantity and cooking instruction before cooking.')+
- '<div id="prGeneratedResults">'+(state.generationMessage?'<p role="status" class="pr-note">'+esc(state.generationMessage)+'</p>':'')+state.generatedRecipes.map(r=>'<button type="button" class="card pr-recipe-match" data-pro-action="generatedRecipe" data-value="'+esc(r.id)+'"><span class="pr-eyebrow">CREATED FROM YOUR PANTRY · '+esc(r.time_text)+'</span><strong>'+esc(r.name)+'</strong><span>'+esc(r.summary)+'</span><span class="pr-have">Uses: '+esc(r.pantry_used.join(', '))+'</span>'+(r.pantry_unused.length?'<small>Left for another meal: '+esc(r.pantry_unused.join(', '))+'</small>':'')+'<b>See ingredients & steps ↗</b></button>').join('')+'</div>'+
- (state.savedRecipes.length?'<h3 class="pr-label">Your saved recipes</h3><div class="pr-group">'+state.savedRecipes.map(r=>row(r.name,r.category,'recipe',r.id)).join('')+'</div>':'');
+function recipesView(){return libraryRecipesView();}
+function pantryItems(text){return [...new Set(text.replace(/^\s*(?:i have|we have|i've got|we've got)\s*:?\s*/i,'').split(/[,;\n]+|\s+and\s+/i).map(x=>x.replace(/^\s*[-•]\s*/,'').trim()).filter(Boolean))];}
+function invalidateRecipeRound(){state.recipeRoundSerial++;recipeRunning=false;state.recipeRoundPick=null;}
+function openMatchedRecipe(id){const m=state.recipeMatches.find(m=>m.recipe.id===id);if(m){state.recipe={...m.recipe,pantry_match:{matched_count:m.matched_count,required_count:m.required_count,missing:m.missing,have:m.have}};go('recipe',id);}}
+async function spinPantryRecipes(){
+ if(!access||recipeRunning||state.recipeSearching||!state.recipeResultsReady||!state.recipeMatches.length)return;
+ const e=epoch,id=user()?.id,serial=++state.recipeRoundSerial;
+ // Prefer recipes with everything available, then the closest displayed matches.
+ const complete=state.recipeMatches.filter(m=>m.missing.length===0),pool=complete.length?complete:state.recipeMatches;
+ const fresh=pool.filter(m=>!state.recipeHistory.includes(m.recipe.id)),options=fresh.length?fresh:pool;
+ const pick=options[Math.floor(Math.random()*options.length)];recipeRunning=true;state.recipeRoundPick=null;render();
+ const stage=screen.querySelector('#prRecipeStage');stage?.scrollIntoView?.({behavior:'smooth',block:'center'});
+ const delays=root.matchMedia?.('(prefers-reduced-motion: reduce)').matches?[]:[85,90,100,115,135,160,195,245,315,400];
+ for(const delay of delays){
+  if(e!==epoch||id!==user()?.id||serial!==state.recipeRoundSerial||view!=='recipes'||!screen?.classList.contains('active')){if(e===epoch&&serial===state.recipeRoundSerial)recipeRunning=false;return;}
+  const name=screen.querySelector('#prRecipeStageName');if(name)name.textContent=pool[Math.floor(Math.random()*pool.length)].recipe.name;
+  await new Promise(resolve=>setTimeout(resolve,delay));
+ }
+ if(e!==epoch||id!==user()?.id||serial!==state.recipeRoundSerial||view!=='recipes'||!screen?.classList.contains('active')){if(e===epoch&&serial===state.recipeRoundSerial)recipeRunning=false;return;}
+ state.recipeRoundPick=pick.recipe.id;state.recipeHistory=[...state.recipeHistory.filter(x=>x!==pick.recipe.id),pick.recipe.id].slice(-12);recipeRunning=false;render();
+ screen.querySelector('#prRecipeStage')?.scrollIntoView?.({behavior:'smooth',block:'center'});screen.querySelector('#prOpenRecipePick')?.focus({preventScroll:true});
 }
-async function loadGenerationStatus(){
- if(!access||state.generationStatusBusy)return;const e=epoch,id=user()?.id;state.generationStatusBusy=true;
- try{const r=await client().functions.invoke('generate-pro-recipes',{body:{action:'status'}});if(e!==epoch||id!==user()?.id)return;state.generationAvailable=!r.error&&r.data?.available===true;}
- catch{if(e===epoch&&id===user()?.id)state.generationAvailable=false;}
- finally{if(e===epoch&&id===user()?.id){state.generationStatusBusy=false;if(view==='recipes'&&state.recipeMode==='create')render();}}
-}
-function invalidateGeneration(){state.generationSerial++;state.generationBusy=false;state.generationRequestId=null;state.generationPending=false;state.generatedRecipes=[];state.generationMessage='';}
-async function generateRecipes(){
- if(!access||state.generationBusy)return;if(state.generationAvailable!==true){toast('Custom recipe creation is not available yet.');return;}
- const input=screen.querySelector('#prPantry');if(input)state.pantryText=input.value;const pantry=[...new Set(state.pantryText.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean))];
- if(!pantry.length||pantry.length>40||pantry.some(x=>x.length<2||x.length>80||!/[a-z]/i.test(x))){toast('Enter 1 to 40 ingredient names, separated by commas.');return;}
- const e=epoch,id=user()?.id,serial=++state.generationSerial;
- if(!state.generationRequestId||(!state.generationPending&&state.generatedRecipes.length))state.generationRequestId=root.crypto.randomUUID();
- const requestId=state.generationRequestId;state.generationBusy=true;state.generationMessage='Creating ideas from your ingredients…';render();
- try{
-  const r=await client().functions.invoke('generate-pro-recipes',{body:{action:'generate',request_id:requestId,pantry,servings:state.generationServings,assume_staples:state.assumeStaples}});
-  if(e!==epoch||id!==user()?.id||serial!==state.generationSerial)return;
-  if(r.error)throw Error('Recipe creation couldn’t finish loading. Your ingredients are still here. Check this request again shortly.');
-  if(r.data?.state==='pending'){state.generationPending=true;state.generationMessage=r.data.message;return;}
-  if(r.data?.state==='failed'){state.generationPending=false;state.generationRequestId=null;state.generationMessage=r.data.message;return;}
-  if(r.data?.state!=='ready'||!Array.isArray(r.data.recipes))throw Error('Recipe creation returned an incomplete result.');
-  state.generatedRecipes=r.data.recipes;state.generationPending=false;state.generationMessage=r.data.message|| (r.data.recipes.length?'Made from your pantry. Check amounts before cooking.':'No practical recipe could be created from that list. Try adding more of what you have.');
- }catch(err){if(e===epoch&&id===user()?.id&&serial===state.generationSerial){state.generationPending=true;state.generationMessage=err.message;}}
- finally{if(e===epoch&&id===user()?.id&&serial===state.generationSerial){state.generationBusy=false;if(view==='recipes'){render();screen.querySelector('#prGeneratedResults')?.scrollIntoView?.({behavior:'smooth',block:'nearest'});}}}
+function recipeRoundView(){
+ if(!state.recipeMatches.length)return '';
+ const pick=state.recipeMatches.find(m=>m.recipe.id===state.recipeRoundPick);
+ return '<div id="prRecipeStage" class="card where-stage pr-recipe-stage '+(recipeRunning?'running':'')+'" aria-busy="'+recipeRunning+'"><div class="where-stage-label">'+(recipeRunning?'SHUFFLING YOUR MATCHES':pick?'TONIGHT, YOU’RE COOKING…':'LET TABLEREC CHOOSE')+'</div><div id="prRecipeStageName" class="where-stage-name">'+esc(pick?pick.recipe.name:recipeRunning?'RUNNING IT…':'What’s cooking?')+'</div><p class="where-stage-sub" role="status">'+(recipeRunning?'Choosing from recipes matched to your kitchen.':pick?(pick.missing.length?'Missing '+pick.missing.length+' ingredient'+(pick.missing.length===1?'':'s')+' — check before cooking.':'You have every required ingredient listed. Check quantities.'):'Your ingredients. A little help choosing.')+'</p>'+(pick?'<button type="button" id="prOpenRecipePick" class="primary" data-pro-action="matchedRecipe" data-value="'+esc(pick.recipe.id)+'">OPEN RECIPE</button>':'')+'</div><div class="pr-spin-footer">'+button(recipeRunning?'RUNNING…':pick?'RUN IT AGAIN':'RUN IT','spinRecipes','','primary')+'</div>';
 }
 function libraryRecipesView(){
  const matches=state.recipeMatches,cats=['All',...state.recipeSummary.categories];
- return '<div class="pr-recipe-intro"><span class="pr-eyebrow">COOK AT HOME</span><h2>Your ingredients.<br>Tonight’s dinner.</h2><p>Tell us what’s in your kitchen. We’ll find real recipes that make the most of it.</p></div>'+field('Ingredients you have and want to use','prPantry','<textarea id="prPantry" rows="3" maxlength="2000" placeholder="Chicken, rice, eggs, garlic…">'+esc(state.pantryText)+'</textarea>')+note('Separate ingredient names with commas or new lines. Up to 40 ingredients. Names are matched; you’ll still need to check quantities and preparation.')+'<div class="pr-pantry-options"><label><input id="prRequireAll" type="checkbox"'+(state.requireAll?' checked':'')+'>Use every ingredient I listed</label><label><input id="prStaples" type="checkbox"'+(state.assumeStaples?' checked':'')+'>I also have water, salt and black pepper</label></div>'+field('Recipe category','prCategory',select('prCategory',cats,state.category))+button(state.recipeSearching?'Finding your recipes…':'FIND MY RECIPES','findRecipes','','primary')+note('Recipes are not allergy- or medical-diet screened. Check every ingredient and preparation step yourself.')+
- '<div id="prRecipeMatches">'+(state.recipeResultsReady?'<div class="pr-match-heading" role="status"><h3>Closest matches</h3><p>'+state.recipeMatchCount+' recipes found. Showing the best '+matches.length+'.</p></div>'+matches.map(m=>'<button type="button" class="card pr-recipe-match" data-pro-action="matchedRecipe" data-value="'+esc(m.recipe.id)+'"><span class="pr-eyebrow">'+m.matched_count+' OF '+m.required_count+' REQUIRED INGREDIENTS MATCHED</span><strong>'+esc(m.recipe.name)+'</strong><span>'+esc(m.recipe.category)+'</span><span class="pr-have">Have: '+esc(m.used.join(', '))+'</span><span class="pr-missing">'+(m.missing.length?'Missing '+m.missing.length+': '+esc(m.missing.join(' · ')):'All required ingredient names matched—check amounts.')+'</span>'+(m.unused.length?'<small>Not used: '+esc(m.unused.join(', '))+'</small>':'')+'<b>See recipe ↗</b></button>').join('')+(!matches.length?'<div class="pr-empty"><h3>No close matches yet.</h3><p>Try fewer ingredients, another category, or turn off “Use every ingredient.”</p></div>':''):'')+
+ return '<div class="pr-recipe-intro"><span class="pr-eyebrow">COOK AT HOME</span><h2>Your ingredients.<br>Tonight’s dinner.</h2><p>What’s in your kitchen? List your ingredients and we’ll find published recipes that fit.</p></div>'+field('Tell us what you have','prPantry','<textarea id="prPantry" rows="4" maxlength="2500" aria-describedby="prPantryHelp" placeholder="I have chicken, rice, broccoli, cheddar, milk and butter…">'+esc(state.pantryText)+'</textarea>')+'<p id="prPantryHelp" class="pr-note">List up to 40 ingredient names, separated by commas, new lines or “and”. We match existing recipes; check quantities and preparation.</p>'+'<div class="pr-pantry-options"><label><input id="prRequireAll" type="checkbox"'+(state.requireAll?' checked':'')+'>Use every ingredient I listed</label><label><input id="prStaples" type="checkbox"'+(state.assumeStaples?' checked':'')+'>I also have water, salt and black pepper</label></div>'+field('Recipe category','prCategory',select('prCategory',cats,state.category))+button(state.recipeSearching?'Finding your recipes…':'FIND MY RECIPES','findRecipes','','primary')+button('Choose a restaurant instead','restaurants','','linkbtn')+note('Recipes are not allergy- or medical-diet screened. Check every ingredient and preparation step yourself.')+
+ '<div id="prRecipeMatches">'+(state.recipeResultsReady?'<div class="pr-match-heading" role="status"><h3>Closest matches</h3><p>'+matches.length+' close match'+(matches.length===1?'':'es')+'. Recipes with all ingredients come first.</p></div>'+recipeRoundView()+matches.map(m=>'<button type="button" class="card pr-recipe-match" data-pro-action="matchedRecipe" data-value="'+esc(m.recipe.id)+'"><span class="pr-eyebrow">'+(m.missing.length?'YOU HAVE '+m.matched_count+' OF '+m.required_count+' INGREDIENTS':'YOU HAVE EVERYTHING')+'</span><strong>'+esc(m.recipe.name)+'</strong><span>'+esc(m.recipe.category)+'</span><span class="pr-have">Have: '+esc(m.used.join(', '))+'</span><span class="pr-missing">'+(m.missing.length?'Missing '+m.missing.length+': '+esc(m.missing.join(' · ')):'You have everything listed—check quantities.')+'</span>'+(m.unused.length?'<small>Not used: '+esc(m.unused.join(', '))+'</small>':'')+'<b>See recipe ↗</b></button>').join('')+(!matches.length?'<div class="pr-empty"><h3>No close matches yet.</h3><p>No recipes matched at least half their required ingredients. Add more kitchen ingredients, try another category, or turn off “Use every ingredient.”</p></div>':''):'')+
  '</div>'+ (state.savedRecipes.length?'<h3 class="pr-label">Your saved recipes</h3><div class="pr-group">'+state.savedRecipes.map(r=>row(r.name,r.category,'recipe',r.id)).join('')+'</div>':'');
 }
 async function findPantryRecipes(){
  if(!access||state.recipeSearching)return;const input=screen.querySelector('#prPantry');if(input)state.pantryText=input.value;
- const pantry=[...new Set(state.pantryText.split(/[,;\n]+/).map(x=>x.trim()).filter(Boolean))];
+ const pantry=pantryItems(state.pantryText);
  if(!pantry.length||pantry.length>40||pantry.some(x=>x.length<2||x.length>60||!/[a-z]/i.test(x))){toast('Enter 1 to 40 ingredient names, separated by commas. Each can be 2 to 60 characters.');return;}
- const e=epoch,id=user()?.id,request=++state.recipeRequest;state.recipeSearching=true;state.recipeResultsReady=false;render();const button=screen.querySelector('[data-pro-action="findRecipes"]');if(button)button.disabled=true;
+ invalidateRecipeRound();const e=epoch,id=user()?.id,request=++state.recipeRequest;state.recipeError='';state.recipeSearching=true;state.recipeResultsReady=false;render();const button=screen.querySelector('[data-pro-action="findRecipes"]');if(button)button.disabled=true;
  try{
   const r=await client().rpc('match_pro_pantry_recipes',{p_pantry:pantry,p_require_all:state.requireAll,p_assume_staples:state.assumeStaples,p_category:state.category==='All'?null:state.category,p_limit:20});
   if(e!==epoch||id!==user()?.id||request!==state.recipeRequest)return;if(r.error)throw Error('Recipe matching is unavailable. Your ingredients are still here—please try again.');
-  state.recipeMatches=Array.isArray(r.data?.matches)?r.data.matches:[];state.recipeMatchCount=Number(r.data?.count)||0;state.recipeResultsReady=true;
+  state.recipeMatches=Array.isArray(r.data?.matches)?r.data.matches.filter(m=>m.required_count>0&&m.matched_count/m.required_count>=0.5):[];state.recipeMatchCount=Number(r.data?.count)||0;state.recipeResultsReady=true;
  }catch(err){if(e===epoch&&id===user()?.id&&request===state.recipeRequest){state.recipeError=err.message;}}
  finally{if(e===epoch&&id===user()?.id&&request===state.recipeRequest){state.recipeSearching=false;if(view==='recipes'){render();if(state.recipeError){toast(state.recipeError);state.recipeError='';}screen.querySelector('.pr-match-heading')?.scrollIntoView?.({behavior:'smooth',block:'nearest'});}}}
 }
@@ -271,7 +266,6 @@ async function loadAccount(force=false){
  if(epoch!==e||user()?.id!==id)return;if(results.some(r=>r.error))throw Error('Some account data could not load. Try again.');
  const [book,summary,deals,places]=results;const doc=book.data?.document||{};revision=book.data?.revision||0;saveConflict=false;
  state.savedDeals=Array.isArray(doc.savedDeals)?doc.savedDeals:[];state.savedRecipes=Array.isArray(doc.savedRecipes)?doc.savedRecipes:[];state.trip=doc.trip||state.trip;state.journal=Array.isArray(doc.journal)?doc.journal:[];
- if(state.generationAvailable===null)void loadGenerationStatus();
  state.recipeSummary=summary.data||{count:0,categories:[]};DEALS=deals.data||[];VENUES=(places.data||[]).map(v=>({...v,area:v.city||v.address||'Location not listed',cuisine:v.cuisine||'Restaurant',price:0,data:{}}));
  }loaded=true;updateEntries();
  }catch(err){if(epoch===e)errorText=err.message;}finally{if(epoch===e){loading=false;loadPromise=null;render();}}})();return loadPromise;
@@ -288,15 +282,13 @@ function action(act,val){
  if(act==='happyDetail')return openHappySnapshot(val);if(act==='closeHappy')return closeHappySnapshot();if(act==='resetMap'){state.happyCenter=null;state.happyBounds=null;state.happyZoom=11;render();return;}
  if(act==='saveNeeds')return void savePreferences();if(act==='clearNeeds')return void savePreferences(true);
  if(act==='filter'){state.filter=val;render();return;}
+ if(act==='restaurants'){invalidateRecipeRound();root.showScreen('home');root.openWhereToEat?.();return;}
  if(!access)return;
  if(act==='collection'){if(recipeRunning)return;state.recipeCollection=val==='all'?'all':'everyday';state.category='All';render();return;}
- if(act==='recipeMode'){state.recipeMode=val==='library'?'library':'create';render();return;}
- if(act==='generationStatus')return void loadGenerationStatus();
- if(act==='generateRecipes')return void generateRecipes();
- if(act==='generatedRecipe'){const r=state.generatedRecipes.find(r=>r.id===val);if(r){state.recipe=r;go('recipe',val);}return;}
  if(act==='again')return go('recipes');
  if(act==='findRecipes')return void findPantryRecipes();
- if(act==='matchedRecipe'){const m=state.recipeMatches.find(m=>m.recipe.id===val);if(m){state.recipe={...m.recipe,pantry_match:{matched_count:m.matched_count,required_count:m.required_count,missing:m.missing,have:m.have}};go('recipe',val);}return;}
+ if(act==='matchedRecipe'){if(!recipeRunning)openMatchedRecipe(val);return;}
+ if(act==='spinRecipes')return void spinPantryRecipes();
  if(act==='openRestaurant'){if(typeof root.openRestaurantById==='function')root.openRestaurantById(val);return;}
  if(act==='directions'){const d=DEALS.find(d=>d.id===val);if(d)root.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(d.address),'_blank','noopener,noreferrer');return;}
  if(act==='deal'){state.savedDeals=state.savedDeals.includes(val)?state.savedDeals.filter(x=>x!==val):[...state.savedDeals,val];if(state.happySelected){renderHappySnapshot();void saveNotebook();return;}}
@@ -309,14 +301,13 @@ function bind(){
 
  screen.addEventListener('keydown',e=>{if(e.target.id==='prSearch'&&e.key==='Enter'){e.preventDefault();void searchDining();}});
  screen.addEventListener('click',e=>{const b=e.target.closest('[data-pro-action]');if(b&&screen.contains(b))action(b.dataset.proAction,b.dataset.value);});
- screen.addEventListener('input',e=>{if(e.target.id==='prPantry'){state.pantryText=e.target.value;invalidateGeneration();screen.querySelector('#prGeneratedResults')?.replaceChildren();const generate=screen.querySelector('[data-pro-action="generateRecipes"]');if(generate){generate.disabled=state.generationAvailable!==true;generate.textContent='CREATE MY RECIPES';}state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;const b=screen.querySelector('[data-pro-action="findRecipes"]');if(b){b.disabled=false;b.textContent='FIND MY RECIPES';}screen.querySelector('#prRecipeMatches')?.replaceChildren();return;}if(e.target.id==='prSearch'){state.query=e.target.value;state.diningResults=null;state.diningMessage='';state.diningSearching=false;state.diningRequest++;const start=e.target.selectionStart;render();const q=screen.querySelector('#prSearch');q.focus();q.setSelectionRange(start,start);}});
+ screen.addEventListener('input',e=>{if(e.target.id==='prPantry'){state.pantryText=e.target.value;invalidateRecipeRound();state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;const b=screen.querySelector('[data-pro-action="findRecipes"]');if(b){b.disabled=false;b.textContent='FIND MY RECIPES';}screen.querySelector('#prRecipeMatches')?.replaceChildren();return;}if(e.target.id==='prSearch'){state.query=e.target.value;state.diningResults=null;state.diningMessage='';state.diningSearching=false;state.diningRequest++;const start=e.target.selectionStart;render();const q=screen.querySelector('#prSearch');q.focus();q.setSelectionRange(start,start);}});
  screen.addEventListener('change',e=>{
   const t=e.target;
   if(t.id==='prGroupOn'){state.groupOn=t.checked;render();}
   if(recipeRunning)return;
-  if(t.id==='prCategory'){state.category=t.value;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
-  if(t.id==='prServings'){state.generationServings=+t.value;invalidateGeneration();render();return;}
-  if(t.id==='prRequireAll'||t.id==='prStaples'){invalidateGeneration();state[t.id==='prRequireAll'?'requireAll':'assumeStaples']=t.checked;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
+  if(t.id==='prCategory'){invalidateRecipeRound();state.category=t.value;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
+  if(t.id==='prRequireAll'||t.id==='prStaples'){invalidateRecipeRound();state[t.id==='prRequireAll'?'requireAll':'assumeStaples']=t.checked;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
   if(t.id==='prRecipeQuery'){state.recipeQuery=t.value;return;}
   if(t.id==='prRadius'){state.radius=+t.value;render();return;}
   if(t.id==='prOpen'){state.openNow=t.value==='Active now';render();return;}

@@ -1,0 +1,6 @@
+# New read-only guest endpoints; authenticated endpoints keep their live settings.
+[functions.guest-restaurants]
+verify_jwt = false
+
+[functions.guest-where-to-eat]
+verify_jwt = false

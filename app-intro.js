@@ -4,7 +4,7 @@
   // Change this ID and its copy together for each customer-facing release.
   // Store build numbers can differ across iOS and Android.
   const proBuild = window.tableRecProPreviewEnabled === true;
-  const releaseNotesId = proBuild ? 'pro-integrated-1' : 'feedback-location-2';
+  const releaseNotesId = proBuild ? 'pro-pantry-matches-1' : 'guest-contributors-1';
   const build = window.tableRecBuild;
   const release = build ? `${releaseNotesId}:${build.platform}:${build.version}:${build.number}` : releaseNotesId;
   function versionLabel() {
@@ -76,7 +76,7 @@
       (tour ? '' : '<p class="tri-count" id="triVersion"></p>') +
       '<p class="tri-copy" id="triBody">' + (tour ? slide[2] : 'A smoother start. More time for good food.') + '</p>' +
       (tour ? '<div class="tri-progress" aria-hidden="true">' + slides.map((_, i) => '<span class="tri-dot' + (i === page ? ' active' : '') + '"></span>').join('') + '</div><p class="tri-count">' + (page + 1) + ' of ' + slides.length + '</p>' :
-        (proBuild ? '<ul class="tri-notes"><li><strong>Pro, in its place</strong>Happy Hours in Discover, Dining Needs in Profile, and cook-at-home recipes in Run It.</li><li><strong>A bigger recipe collection</strong>Spin from thousands of attributed recipes, and save favorites privately to your account.</li><li><strong>Your own plans</strong>Your private dining journal and trip planner live in Saved. Run It remains free and unlimited.</li></ul>' : '<ul class="tri-notes"><li><strong>Your ideas have a home</strong>Send suggestions, report a problem, or share something you love from Settings → A little help.</li><li><strong>Location that catches up</strong>Fresh GPS when you reopen the app, recovery when automatic updates stall, and more reliable city labels.</li><li><strong>Help when you need it</strong>Replay the welcome tour or these update notes anytime in Settings.</li></ul>')) +
+        (proBuild ? '<ul class="tri-notes"><li><strong>Your kitchen, your recipes</strong>List ingredients, find published recipes that match, see what’s missing, and Run It to choose.</li><li><strong>Happy Hours on the map</strong>Browse the map and restaurant list together. Tap a restaurant for times and specials inside TableRec.</li><li><strong>Keep exploring</strong>Dining Needs lives in Profile. Your rating history and feed badges remain available. Restaurant Run It stays free and unlimited.</li></ul>' : '<ul class="tri-notes"><li><strong>Take a look around</strong>Browse restaurants, try Run It, and open Settings as a guest. Sign in when you want to contribute.</li><li><strong>Watch Run It happen</strong>The shuffle moves into view as soon as you start.</li><li><strong>Contributions worth recognizing</strong>Account badges now appear beside feed names. Earn Verified Contributor with 250 qualifying Verified Visit ratings across 25 restaurant locations, with up to 10 ratings per location counting.</li></ul>')) +
       '<div class="tri-actions">' + (tour && page > 0 ? '<button data-action="back">Back</button>' : '') + '<button class="tri-next" data-action="next">' + (tour ? (page === slides.length - 1 ? 'Let’s eat' : 'Next') : 'Let’s eat') + '</button></div></section>';
     if (!tour) overlay.querySelector('#triVersion').textContent = versionLabel();
     overlay.querySelector('#triTitle').focus();
