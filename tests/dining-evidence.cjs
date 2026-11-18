@@ -26,3 +26,16 @@ assert.equal(evaluate(vegan,[],opts).outcome,'unfiltered');
 assert.equal(evaluate({...vegan,diets:{Halal:true,Kosher:true,'Celiac / gluten':true}},['Halal'],opts).outcome,'unknown');
 assert.equal(evaluate({...vegan,diets:{'Celiac / gluten':true}},['Celiac / gluten'],opts).outcome,'unknown');
 console.log('PASS: multiple dietary needs, conflicts, unmarked allergens, shared kitchens, expired evidence, country scope and free-text restrictions.');
+
+const cfa=data.find(d=>d.id==='cfa-original-sandwich'),fries=data.find(d=>d.id==='fg-fries'),local=data.find(d=>d.id==='carve-primavera-vegan'),bouldin=data.find(d=>d.id==='bouldin-queso');
+assert.equal(evaluate(cfa,['Milk'],opts).outcome,'conflict');
+assert.equal(evaluate(cfa,['Peanut'],opts).outcome,'confirm');
+assert.equal(evaluate(fries,['Peanut'],opts).outcome,'confirm');
+assert.equal(evaluate(fries,['Celiac / gluten'],opts).outcome,'unknown');
+assert.equal(evaluate(local,['Vegan'],opts).outcome,'unknown');
+assert.equal(evaluate(local,['Vegan'],{...opts,locationId:local.allowed_place_ids[0]}).outcome,'supported');
+assert.equal(evaluate(local,['Vegan'],{...opts,locationId:'closed-central-austin'}).outcome,'unknown');
+assert.equal(evaluate(bouldin,['Vegan'],{...opts,locationAddress:'1900 S 1st St, Austin, TX 78704'}).outcome,'supported');
+assert.equal(evaluate(bouldin,['Vegan'],{...opts,locationAddress:'19000 S 1st St, Austin, TX'}).outcome,'unknown');
+assert.equal(evaluate(bouldin,['Milk'],{...opts,locationAddress:'1900 S 1st St, Austin, TX 78704'}).outcome,'unknown','Vegan label does not establish milk-allergy suitability');
+console.log('PASS: expanded dishes, disclosed oils, exact-location scope and vegan/allergy separation.');

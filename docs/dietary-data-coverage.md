@@ -34,3 +34,11 @@ The Pro app supplies the official reference library, initial dish comparisons, k
 
 ## Guided nearby discovery
 The Pro tester flow applies saved needs to nearby Places results, with supplemental searches for the two brands in the initial dish catalog. It offers a distance selector and separates potential dish options from insufficient evidence. This changes discovery and presentation, not evidence coverage: the catalog still has 11 US dish/order records. Comparisons remain local to the app, and no restrictions or notes are sent to Places. Missing location/country/coordinates and extra free-text needs cannot be treated as established matches.
+
+
+## Current expansion — November 17 (supersedes initial counts above)
+18 official references; 34 dish/order records across six brands/venues. Added nine Chick-fil-A/Five Guys ingredient/order comparisons, six CARVE Barton Creek options and eight Bouldin Creek Cafe vegan dishes/order options. Existing 11 CAVA/Chipotle records remain. This is an incremental expansion, not broad local or medical coverage.
+
+Sources: Chick-fil-A's individual item pages, Five Guys' official September 2026 US Nutrition & Allergen Guide, CARVE's Barton Creek location menu, and Bouldin's currently linked menu PDF. Exact source URLs and review dates are on each record. CARVE's live page provides its Google place identity; Bouldin uses its exact normalized street address. No CARVE dish evidence is assigned to the temporarily closed Central Austin restaurant.
+
+Oils are distinguished from protein allergen declarations: Chick-fil-A's sandwich lists refined peanut oil, grilled nuggets/fries list soy-derived oil, and Five Guys fries disclose refined peanut oil. These remain "Ask before ordering" concerns even when the brand's displayed allergen chart does not flag that oil as a major allergen. The UI can show which component caused the concern where published. No absence claims are inferred from vegan labels, generic tempeh, unspecified flour, dairy-free-friendly or gluten-free-friendly menu tags. Confirm all modifications and preparation with the restaurant.

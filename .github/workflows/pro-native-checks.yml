@@ -12,6 +12,10 @@ on:
       - 'tests/pro-pantry.sql'
       - 'tests/pro-pantry-everyday.sql'
       - 'supabase/pro/pantry-everyday.sql'
+      - 'supabase/pro/pantry-flexible.sql'
+      - 'tests/pro-pantry-flexible.sql'
+      - 'data/happy-hour-expansion.json'
+      - 'tests/pro-coverage.cjs'
       - 'tests/pro-generation.sql'
       - 'tests/recipe-generation.cjs'
       - 'supabase/functions/generate-pro-recipes/**'
@@ -43,6 +47,7 @@ jobs:
           node native/build-dining-data.mjs
           git diff --exit-code native/dining-sources.js
           node tests/dining-evidence.cjs
+          node tests/pro-coverage.cjs
           node tests/recipe-generation.cjs
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs

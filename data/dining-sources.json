@@ -104,7 +104,7 @@
     },
     {
       "id": "mcdonalds",
-      "name": "McDonald\u2019s",
+      "name": "McDonald’s",
       "aliases": [
         "mcdonalds",
         "mcdonald s"
@@ -139,7 +139,7 @@
             "Kosher"
           ],
           "status": "no certification claim",
-          "note": "McDonald\u2019s USA does not certify or claim its US menu items meet halal, kosher, or other religious requirements."
+          "note": "McDonald’s USA does not certify or claim its US menu items meet halal, kosher, or other religious requirements."
         }
       ],
       "additional_sources": []
@@ -179,7 +179,7 @@
     },
     {
       "id": "pfchangs",
-      "name": "P.F. Chang\u2019s",
+      "name": "P.F. Chang’s",
       "aliases": [
         "p f chang s",
         "pf changs",
@@ -221,7 +221,7 @@
     },
     {
       "id": "jersey-mikes",
-      "name": "Jersey Mike\u2019s",
+      "name": "Jersey Mike’s",
       "aliases": [
         "jersey mike s",
         "jersey mikes"
@@ -328,7 +328,7 @@
     },
     {
       "id": "cabobobs",
-      "name": "Cabo Bob\u2019s",
+      "name": "Cabo Bob’s",
       "aliases": [
         "cabo bob s",
         "cabo bobs"
@@ -367,7 +367,7 @@
     },
     {
       "id": "picnik",
-      "name": "Picnik \u00b7 Austin",
+      "name": "Picnik · Austin",
       "aliases": [
         "picnik"
       ],
@@ -400,7 +400,7 @@
     },
     {
       "id": "pitapita",
-      "name": "Pita Pita \u00b7 Illinois",
+      "name": "Pita Pita · Illinois",
       "aliases": [
         "pita pita"
       ],
@@ -423,7 +423,7 @@
     },
     {
       "id": "austin-kosher",
-      "name": "H-E-B Kosher Deli \u00b7 Austin",
+      "name": "H-E-B Kosher Deli · Austin",
       "aliases": [
         "h e b kosher deli",
         "heb kosher deli"
@@ -445,6 +445,38 @@
       ],
       "additional_sources": [],
       "city": "austin"
+    },
+    {
+      "id": "carve-barton",
+      "name": "CARVE American Grille · Barton Creek",
+      "aliases": [
+        "carve american grille"
+      ],
+      "country": "US",
+      "city": "austin",
+      "scope": "7415 SW Parkway, Barton Creek only; Central Austin temporarily closed",
+      "source_url": "https://www.carveamericangrille.com/location/carve-american-grille-barton-creek/",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "summary": "The location publishes vegetarian labels and a vegan modification for spaghetti squash primavera. Menu labels do not establish allergen absence or celiac suitability.",
+      "claims": [],
+      "additional_sources": []
+    },
+    {
+      "id": "bouldin",
+      "name": "Bouldin Creek Cafe · Austin",
+      "aliases": [
+        "bouldin creek cafe"
+      ],
+      "country": "US",
+      "city": "austin",
+      "scope": "1900 S 1st Street, Austin only",
+      "source_url": "https://bouldincreekcafe.com/",
+      "checked_on": "2026-11-17",
+      "review_due": "2026-12-17",
+      "summary": "The cafe offers vegan dishes and vegan modifications, plus an official menu and linked allergy guide. Call the cafe about allergies; vegan labels do not establish allergy safety.",
+      "claims": [],
+      "additional_sources": []
     }
   ]
 }
