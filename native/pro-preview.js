@@ -402,6 +402,7 @@ const viewportStyle=document.createElement('style');viewportStyle.textContent=`
 .app:has(#pro.active){--pr-width:720px}.app:has(#pro.active .pr-happy-explorer){--pr-width:1200px}
 .app:has(#pro.active)>.topbar,.app:has(#pro.active)>header{position:fixed!important;top:var(--pr-viewport-top,0px)!important;left:max(0px,calc((100vw - var(--pr-width))/2));right:max(0px,calc((100vw - var(--pr-width))/2));margin:0;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 14px!important;box-sizing:border-box;z-index:41;background:var(--bg)}
 #pro.active{position:fixed;top:calc(var(--pr-viewport-top,0px) + var(--pr-header-height,0px));left:max(0px,calc((100vw - var(--pr-width,720px))/2));right:max(0px,calc((100vw - var(--pr-width,720px))/2));height:var(--pr-panel-height,100dvh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;margin:0;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px));background:var(--bg);z-index:12;scroll-padding-top:64px;scroll-padding-bottom:24px}
+#pro.active:has(.pr-snapshot-backdrop){z-index:50}
 #pro input,#pro textarea,#pro select{font-size:16px}
 #pro .pr-backline{position:sticky;top:0;z-index:5;background:var(--bg)}
 body.pr-keyboard-open:has(#pro.active) .nav{visibility:hidden;pointer-events:none}
