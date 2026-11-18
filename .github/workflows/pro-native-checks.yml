@@ -10,6 +10,8 @@ on:
       - 'tests/dining-evidence.cjs'
       - 'supabase/pro/pantry-matching.sql'
       - 'tests/pro-pantry.sql'
+      - 'tests/pro-pantry-everyday.sql'
+      - 'supabase/pro/pantry-everyday.sql'
       - 'tests/pro-generation.sql'
       - 'tests/recipe-generation.cjs'
       - 'supabase/functions/generate-pro-recipes/**'

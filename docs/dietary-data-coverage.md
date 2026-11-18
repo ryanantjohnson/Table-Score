@@ -31,3 +31,6 @@ The Profile screen offers restaurant search through the existing Places service,
 Obtain current item-level ingredient/allergen tables with reuse terms, map them to exact dishes and locations, retain source versions and changes, document oils and preparation separately, validate certification scope/expiry, review rules professionally, and expand primary-source coverage. Expired or missing data must stay unknown. Ingredient absence is not enough for an all-needs match.
 
 The Pro app supplies the official reference library, initial dish comparisons, known published concerns, private preferences, and questions to ask. It does not claim all major conditions are covered or suggest that a restaurant is medically safe.
+
+## Guided nearby discovery
+The Pro tester flow applies saved needs to nearby Places results, with supplemental searches for the two brands in the initial dish catalog. It offers a distance selector and separates potential dish options from insufficient evidence. This changes discovery and presentation, not evidence coverage: the catalog still has 11 US dish/order records. Comparisons remain local to the app, and no restrictions or notes are sent to Places. Missing location/country/coordinates and extra free-text needs cannot be treated as established matches.
