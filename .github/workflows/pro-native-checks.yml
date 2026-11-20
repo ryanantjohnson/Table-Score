@@ -6,6 +6,8 @@ on:
       - 'native/pantry-input.js'
       - 'tests/pantry-input.cjs'
       - 'tests/restaurant-contact.cjs'
+      - 'tests/happy-discovery.cjs'
+      - 'supabase/functions/discover-happy-hours/**'
       - 'supabase/functions/restaurant-contact/**'
       - 'native/dining-sources.js'
       - 'data/dining-*.json'
@@ -54,6 +56,7 @@ jobs:
           node tests/pro-coverage.cjs
           node tests/pantry-input.cjs
           node tests/restaurant-contact.cjs
+          node tests/happy-discovery.cjs
           node tests/recipe-generation.cjs
       - name: Check native Pro entry and screens
         run: NODE_PATH="$RUNNER_TEMP/pro-test-deps/node_modules" node tests/pro-native-smoke.cjs
