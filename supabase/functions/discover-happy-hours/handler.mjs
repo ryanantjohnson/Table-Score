@@ -27,7 +27,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
    await rpc('set_edge_cache',{p_cache_key:areaKey,p_payload:venues,p_ttl_seconds:600});
   }
   const results=await Promise.all(venues.slice(cursor,cursor+4).map(async p=>{
-   const key=await hash('hh-website-v1:'+p.id+':'+p.websiteUri+':'+p.formattedAddress);let report=await rpc('get_edge_cache',{p_cache_key:key});
+   const key=await hash('hh-website-v2:'+p.id+':'+p.websiteUri+':'+p.formattedAddress);let report=await rpc('get_edge_cache',{p_cache_key:key});
    if(!report){const checked= p.websiteUri?await inspect(p):{status:'no_website',reason:'No official website supplied by the venue listing'};report={...checked,checked_at:new Date().toISOString(),valid_until:new Date(Date.now()+6*3600000).toISOString()};await rpc('set_edge_cache',{p_cache_key:key,p_payload:report,p_ttl_seconds:21600});}
    return {place_id:p.id,name:p.displayName?.text||'Venue',address:p.formattedAddress||'',latitude:p.location.latitude,longitude:p.location.longitude,attributions:p.attributions||[],...report};
   }));
