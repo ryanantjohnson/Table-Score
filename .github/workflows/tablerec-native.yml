@@ -35,6 +35,8 @@ jobs:
             runner: ubuntu-latest
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 30
+    env:
+      TR_PRO_PREVIEW: ${{ github.ref == 'refs/heads/pro/dining-needs-spec' && 'true' || 'false' }}
     steps:
       - name: Read repository
         uses: actions/checkout@v5
