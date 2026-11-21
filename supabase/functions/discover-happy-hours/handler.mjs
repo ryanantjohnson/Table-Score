@@ -25,24 +25,28 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
   if(!await limit('happy-discovery-user',user.id,18,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
-  const areaKey=await hash('hh-discovery-v3:'+JSON.stringify({...center,radius,bounds}));let venues=await rpc('get_edge_cache',{p_cache_key:areaKey});
+  const areaKey=await hash('hh-discovery-v4:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
   if(!venues){
    const sections=bounds?searchSections(bounds):[null],groups=[];
    for(const section of sections){
+    try{
     if(!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))return reply(429,{error:'Discovery is busy. Existing sourced specials remain available; try later'});
     const location=section?{locationRestriction:{rectangle:{low:{latitude:section.south,longitude:section.west},high:{latitude:section.north,longitude:section.east}}}}:{locationBias:{circle:{center,radius}}};
-    const r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:'happy hour',pageSize:20,...location}),signal:AbortSignal.timeout(12000)});
-    if(!r.ok)return reply(502,{error:'Happy Hour venue search failed. Try again'});const places=(await r.json()).places||[];if(!Array.isArray(places))throw Error('Invalid venue response');groups.push(places.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
+    let r;for(let attempt=0;attempt<2;attempt++){if(attempt&&!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))break;r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:'happy hour',pageSize:20,...location}),signal:AbortSignal.timeout(12000)});if(r.ok||r.status<500)break;}
+
+    if(!r.ok){console.warn('Happy Hour provider failure',{status:r.status});throw Error('Provider unavailable');}const places=(await r.json()).places||[];if(!Array.isArray(places))throw Error('Invalid venue response');groups.push(places.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
+    }catch{failedSections++;}
    }
+   if(!groups.length)return reply(502,{error:'Happy Hour search is temporarily unavailable. Please try again; this does not mean the area has no specials.'});
    // Interleave sections so dense neighborhoods cannot crowd out the rest of the map.
    const seen=new Set();venues=[];for(let i=0;i<20;i++)for(const group of groups){const p=group[i];if(p&&!seen.has(p.id)&&venues.length<cap){seen.add(p.id);venues.push(p);}}
-   await rpc('set_edge_cache',{p_cache_key:areaKey,p_payload:venues,p_ttl_seconds:600});
+   await rpc('set_edge_cache',{p_cache_key:areaKey,p_payload:{venues,failed_sections:failedSections},p_ttl_seconds:failedSections?30:600});
   }
   const results=await Promise.all(venues.slice(cursor,cursor+4).map(async p=>{
    const key=await hash('hh-website-v2:'+p.id+':'+p.websiteUri+':'+p.formattedAddress);let report=await rpc('get_edge_cache',{p_cache_key:key});
    if(!report){const checked= p.websiteUri?await inspect(p):{status:'no_website',reason:'No official website supplied by the venue listing'};report={...checked,checked_at:new Date().toISOString(),valid_until:new Date(Date.now()+6*3600000).toISOString()};await rpc('set_edge_cache',{p_cache_key:key,p_payload:report,p_ttl_seconds:21600});}
    return {place_id:p.id,name:p.displayName?.text||'Venue',address:p.formattedAddress||'',latitude:p.location.latitude,longitude:p.location.longitude,attributions:p.attributions||[],...report};
   }));
-  return reply(200,{results,venues_found:venues.length,checked_from:cursor,checked_to:Math.min(cursor+4,venues.length),next_cursor:cursor+4<venues.length?cursor+4:null,limited:venues.length===cap,search_limit:cap,radius,attribution:'Venue information: Google Maps. Specials: linked venue websites.',coverage:'Checks up to ' + cap + ' venues in batches of four. Website text only; PDFs, images, social pages and blocked sites may remain unconfirmed. This is not an exhaustive search.'});
+  return reply(200,{results,partial:failedSections>0,failed_sections:failedSections,venues_found:venues.length,checked_from:cursor,checked_to:Math.min(cursor+4,venues.length),next_cursor:cursor+4<venues.length?cursor+4:null,limited:venues.length===cap,search_limit:cap,radius,attribution:'Venue information: Google Maps. Specials: linked venue websites.',coverage:'Checks up to ' + cap + ' venues in batches of four. Website text only; PDFs, images, social pages and blocked sites may remain unconfirmed. This is not an exhaustive search.'});
  }catch{return reply(503,{error:'Discovery could not finish. Your existing specials are still available'});}
 };}

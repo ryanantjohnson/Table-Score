@@ -211,7 +211,7 @@ async function discoverHappy(more){
    const report={id:'discovered:'+p.place_id,name:p.name,address:p.address,latitude:p.latitude,longitude:p.longitude,active:true,schedule:[],offer:(p.status==='hours_only'?'Published hours only; deal details could not be extracted. ':'')+p.excerpt,source_url:p.source_url,checked_on:p.checked_at.slice(0,10),expires_on:p.valid_until.slice(0,10),valid_until:p.valid_until,discovered:true,attributions:p.attributions};
    DEALS=DEALS.filter(d=>d.id!==report.id);DEALS.push(report);
   }
-  state.happyDiscovery={next_cursor:data.next_cursor,other:[...previous,...data.results.filter(p=>!['published','hours_only'].includes(p.status))],message:'Checked '+data.checked_to+' of '+data.venues_found+' nearby venue websites/listings. '+(data.limited?'Venue search limit reached. ':'')+'Website reports are unconfirmed until you verify with the venue. Move the map to check another area.'};
+  state.happyDiscovery={next_cursor:data.next_cursor,other:[...previous,...data.results.filter(p=>!['published','hours_only'].includes(p.status))],message:'Checked '+data.checked_to+' of '+data.venues_found+' nearby venue websites/listings. '+(data.partial?'Some map sections could not be searched. Results are incomplete. ':'')+(data.limited?'Venue search limit reached. ':'')+'Website reports are unconfirmed until you verify with the venue. Move the map to check another area.'};
   updateHappyViewport();paint();
   const next=data.next_cursor;if(next==null)break;
   if(!Number.isInteger(next)||next<=cursor||next>56||next%4)throw Error('Search could not continue. Please try again.');
