@@ -1,4 +1,5 @@
 import {inspectWebsite} from './website.mjs';
+export function withinRadius(p,c,r){const rad=n=>n*Math.PI/180,dLat=rad(p.latitude-c.latitude),dLon=rad(p.longitude-c.longitude),a=Math.sin(dLat/2)**2+Math.cos(rad(c.latitude))*Math.cos(rad(p.latitude))*Math.sin(dLon/2)**2;return Number.isFinite(a)&&6371000*2*Math.asin(Math.sqrt(Math.min(1,a)))<=r;}
 const origins=new Set(['https://tablerec.co','https://www.tablerec.co','https://ryanantjohnson.github.io','capacitor://localhost','https://localhost','http://localhost']);
 const hash=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(n=>n.toString(16).padStart(2,'0')).join('');
 export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=inspectWebsite}={}){return async req=>{
@@ -19,11 +20,11 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
   if(!await limit('happy-discovery-user',user.id,6,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
-  const areaKey=await hash('hh-discovery-v1:'+JSON.stringify({...center,radius}));let venues=await rpc('get_edge_cache',{p_cache_key:areaKey});
+  const areaKey=await hash('hh-discovery-v2:'+JSON.stringify({...center,radius}));let venues=await rpc('get_edge_cache',{p_cache_key:areaKey});
   if(!venues){
    if(!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))return reply(429,{error:'Discovery is busy. Existing sourced specials remain available; try later'});
-   const r=await fetcher('https://places.googleapis.com/v1/places:searchNearby',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({includedTypes:['restaurant','bar','cafe'],maxResultCount:20,rankPreference:'DISTANCE',locationRestriction:{circle:{center,radius}}}),signal:AbortSignal.timeout(12000)});
-   if(!r.ok)return reply(502,{error:'Nearby venue search failed. Try again'});venues=(await r.json()).places||[];if(!Array.isArray(venues))throw Error('Invalid venue response');venues=venues.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location);
+   const r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:'happy hour',pageSize:20,locationBias:{circle:{center,radius}}}),signal:AbortSignal.timeout(12000)});
+   if(!r.ok)return reply(502,{error:'Nearby venue search failed. Try again'});venues=(await r.json()).places||[];if(!Array.isArray(venues))throw Error('Invalid venue response');venues=venues.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&withinRadius(p.location,center,radius));
    await rpc('set_edge_cache',{p_cache_key:areaKey,p_payload:venues,p_ttl_seconds:600});
   }
   const results=await Promise.all(venues.slice(cursor,cursor+4).map(async p=>{
