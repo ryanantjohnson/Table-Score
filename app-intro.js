@@ -4,7 +4,7 @@
   // Change this ID and its copy together for each customer-facing release.
   // Store build numbers can differ across iOS and Android.
   const proBuild = window.tableRecProPreviewEnabled === true;
-  const releaseNotesId = proBuild ? 'pro-happy-discovery-8' : 'guest-contributors-1';
+  const releaseNotesId = proBuild ? 'pro-happy-discovery-9' : 'guest-contributors-1';
   const build = window.tableRecBuild;
   const release = build ? `${releaseNotesId}:${build.platform}:${build.version}:${build.number}` : releaseNotesId;
   function versionLabel() {
