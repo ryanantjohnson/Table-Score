@@ -244,7 +244,8 @@ async function discoverHappy(more){
     if(current()){state.happyDiscovery={...state.happyDiscovery,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed. ':'')+'Only sourced website reports appear as pins.'};paint();}
    }
   };
-  await Promise.all(Array.from({length:Math.min(3,cursors.length)},()=>worker()));
+  // Keep the map responsive while checking independent website batches concurrently.
+  await Promise.all(Array.from({length:Math.min(6,cursors.length)},()=>worker()));
   if(current())state.happyDiscovery={...state.happyDiscovery,next_cursor:null,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed; refresh to retry. ':'')+'Only source-linked reports appear as pins.'};
  }catch(err){if(current())state.happyDiscovery={...state.happyDiscovery,error:err.message};}
  finally{if(current()){state.happyDiscoveryBusy=false;paint();}}
