@@ -23,7 +23,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const pro=await call('/rest/v1/rpc/has_tablerec_pro',{method:'POST',headers:{apikey:service,Authorization:auth,'Content-Type':'application/json'},body:'{}'});if(!pro.ok)return reply(503,{error:'Unable to check membership'});if(await pro.json()!==true)return reply(403,{error:'Pro access required'});
   const rpc=async(name,payload)=>{const r=await call('/rest/v1/rpc/'+name,{method:'POST',headers:{apikey:service,Authorization:'Bearer '+service,'Content-Type':'application/json'},body:JSON.stringify(payload)});if(!r.ok)throw Error('Storage unavailable');const text=await r.text();return text?JSON.parse(text):null;};
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
-  if(!await limit('happy-discovery-user',user.id,18,60))return reply(429,{error:'Please wait a minute before checking more venues'});
+  if(!await limit('happy-discovery-user',user.id,36,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
   const areaKey=await hash('hh-discovery-v6:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
   if(!venues){
