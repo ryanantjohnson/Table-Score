@@ -219,7 +219,7 @@ async function discoverHappy(more){
   updateHappyViewport();paint();
  };
  const fetchPage=async cursor=>{
-  const r=await client().functions.invoke('discover-happy-hours',{body:{latitude:center.latitude,longitude:center.longitude,radius:5000,cursor,...(bounds?{bounds}:{})}});
+  const r=await client().functions.invoke('discover-happy-hours-staging',{body:{latitude:center.latitude,longitude:center.longitude,radius:5000,cursor,...(bounds?{bounds}:{})}});
   if(!current())return null;
   if(r.error||r.data?.error||!Array.isArray(r.data?.results))throw Error(r.data?.error||'Discovery could not finish. Existing specials are still available.');
   return r.data;
