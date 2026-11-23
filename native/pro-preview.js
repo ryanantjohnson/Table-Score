@@ -299,7 +299,8 @@ function queueHappyViewport(version){clearTimeout(happyMapTimer);clearTimeout(ha
 function queueHappyAutoDiscovery(version){
  clearTimeout(happyDiscoveryTimer);
  happyDiscoveryTimer=setTimeout(()=>{
-  if(version!==happyMapVersion||view!=='happy'||!access||!happyMap||state.happyDiscoveryBusy)return;
+  if(version!==happyMapVersion||view!=='happy'||!access||!happyMap)return;
+  if(state.happyDiscoveryBusy){happyDiscoveryTimer=setTimeout(()=>queueHappyAutoDiscovery(version),1000);return;}
   const b=state.happyBounds,c=state.happyCenter;
   if(!b||!c||!Number.isFinite(b.north)||!Number.isFinite(b.south)||!Number.isFinite(b.east)||!Number.isFinite(b.west))return;
   // Coarse grid key prevents duplicate paid searches from tiny map movements.
