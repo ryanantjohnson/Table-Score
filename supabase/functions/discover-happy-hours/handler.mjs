@@ -1,7 +1,7 @@
 import {inspectWebsite} from './website.mjs';
 export function withinRadius(p,c,r){const rad=n=>n*Math.PI/180,dLat=rad(p.latitude-c.latitude),dLon=rad(p.longitude-c.longitude),a=Math.sin(dLat/2)**2+Math.cos(rad(c.latitude))*Math.cos(rad(p.latitude))*Math.sin(dLon/2)**2;return Number.isFinite(a)&&6371000*2*Math.asin(Math.sqrt(Math.min(1,a)))<=r;}
 export function validBounds(b){return b&&Object.keys(b).length===4&&['north','south','east','west'].every(k=>typeof b[k]==='number'&&Number.isFinite(b[k]))&&b.north<=85&&b.south>=-85&&b.west>=-180&&b.east<=180&&b.north>b.south&&b.east>b.west&&b.north-b.south<=2&&b.east-b.west<=3;}
-export function searchSections(b){const lat=(b.north+b.south)/2,lon=(b.east+b.west)/2;return [{north:b.north,south:lat,west:b.west,east:lon},{north:b.north,south:lat,west:lon,east:b.east},{north:lat,south:b.south,west:b.west,east:lon},{north:lat,south:b.south,west:lon,east:b.east}];}
+export function searchSections(b){const out=[];for(let row=0;row<3;row++)for(let col=0;col<3;col++){const south=b.south+(b.north-b.south)*row/3,north=b.south+(b.north-b.south)*(row+1)/3,west=b.west+(b.east-b.west)*col/3,east=b.west+(b.east-b.west)*(col+1)/3;out.push({north,south,west,east});}return out;}
 const inside=(p,b)=>p.latitude>=b.south&&p.latitude<=b.north&&p.longitude>=b.west&&p.longitude<=b.east;
 const origins=new Set(['https://tablerec.co','https://www.tablerec.co','https://ryanantjohnson.github.io','capacitor://localhost','https://localhost','http://localhost']);
 const hash=async s=>[...new Uint8Array(await crypto.subtle.digest('SHA-256',new TextEncoder().encode(s)))].map(n=>n.toString(16).padStart(2,'0')).join('');
@@ -14,7 +14,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const raw=await req.text();if(raw.length>1024)return reply(413,{error:'Request too large'});let body;try{body=JSON.parse(raw);}catch{return reply(400,{error:'Invalid request'});}
   if(!body||Object.keys(body).some(k=>!['latitude','longitude','radius','cursor','bounds'].includes(k)))return reply(400,{error:'Invalid search'});
   const bounds=body.bounds;if(bounds!==undefined&&!validBounds(bounds))return reply(400,{error:'Zoom in to a city or metro area, then search again'});
-  const cap=bounds?120:20;
+  const cap=bounds?180:20;
   const {latitude,longitude}=body,radius=body.radius??5000,cursor=body.cursor??0;
   if(typeof latitude!=='number'||!Number.isFinite(latitude)||Math.abs(latitude)>90||typeof longitude!=='number'||!Number.isFinite(longitude)||Math.abs(longitude)>180||!Number.isFinite(radius)||radius<500||radius>15000||!Number.isInteger(cursor)||cursor<0||cursor>cap-4||cursor%4)return reply(400,{error:'Zoom in to search an area up to 15 km around the map center'});
   const base=env('SUPABASE_URL'),service=env('SUPABASE_SERVICE_ROLE_KEY'),google=env('GOOGLE_PLACES_API_KEY');if(!base||!service||!google)return reply(503,{error:'Discovery is unavailable'});
@@ -25,10 +25,10 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
   if(!await limit('happy-discovery-user',user.id,36,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
-  const areaKey=await hash('hh-discovery-v6:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
+  const areaKey=await hash('hh-discovery-v7:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
   if(!venues){
    const sections=bounds?searchSections(bounds):[null],groups=[];
-   const queries=['happy hour','drink specials','bar happy hour'];
+   const queries=bounds?['happy hour','drink specials']:['happy hour','drink specials','bar happy hour'];
    // Fetch independent map sections concurrently, but cap active provider requests.
    // Rate budget is consumed before each request, including retries.
    const tasks=sections.flatMap(section=>queries.map(query=>({section,query})));
@@ -53,7 +53,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
      }catch{failedSections++;}
     }
    }
-   await Promise.all(Array.from({length:Math.min(3,tasks.length)},()=>worker()));
+   await Promise.all(Array.from({length:Math.min(5,tasks.length)},()=>worker()));
    if(!successful&&budgetExhausted)return reply(429,{error:'Discovery is busy. Existing sourced specials remain available; try later'});
    if(budgetExhausted)failedSections++;
    if(!groups.length)return reply(502,{error:'Happy Hour search is temporarily unavailable. Please try again; this does not mean the area has no specials.'});
