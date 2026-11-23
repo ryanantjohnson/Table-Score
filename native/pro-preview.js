@@ -198,28 +198,54 @@ function happyDiscoveryView(){const r=state.happyDiscovery;return '<section clas
 async function discoverHappy(more){
  if(!access||state.happyDiscoveryBusy||view!=='happy')return;
  const center=state.happyCenter||browseCoords();if(!locationPoint(center)){toast('Set your location or move the map first.');return;}
- let cursor=more?state.happyDiscovery?.next_cursor:0;if(cursor==null)return;
- const e=epoch,id=user()?.id,request=++state.happyDiscoveryRequest;state.happyDiscoveryBusy=true;
- const paint=()=>{paintHappySearch();const host=screen?.querySelector('#prHappyDiscovery');if(host){host.innerHTML=happyDiscoveryView();host.querySelectorAll('button').forEach(b=>b.disabled=state.happyDiscoveryBusy);}};paint();
- try{
-  for(let batch=0;batch<30;batch++){
-  const r=await client().functions.invoke('discover-happy-hours',{body:{latitude:center.latitude,longitude:center.longitude,radius:5000,cursor,...(state.happyBounds?{bounds:state.happyBounds}:{})}});
-  if(epoch!==e||user()?.id!==id||request!==state.happyDiscoveryRequest||view!=='happy')return;
-  if(r.error||r.data?.error||!Array.isArray(r.data?.results))throw Error(r.data?.error||'Discovery could not finish. Try again; existing specials are still available.');
-  const data=r.data,previous=(more||batch>0)?state.happyDiscovery?.other||[]:[];
-  for(const p of data.results){if(!['published','hours_only'].includes(p.status)||!locationPoint(p)||typeof p.excerpt!=='string'||!p.source_url?.startsWith('https://'))continue;
-   const duplicate=DEALS.some(d=>!d.discovered&&locationPoint(d)&&norm(d.name).includes(norm(p.name).split(' ').slice(0,2).join(' '))&&miles(d.latitude,d.longitude,p.latitude,p.longitude)<.1);if(duplicate)continue;
+ const startCursor=more?state.happyDiscovery?.next_cursor:0;if(startCursor==null)return;
+ const bounds=state.happyBounds?{...state.happyBounds}:null;
+ const e=epoch,id=user()?.id,request=++state.happyDiscoveryRequest;
+ const current=()=>epoch===e&&user()?.id===id&&request===state.happyDiscoveryRequest&&view==='happy';
+ state.happyDiscoveryBusy=true;
+ const paint=()=>{paintHappySearch();const host=screen?.querySelector('#prHappyDiscovery');if(host){host.innerHTML=happyDiscoveryView();host.querySelectorAll('button').forEach(b=>b.disabled=state.happyDiscoveryBusy);}};
+ const ingest=data=>{
+  if(!current())return;
+  const previous=state.happyDiscovery?.other||[];
+  for(const p of data.results){
+   if(!['published','hours_only'].includes(p.status)||!locationPoint(p)||typeof p.excerpt!=='string'||!p.source_url?.startsWith('https://'))continue;
+   const duplicate=DEALS.some(d=>!d.discovered&&locationPoint(d)&&norm(d.name).includes(norm(p.name).split(' ').slice(0,2).join(' '))&&miles(d.latitude,d.longitude,p.latitude,p.longitude)<.1);
+   if(duplicate)continue;
    const report={id:'discovered:'+p.place_id,name:p.name,address:p.address,latitude:p.latitude,longitude:p.longitude,active:true,schedule:[],offer:(p.status==='hours_only'?'Published hours only; deal details could not be extracted. ':'')+p.excerpt,source_url:p.source_url,checked_on:p.checked_at.slice(0,10),expires_on:p.valid_until.slice(0,10),valid_until:p.valid_until,discovered:true,attributions:p.attributions};
    DEALS=DEALS.filter(d=>d.id!==report.id);DEALS.push(report);
   }
-  state.happyDiscovery={next_cursor:data.next_cursor,other:[...previous,...data.results.filter(p=>!['published','hours_only'].includes(p.status))],message:'Checked '+data.checked_to+' of '+data.venues_found+' nearby venue websites/listings. '+(data.partial?'Some map sections could not be searched. Results are incomplete. ':'')+(data.limited?'Venue search limit reached. ':'')+'Website reports are unconfirmed until you verify with the venue. Move the map to check another area.'};
+  const other=[...previous,...data.results.filter(p=>!['published','hours_only'].includes(p.status))];
+  state.happyDiscovery={next_cursor:data.next_cursor,other,message:'Checking venue websites across this map… '+(data.partial?'Some map sections could not be searched. ':'')+'Website reports are unconfirmed until you verify with the venue.'};
   updateHappyViewport();paint();
-  const next=data.next_cursor;if(next==null)break;
-  if(!Number.isInteger(next)||next<=cursor||next>116||next%4)throw Error('Search could not continue. Please try again.');
-  cursor=next;
-  }
- }catch(err){if(epoch===e&&user()?.id===id&&request===state.happyDiscoveryRequest)state.happyDiscovery={...state.happyDiscovery,error:err.message};}
- finally{if(epoch===e&&request===state.happyDiscoveryRequest){state.happyDiscoveryBusy=false;paint();}}
+ };
+ const fetchPage=async cursor=>{
+  const r=await client().functions.invoke('discover-happy-hours',{body:{latitude:center.latitude,longitude:center.longitude,radius:5000,cursor,...(bounds?{bounds}:{})}});
+  if(!current())return null;
+  if(r.error||r.data?.error||!Array.isArray(r.data?.results))throw Error(r.data?.error||'Discovery could not finish. Existing specials are still available.');
+  return r.data;
+ };
+ paint();
+ try{
+  // First request discovers/caches the venue pool. Remaining website inspections
+  // can be fetched in parallel and painted as each batch finishes.
+  const first=await fetchPage(startCursor);if(!first)return;
+  ingest(first);
+  const max=Math.min(120,first.venues_found||0);
+  const cursors=[];for(let cursor=startCursor+4;cursor<max;cursor+=4)cursors.push(cursor);
+  let nextIndex=0,completed=1,failed=0;
+  const worker=async()=>{
+   while(nextIndex<cursors.length&&current()){
+    const cursor=cursors[nextIndex++];
+    try{const data=await fetchPage(cursor);if(!data)return;ingest(data);}
+    catch(err){failed++;if(current())state.happyDiscovery={...state.happyDiscovery,error:'Some venue websites could not be checked. Try refreshing this area.'};}
+    completed++;
+    if(current()){state.happyDiscovery={...state.happyDiscovery,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed. ':'')+'Only sourced website reports appear as pins.'};paint();}
+   }
+  };
+  await Promise.all(Array.from({length:Math.min(3,cursors.length)},()=>worker()));
+  if(current())state.happyDiscovery={...state.happyDiscovery,next_cursor:null,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed; refresh to retry. ':'')+'Only source-linked reports appear as pins.'};
+ }catch(err){if(current())state.happyDiscovery={...state.happyDiscovery,error:err.message};}
+ finally{if(current()){state.happyDiscoveryBusy=false;paint();}}
 }
 function happyView(){return '<p class="pr-note">Move the map to explore. The list and published happy hour pins refresh automatically when you stop. Website reports must be confirmed with the venue.</p><div class="pr-happy-toolbar"><span>Move the map to explore</span>'+button('My area','resetMap','','linkbtn')+'</div><div id="prHappySearch">'+happySearchView()+'</div>'+
  '<div class="pr-happy-explorer"><div class="pr-happy-map-pane"><div id="prHappyMap" class="pr-happy-map" role="region" tabindex="0" aria-label="Happy Hour map"><p class="muted">Loading map…</p></div><p id="prMapStatus" role="status" aria-live="polite" class="pr-note">Loading this area…</p></div><h2 class="pr-happy-list-title">Happy Hours in this area</h2><div id="prHappyResults" class="pr-happy-results" role="region" aria-label="Happy Hour restaurant list">'+happyCards()+'</div><div id="prHappyDiscovery">'+happyDiscoveryView()+'</div></div><div class="pr-coverage">'+badge('CENTRAL TEXAS')+'<span>'+DEALS.length+' source-linked locations · coverage is growing</span></div>'+note('All published schedules are included, even when Happy Hour is not active right now. Confirm current specials before traveling. Specials are not matched to dietary needs.');}
