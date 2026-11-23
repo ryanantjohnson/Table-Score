@@ -29,7 +29,8 @@ const icon=(name)=>{const paths={needs:'M12 21s-8-5-8-12a4 4 0 0 1 8-1 4 4 0 0 1
 const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',diningResults:null,diningSearching:false,diningMessage:'',diningRequest:0,diningRadius:5,diningMode:null,diningOrigin:null,diningError:false,diningShowAll:false,day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeCollection:'everyday',recipeQuery:'',pantryText:'',assumeStaples:false,recipeMatches:[],recipeMatchCount:0,recipeCollectionFallback:false,recipeSearching:false,recipeResultsReady:false,recipeRequest:0,recipeError:'',recipeRoundPick:null,recipeRoundSerial:0,recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,happyCenter:null,happyBounds:null,happyZoom:11,happySelected:null,happyDiscovery:null,happyDiscoveryBusy:false,happyDiscoveryRequest:0,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
 let clearing=false,signingOut=false,epoch=0,loadPromise=null,loaded=false,access=false,revision=0,saveBusy=false,savePending=false,saveConflict=false,loading=false,errorText='',feature='home';
 const client=()=>{try{return typeof db!=='undefined'?db:null;}catch{return null;}};
-let happyMap=null,happyMarkers=[],happyMapVersion=0,happyMapTimer=null,happyMapListener=null;
+let happyMap=null,happyMarkers=[],happyMapVersion=0,happyMapTimer=null,happyDiscoveryTimer=null,happyMapListener=null;
+let lastHappyAutoArea='',lastHappyAutoAt=0;
 let recipeRunning=false;
 let diningContacts=new Map();
 let state=initial(),account=null,screen=null,view='home',detail=null,recipeTimer=null;
@@ -191,7 +192,7 @@ function filteredHappyDeals(){
 function withinHappyBounds(d,b){return d.latitude>=b.south&&d.latitude<=b.north&&(b.west<=b.east?d.longitude>=b.west&&d.longitude<=b.east:d.longitude>=b.west||d.longitude<=b.east);}
 function happyCards(){const deals=filteredHappyDeals();return deals.map((d,i)=>'<button type="button" id="prDeal-'+esc(d.id)+'" class="card pr-deal pr-deal-card" data-pro-action="happyDetail" data-value="'+esc(d.id)+'"><span class="pr-eyebrow">'+(i+1)+(d.discovered?' · WEBSITE REPORT':' · HAPPY HOUR')+(d.distance===null?'':' · '+d.distance.toFixed(1)+' MI')+'</span><strong class="pr-deal-name">'+esc(d.name)+'</strong><span class="pr-deal-summary">'+esc(d.offer)+'</span><small class="pr-deal-address">'+esc(d.address)+'</small><b class="pr-deal-cta">See times & specials ↗</b></button>').join('')+(!deals.length?'<div class="pr-empty"><h2>No sourced specials loaded here yet.</h2><p>'+(state.happyDiscoveryBusy?'Searching nearby websites. Results will appear here as they are found.':state.happyDiscovery?'No published Happy Hour details matched this area in the venues checked. This does not mean there are no Happy Hours here.':'Move the map and tap Search this area to find published Happy Hour details.')+'</p></div>':'');}
 function happyProviders(rows){return (Array.isArray(rows)?rows:[]).slice(0,10).map(a=>'<p class="pr-note">'+esc(a.provider||'')+' <a href="'+safeUrl(a.providerUri)+'" target="_blank" rel="noopener noreferrer">Data provider ↗</a></p>').join('');}
-function happySearchView(){return button(state.happyDiscoveryBusy?'Checking venues…':'Search this area','discoverHappy','','primary')+'<p class="pr-note" role="status" aria-live="polite">'+esc(state.happyDiscovery?.error||state.happyDiscovery?.message||(state.happyDiscoveryBusy?'Checking nearby venue websites…':'Move the map, then tap Search this area.'))+'</p>';}
+function happySearchView(){return button(state.happyDiscoveryBusy?'Checking venues…':'Refresh this area','discoverHappy','','primary')+'<p class="pr-note" role="status" aria-live="polite">'+esc(state.happyDiscovery?.error||state.happyDiscovery?.message||(state.happyDiscoveryBusy?'Checking nearby venue websites…':'Move the map, then tap Search this area.'))+'</p>';}
 function paintHappySearch(){const host=screen?.querySelector('#prHappySearch');if(host){host.innerHTML=happySearchView();host.querySelector('button').disabled=state.happyDiscoveryBusy;}}
 function happyDiscoveryView(){const r=state.happyDiscovery;return '<section class="card"><h2>Discover in this area</h2>'+note('One search checks up to 60 venues across the visible city or metro area. Published website details are needed to show a Happy Hour pin.')+(r?.next_cursor!=null?button('Check more nearby venues','moreHappy','','secondary'):'')+'<p class="pr-note" role="status">'+esc(r?.error||r?.message||'This map area has not been checked in this session.')+'</p>'+(r?.other?.length?'<details><summary>Other checked venues — unconfirmed ('+r.other.length+')</summary>'+r.other.map(p=>'<div class="pr-detail"><strong>'+esc(p.name)+'</strong><p>'+esc(p.address)+'</p>'+happyProviders(p.attributions)+note(p.reason||({location_unconfirmed:'Happy Hour text found, but the page could not be tied to this exact location.',mentioned:'Happy Hour mentioned; hours and deals could not both be extracted.'}[p.status])||'No complete published offer found in the pages checked.')+(p.source_url?'<a href="'+safeUrl(p.source_url)+'" target="_blank" rel="noopener noreferrer">Website evidence ↗</a>':'')+'</div>').join('')+'</details>':'')+note('Venue information: Google Maps. Website failures and missing evidence do not establish that a venue has no specials.')+'</section>';}
 async function discoverHappy(more){
@@ -220,7 +221,7 @@ async function discoverHappy(more){
  }catch(err){if(epoch===e&&user()?.id===id&&request===state.happyDiscoveryRequest)state.happyDiscovery={...state.happyDiscovery,error:err.message};}
  finally{if(epoch===e&&request===state.happyDiscoveryRequest){state.happyDiscoveryBusy=false;paint();}}
 }
-function happyView(){return '<p class="pr-note">Move the map, then search this area for nearby venue websites. Open a result for published hours, deals and restrictions.</p><div class="pr-happy-toolbar"><span>Move the map to explore</span>'+button('My area','resetMap','','linkbtn')+'</div><div id="prHappySearch">'+happySearchView()+'</div>'+
+function happyView(){return '<p class="pr-note">Move the map to explore. The list and published happy hour pins refresh automatically when you stop. Website reports must be confirmed with the venue.</p><div class="pr-happy-toolbar"><span>Move the map to explore</span>'+button('My area','resetMap','','linkbtn')+'</div><div id="prHappySearch">'+happySearchView()+'</div>'+
  '<div class="pr-happy-explorer"><div class="pr-happy-map-pane"><div id="prHappyMap" class="pr-happy-map" role="region" tabindex="0" aria-label="Happy Hour map"><p class="muted">Loading map…</p></div><p id="prMapStatus" role="status" aria-live="polite" class="pr-note">Loading this area…</p></div><h2 class="pr-happy-list-title">Happy Hours in this area</h2><div id="prHappyResults" class="pr-happy-results" role="region" aria-label="Happy Hour restaurant list">'+happyCards()+'</div><div id="prHappyDiscovery">'+happyDiscoveryView()+'</div></div><div class="pr-coverage">'+badge('CENTRAL TEXAS')+'<span>'+DEALS.length+' source-linked locations · coverage is growing</span></div>'+note('All published schedules are included, even when Happy Hour is not active right now. Confirm current specials before traveling. Specials are not matched to dietary needs.');}
 function happyDetailView(){const d=DEALS.find(d=>d.id===detail);if(!d)return happyView();if(d.discovered)return '<div class="pr-eyebrow">AUTOMATIC WEBSITE REPORT · CONFIRM WITH VENUE</div>'+heading(d.name,d.address)+'<div class="card"><h3>Published hours & specials</h3><p>'+esc(d.offer)+'</p></div>'+note('Website text found '+d.checked_on+'. This is not a confirmation that the offer is available today. Check dates, restrictions and the exact location before traveling.')+button('Get directions','directions',d.id,'secondary')+'<a class="linkbtn" href="'+safeUrl(d.source_url)+'" target="_blank" rel="noopener noreferrer">Official website source ↗</a>'+happyProviders(d.attributions)+note('Venue information: Google Maps. Automatically found reports are temporary and cannot yet be saved.');return '<div class="pr-eyebrow">HAPPY HOUR · RESTAURANT DETAILS</div>'+heading(d.name,d.address)+'<div class="card"><h3 class="pr-label">Happy Hour times</h3>'+d.schedule.map(s=>'<div class="pr-detail"><strong>'+esc(s.days.map(n=>DAY[n-1]).join(' · '))+'</strong><p>'+clock(s.start)+'–'+clock(s.end)+'</p></div>').join('')+note('Local restaurant time · '+d.timezone)+'</div><div class="card"><h3 class="pr-label">Specials & restrictions</h3><p class="pr-preserve">'+esc(d.offer)+'</p></div>'+button(state.savedDeals.includes(d.id)?'Saved special':'Save special','deal',d.id,'primary')+button('Get directions','directions',d.id,'secondary')+note('Source checked '+d.checked_on+'. Schedules, availability and prices can change; confirm with the restaurant.')+'<a class="linkbtn" href="'+safeUrl(d.source_url)+'" target="_blank" rel="noopener noreferrer">Optional: view restaurant source ↗</a>';}
 let happySnapshotTrigger=null,happySnapshotOverflow=null;
@@ -243,7 +244,7 @@ function closeHappySnapshot(restore=true){
  screen?.querySelectorAll('.pr-selected').forEach(b=>b.classList.remove('pr-selected'));
  if(restore){const target=happySnapshotTrigger?.isConnected?happySnapshotTrigger:screen?.querySelector('#prHappyMap');target?.focus?.();}happySnapshotTrigger=null;
 }
-function disposeHappyMap(){happyMapVersion++;clearTimeout(happyMapTimer);happyMapTimer=null;happyMapListener?.remove?.();happyMapListener=null;for(const marker of happyMarkers)marker.setMap?.(null);happyMarkers=[];happyMap?.dispose?.();happyMap=null;}
+function disposeHappyMap(){happyMapVersion++;clearTimeout(happyMapTimer);clearTimeout(happyDiscoveryTimer);happyMapTimer=null;happyDiscoveryTimer=null;happyMapListener?.remove?.();happyMapListener=null;for(const marker of happyMarkers)marker.setMap?.(null);happyMarkers=[];happyMap?.dispose?.();happyMap=null;}
 function happyBoundsFromMap(map,host){
  const b=map.getBounds?.();if(b){const ne=b.getNorthEast(),sw=b.getSouthWest();return {north:ne.lat(),east:ne.lng(),south:sw.lat(),west:sw.lng()};}
  // The existing native HTTPS bridge publishes idle center/zoom. Its flat north-up
@@ -268,7 +269,20 @@ function updateHappyViewport(version=happyMapVersion){
  }
  const status=screen.querySelector('#prMapStatus');if(status)status.textContent=filteredHappyDeals().length+' sourced specials in this map area. List updates after you stop moving the map.';
 }
-function queueHappyViewport(version){clearTimeout(happyMapTimer);happyMapTimer=setTimeout(()=>updateHappyViewport(version),180);}
+function queueHappyViewport(version){clearTimeout(happyMapTimer);clearTimeout(happyDiscoveryTimer);happyMapTimer=setTimeout(()=>{updateHappyViewport(version);queueHappyAutoDiscovery(version);},180);}
+function queueHappyAutoDiscovery(version){
+ clearTimeout(happyDiscoveryTimer);
+ happyDiscoveryTimer=setTimeout(()=>{
+  if(version!==happyMapVersion||view!=='happy'||!access||!happyMap||state.happyDiscoveryBusy)return;
+  const b=state.happyBounds,c=state.happyCenter;
+  if(!b||!c||!Number.isFinite(b.north)||!Number.isFinite(b.south)||!Number.isFinite(b.east)||!Number.isFinite(b.west))return;
+  // Coarse grid key prevents duplicate paid searches from tiny map movements.
+  const key=[c.latitude,c.longitude,b.north-b.south,b.east-b.west].map(n=>Math.round(n*100)/100).join(':');
+  if(key===lastHappyAutoArea&&Date.now()-lastHappyAutoAt<600000)return;
+  if(Date.now()-lastHappyAutoAt<12000){happyDiscoveryTimer=setTimeout(()=>queueHappyAutoDiscovery(version),12000-(Date.now()-lastHappyAutoAt));return;}
+  lastHappyAutoArea=key;lastHappyAutoAt=Date.now();discoverHappy(false);
+ },750);
+}
 async function mountHappyMap(){
  const host=document.getElementById('prHappyMap'),version=happyMapVersion;if(!host)return;
  try{
@@ -279,7 +293,7 @@ async function mountHappyMap(){
   if(root.google.maps.tableRecNativeBridge&&typeof map.receive==='function'){
    const receive=map.receive.bind(map);map.receive=msg=>{receive(msg);if(msg.event==='state'&&!msg.requestId)queueHappyViewport(version);};
   }else happyMapListener=map.addListener?.('idle',()=>queueHappyViewport(version));
-  await map.ready;if(version!==happyMapVersion)return;updateHappyViewport(version);
+  await map.ready;if(version!==happyMapVersion)return;updateHappyViewport(version);queueHappyAutoDiscovery(version);
  }catch{if(host.isConnected&&version===happyMapVersion){host.innerHTML='<div class="pr-empty"><h3>Map unavailable right now</h3><p>You can still open specials from the list.</p></div>';const status=screen.querySelector('#prMapStatus');if(status)status.textContent='Showing saved browsing-area results.';}}
 }
 function recipesView(){return libraryRecipesView();}
