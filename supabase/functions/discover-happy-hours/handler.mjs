@@ -14,7 +14,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const raw=await req.text();if(raw.length>1024)return reply(413,{error:'Request too large'});let body;try{body=JSON.parse(raw);}catch{return reply(400,{error:'Invalid request'});}
   if(!body||Object.keys(body).some(k=>!['latitude','longitude','radius','cursor','bounds'].includes(k)))return reply(400,{error:'Invalid search'});
   const bounds=body.bounds;if(bounds!==undefined&&!validBounds(bounds))return reply(400,{error:'Zoom in to a city or metro area, then search again'});
-  const cap=bounds?60:20;
+  const cap=bounds?120:20;
   const {latitude,longitude}=body,radius=body.radius??5000,cursor=body.cursor??0;
   if(typeof latitude!=='number'||!Number.isFinite(latitude)||Math.abs(latitude)>90||typeof longitude!=='number'||!Number.isFinite(longitude)||Math.abs(longitude)>180||!Number.isFinite(radius)||radius<500||radius>15000||!Number.isInteger(cursor)||cursor<0||cursor>cap-4||cursor%4)return reply(400,{error:'Zoom in to search an area up to 15 km around the map center'});
   const base=env('SUPABASE_URL'),service=env('SUPABASE_SERVICE_ROLE_KEY'),google=env('GOOGLE_PLACES_API_KEY');if(!base||!service||!google)return reply(503,{error:'Discovery is unavailable'});
@@ -25,23 +25,37 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
   if(!await limit('happy-discovery-user',user.id,18,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
-  const areaKey=await hash('hh-discovery-v5:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
+  const areaKey=await hash('hh-discovery-v6:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
   if(!venues){
    const sections=bounds?searchSections(bounds):[null],groups=[];
    const queries=['happy hour','drink specials','bar happy hour'];
-   const maxProviderCalls=12;let providerCalls=0;
-   for(const section of sections){
-    for(const query of queries){
-    try{
-    if(providerCalls>=maxProviderCalls)break;
-    if(!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))return reply(429,{error:'Discovery is busy. Existing sourced specials remain available; try later'});
-    const location=section?{locationRestriction:{rectangle:{low:{latitude:section.south,longitude:section.west},high:{latitude:section.north,longitude:section.east}}}}:{locationBias:{circle:{center,radius}}};
-    let r;for(let attempt=0;attempt<2;attempt++){if(attempt&&!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))break;providerCalls++;r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:query,pageSize:20,...location}),signal:AbortSignal.timeout(12000)});if(r.ok||r.status<500)break;}
-
-    if(!r.ok){console.warn('Happy Hour provider failure',{status:r.status});throw Error('Provider unavailable');}const places=(await r.json()).places||[];if(!Array.isArray(places))throw Error('Invalid venue response');groups.push(places.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
-    }catch{failedSections++;}
+   // Fetch independent map sections concurrently, but cap active provider requests.
+   // Rate budget is consumed before each request, including retries.
+   const tasks=sections.flatMap(section=>queries.map(query=>({section,query})));
+   let taskIndex=0,successful=0,budgetExhausted=false;
+   async function worker(){
+    while(taskIndex<tasks.length&&!budgetExhausted){
+     const {section,query}=tasks[taskIndex++];
+     try{
+      if(!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600)){budgetExhausted=true;break;}
+      const location=section?{locationRestriction:{rectangle:{low:{latitude:section.south,longitude:section.west},high:{latitude:section.north,longitude:section.east}}}}:{locationBias:{circle:{center,radius}}};
+      let r;
+      for(let attempt=0;attempt<2;attempt++){
+       if(attempt&&!(await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))){budgetExhausted=true;break;}
+       r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:query,pageSize:20,...location}),signal:AbortSignal.timeout(12000)});
+       if(r.ok||r.status<500)break;
+      }
+      if(!r?.ok)throw Error('Provider unavailable');
+      const places=(await r.json()).places||[];
+      if(!Array.isArray(places))throw Error('Invalid venue response');
+      successful++;
+      groups.push(places.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
+     }catch{failedSections++;}
     }
    }
+   await Promise.all(Array.from({length:Math.min(3,tasks.length)},()=>worker()));
+   if(!successful&&budgetExhausted)return reply(429,{error:'Discovery is busy. Existing sourced specials remain available; try later'});
+   if(budgetExhausted)failedSections++;
    if(!groups.length)return reply(502,{error:'Happy Hour search is temporarily unavailable. Please try again; this does not mean the area has no specials.'});
    // Interleave sections so dense neighborhoods cannot crowd out the rest of the map.
    const seen=new Set();venues=[];for(let i=0;i<20;i++)for(const group of groups){const p=group[i];if(p&&!seen.has(p.id)&&venues.length<cap){seen.add(p.id);venues.push(p);}}
