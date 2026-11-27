@@ -25,7 +25,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
   const limit=async(limiter,caller,amount,seconds)=>{const r=await rpc('consume_edge_rate_limit',{p_limiter:limiter,p_caller_hash:await hash(caller),p_limit:amount,p_window_seconds:seconds});return (Array.isArray(r)?r[0]:r)?.allowed===true;};
   if(!await limit('happy-discovery-user',user.id,60,60))return reply(429,{error:'Please wait a minute before checking more venues'});
   const center={latitude:Math.round(latitude*10000)/10000,longitude:Math.round(longitude*10000)/10000};
-  const areaKey=await hash('hh-discovery-v8:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
+  const areaKey=await hash('hh-discovery-v9:'+JSON.stringify({...center,radius,bounds}));let cached=await rpc('get_edge_cache',{p_cache_key:areaKey}),venues=cached?.venues,failedSections=cached?.failed_sections||0;
   if(!venues){
    const sections=bounds?searchSections(bounds):[null],groups=[];
    const queries=bounds?['happy hour','drink specials','restaurants and bars with happy hour']:['happy hour','drink specials','bar happy hour'];
@@ -39,17 +39,17 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
      try{
       if(!await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600)){budgetExhausted=true;break;}
       const location=section?{locationRestriction:{rectangle:{low:{latitude:section.south,longitude:section.west},high:{latitude:section.north,longitude:section.east}}}}:{locationBias:{circle:{center,radius}}};
-      let r;
-      for(let attempt=0;attempt<2;attempt++){
-       if(attempt&&!(await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))){budgetExhausted=true;break;}
-       r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:query,pageSize:20,...location}),signal:AbortSignal.timeout(12000)});
-       if(r.ok||r.status<500)break;
+      let token, collected=[];
+      for(let page=0;page<2;page++){
+       if(page&&!(await limit('happy-discovery-provider','tablerec-global-provider-budget',100,3600))){budgetExhausted=true;break;}
+       const r=await fetcher('https://places.googleapis.com/v1/places:searchText',{method:'POST',headers:{'Content-Type':'application/json','X-Goog-Api-Key':google,'X-Goog-FieldMask':'nextPageToken,places.id,places.displayName,places.formattedAddress,places.location,places.websiteUri,places.businessStatus,places.attributions'},body:JSON.stringify({textQuery:query,pageSize:20,...location,...(token?{pageToken:token}:{})}),signal:AbortSignal.timeout(12000)});
+       if(!r.ok){if(!page)throw Error('Provider unavailable');failedSections++;break;}
+       const data=await r.json(),places=data.places||[];
+       if(!Array.isArray(places))throw Error('Invalid venue response');
+       collected.push(...places);token=data.nextPageToken;if(!token)break;
       }
-      if(!r?.ok)throw Error('Provider unavailable');
-      const places=(await r.json()).places||[];
-      if(!Array.isArray(places))throw Error('Invalid venue response');
       successful++;
-      groups.push(places.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
+      groups.push(collected.filter(p=>p.businessStatus==='OPERATIONAL'&&p.id&&p.location&&(bounds?inside(p.location,bounds):withinRadius(p.location,center,radius))));
      }catch{failedSections++;}
     }
    }
@@ -58,7 +58,7 @@ export function createHandler({env=k=>Deno.env.get(k),fetcher=fetch,inspect=insp
    if(budgetExhausted)failedSections++;
    if(!groups.length)return reply(502,{error:'Happy Hour search is temporarily unavailable. Please try again; this does not mean the area has no specials.'});
    // Interleave sections so dense neighborhoods cannot crowd out the rest of the map.
-   const seen=new Set();venues=[];for(let i=0;i<20;i++)for(const group of groups){const p=group[i];if(p&&!seen.has(p.id)&&venues.length<cap){seen.add(p.id);venues.push(p);}}
+   const seen=new Set();venues=[];for(let i=0;i<40;i++)for(const group of groups){const p=group[i];if(p&&!seen.has(p.id)&&venues.length<cap){seen.add(p.id);venues.push(p);}}
    await rpc('set_edge_cache',{p_cache_key:areaKey,p_payload:{venues,failed_sections:failedSections},p_ttl_seconds:failedSections?30:600});
   }
   const results=await Promise.all(venues.slice(cursor,cursor+4).map(async p=>{
