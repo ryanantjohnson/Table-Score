@@ -1,0 +1,516 @@
+/* TableRec Pro: integrated app screens. Tester flag does not grant a paid entitlement. */
+(function(root){
+'use strict';
+if(root.tableRecProPreviewEnabled!==true)return;
+var DAY=['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+var CATALOG=[
+ {title:'Food allergies',items:['Peanut','Milk','Wheat','Egg','Soy','Sesame','Tree nuts','Fish','Crustacean shellfish','Molluscs','Mustard','Celery','Lupin','Sulfites']},
+ {title:'Medical dietary needs',items:['Celiac / gluten','Lactose intolerance','Alpha-gal (manual review)','Low-FODMAP (manual review)','Diabetes / carbohydrate targets (manual review)','Kidney / potassium / phosphorus limits (manual review)','Low sodium (manual review)','Other medical dietary needs (manual review)']},
+ {title:'Religious requirements',items:['Halal','Kosher','No pork','No alcohol']},
+ {title:'Personal preferences',items:['Vegan','Vegetarian','Pescatarian']}
+];
+var VENUES=[],DEALS=[],RECIPES=[];
+const SOURCES=Array.isArray(root.TableRecDiningSources)?root.TableRecDiningSources:[];
+const DISHES=Array.isArray(root.TableRecDiningDishes)?root.TableRecDiningDishes:[];
+const evidence=root.TableRecDiningEvidence;
+const norm=s=>String(s||'').normalize('NFKD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+const officialFor=v=>SOURCES.find(s=>(!s.city||norm(v.area).includes(s.city))&&(s.id==='cava'?norm(v.name)==='cava':s.id==='chipotle'?['chipotle','chipotle mexican grill'].includes(norm(v.name)):s.aliases.some(a=>(' '+norm(v.name)+' ').includes(' '+a+' '))));
+function sourceCard(s){const selected=activeNeeds();const stale=new Date().toISOString().slice(0,10)>s.review_due;return '<div class="card pr-source-card"><div class="pr-eyebrow">PUBLISHED DIETARY GUIDANCE'+(stale?' · REVIEW OVERDUE':'')+'</div><h2>'+esc(s.name)+'</h2><p>'+esc(s.summary)+'</p>'+s.claims.filter(c=>!selected.length||c.needs.some(n=>selected.includes(n))).map(c=>'<div class="pr-evidence"><strong>'+esc(c.needs.join(' · '))+'</strong><p>'+esc(c.note)+'</p>'+badge(stale?'Review overdue':c.status)+'</div>').join('')+'<p class="pr-note">'+esc(s.scope)+' · Checked '+esc(s.checked_on)+'</p><a class="linkbtn" href="'+safeUrl(s.source_url)+'" target="_blank" rel="noopener noreferrer">Official source ↗</a>'+s.additional_sources.map((u,i)=>' · <a href="'+safeUrl(u)+'" target="_blank" rel="noopener noreferrer">Related source '+(i+1)+'</a>').join('')+'</div>';}
+function evaluate(v,needs){
+ const rows=needs.map(need=>{const e=v.data?.[need]||{status:'unknown',note:'No reviewed evidence for this requirement.',source:'No source supplied',checked:null,scope:'Not documented'};
+ const date=Date.parse(e.checked||'');const stale=!Number.isFinite(date)||Date.now()-date>30*86400000;
+ return {need,e,stale,manual:need.includes('(manual review)')};});
+ const conflicts=rows.filter(r=>['conflict','conflicting'].includes(r.e.status)).length;
+ const gaps=rows.filter(r=>r.e.status!=='documented'||r.stale||r.manual).length;
+ return {rows,conflicts,gaps,complete:needs.length>0&&gaps===0};
+}
+const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const icon=(name)=>{const paths={needs:'M12 21s-8-5-8-12a4 4 0 0 1 8-1 4 4 0 0 1 8 1c0 7-8 12-8 12Z',happy:'M5 3h14l-7 9-7-9Zm7 9v9m-4 0h8',recipes:'M12 3v3m0 12v3M3 12h3m12 0h3M5.6 5.6l2.1 2.1m8.6 8.6 2.1 2.1M5.6 18.4l2.1-2.1m8.6-8.6 2.1-2.1',trip:'M4 4h6v6H4V4Zm10 10h6v6h-6v-6ZM7 10v7h7',journal:'M5 3h14v18H5V3Zm4 5h6m-6 4h6m-6 4h4',arrow:'m9 5 7 7-7 7',back:'m15 5-7 7 7 7',plus:'M12 5v14M5 12h14',check:'m5 12 4 4L19 6'};return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'+(paths[name]||paths.needs).split(/(?=M)/).map(d=>'<path d="'+d+'"/>').join('')+'</svg>';};
+const initial=()=>({needs:[],dietNotes:'',group:[],groupOn:false,filter:'all',query:'',diningResults:null,diningSearching:false,diningMessage:'',diningRequest:0,diningRadius:5,diningMode:null,diningOrigin:null,diningError:false,diningShowAll:false,day:DAY[(new Date().getDay()+6)%7],budget:0,savedDeals:[],recipe:null,category:'All',recipeCollection:'everyday',recipeQuery:'',pantryText:'',assumeStaples:false,recipeMatches:[],recipeMatchCount:0,recipeCollectionFallback:false,recipeSearching:false,recipeResultsReady:false,recipeRequest:0,recipeError:'',recipeRoundPick:null,recipeRoundSerial:0,recipeHistory:[],recipeSummary:{count:0,categories:[]},radius:25,happyCenter:null,happyBounds:null,happyZoom:11,happySelected:null,happyDiscovery:null,happyDiscoveryBusy:false,happyDiscoveryRequest:0,openNow:false,savedRecipes:[],trip:{name:'My food trip',days:2,budget:150,stops:[]},journal:[]});
+let clearing=false,signingOut=false,epoch=0,loadPromise=null,loaded=false,access=false,revision=0,saveBusy=false,savePending=false,saveConflict=false,loading=false,errorText='',feature='home';
+const client=()=>{try{return typeof db!=='undefined'?db:null;}catch{return null;}};
+let happyMap=null,happyMarkers=[],happyMapVersion=0,happyMapTimer=null,happyDiscoveryTimer=null,happyMapListener=null;
+let lastHappyAutoArea='',lastHappyAutoAt=0;
+let recipeRunning=false;
+let diningContacts=new Map();
+let state=initial(),account=null,screen=null,view='home',detail=null,recipeTimer=null;
+const titles={home:'TableRec Pro',needs:'Dining Needs',edit:'Your dining needs',venue:'Restaurant details',happy:'Happy Hours',happyDetail:'Happy Hour details',recipes:'Cook at Home',recipe:'Your recipe',about:'About your access'};
+const MENU_VENUES=[
+ {id:'menu:cava',brand:'cava',name:'CAVA',country_code:'US',area:'Published US brand menu'},
+ {id:'menu:chipotle',brand:'chipotle',name:'Chipotle Mexican Grill',country_code:'US',area:'Published US brand menu'},
+ {id:'menu:chick-fil-a',brand:'chick-fil-a',name:'Chick-fil-A',country_code:'US',area:'Published US brand menu'},
+ {id:'menu:five-guys',brand:'five-guys',name:'Five Guys',country_code:'US',area:'Published US brand menu'},
+ {id:'menu:carve-barton',brand:'carve-barton',name:'CARVE American Grille · Barton Creek',country_code:'US',area:'Barton Creek, Austin only',address:'7415 SW Parkway, Austin, TX 78735',evidencePlaceId:'ChIJL1aO2dZLW4YRKsx-SrrIrcw'},
+ {id:'menu:bouldin',brand:'bouldin',name:'Bouldin Creek Cafe',country_code:'US',area:'1900 S 1st Street, Austin only',address:'1900 S 1st St, Austin, TX 78704'}
+].map(v=>Object.freeze({...v,referenceOnly:true}));
+const venue=id=>[...VENUES,...(state.diningResults||[]),...MENU_VENUES].find(v=>v.id===id);
+const DINING_BRANDS=Object.freeze({'chipotle':'chipotle','chipotle mexican grill':'chipotle','cava':'cava','chick fil a':'chick-fil-a','chickfila':'chick-fil-a','five guys':'five-guys','five guys burgers and fries':'five-guys','five guys burgers fries':'five-guys','carve american grille':'carve-barton','carve american grille barton creek':'carve-barton','bouldin creek cafe':'bouldin'});
+const dishesFor=v=>{const brand=v.referenceOnly?v.brand:DINING_BRANDS[norm(v.name)],placeId=String(v.evidencePlaceId||v.id||'').replace(/^lookup:/,'');return DISHES.filter(d=>d.brand===brand&&(!d.allowed_place_ids||d.allowed_place_ids.includes(placeId))&&(!d.allowed_address_prefixes||d.allowed_address_prefixes.some(a=>(' '+norm(v.address)+' ').includes(' '+a+' '))));};
+const venueCountry=v=>/^(US|USA|United States)$/i.test(String(v.country_code||v.country||''))||/\b(?:USA|United States)\s*$/i.test(v.address||'')||/\b(?:AL|AK|AZ|AR|CA|CO|CT|DE|FL|GA|HI|ID|IL|IN|IA|KS|KY|LA|ME|MD|MA|MI|MN|MS|MO|MT|NE|NV|NH|NJ|NM|NY|NC|ND|OH|OK|OR|PA|RI|SC|SD|TN|TX|UT|VT|VA|WA|WV|WI|WY|DC)[,\s]+\d{5}(?:-\d{4})?\b/.test(v.address||'')?'US':'unknown';
+const dishEvaluation=(d,v)=>evidence?.evaluate(d,activeNeeds(),{notes:state.dietNotes,country:v?venueCountry(v):'US',locationId:v?.evidencePlaceId||v?.id||null,locationAddress:v?.address||''})||{rows:[],outcome:'unknown'};
+const dishLabels={supported:'Published ingredients fit',confirm:'Ask before ordering',conflict:'Conflicts with your needs',unknown:'More information needed',unfiltered:'Choose your dining needs'};
+function dishCard(d,v){const e=dishEvaluation(d,v);return '<article class="card pr-dish"><div class="pr-eyebrow">'+esc(d.brand.toUpperCase()+' · '+d.kind)+'</div><h2>'+esc(d.name)+'</h2>'+badge(dishLabels[e.outcome],e.outcome==='conflict'?'pr-concern':'')+(d.components?'<p>'+esc(d.components.join(' · '))+'</p>':'')+'<p><strong>How to order:</strong> '+esc(d.order_notes)+'</p>'+(d.source_limits?note(d.source_limits):'')+(d.concern_details?'<div class="pr-concerns"><strong>What to ask about</strong><ul>'+Object.entries(d.concern_details).map(([need,reason])=>'<li>'+esc(need)+': '+esc(reason)+'</li>').join('')+'</ul></div>':'')+note('Allergen evidence applies to the whole listed order. The exact sauce or ingredient responsible may not be identified in the source.')+'<details><summary>Why this result?</summary>'+e.rows.map(r=>'<div class="pr-evidence"><strong>'+esc(r.need)+'</strong>'+badge({supported:'Published preference',confirm:'Confirm preparation',conflict:'Reported conflict',unknown:'Unknown'}[r.status])+'<p>'+esc(r.reason)+'</p></div>').join('')+(!e.rows.length?note('Select your needs to compare this dish.'): '')+'</details>'+note(d.scope+' · Checked '+d.checked_on)+'<a class="linkbtn" href="'+safeUrl(d.source_url)+(d.source_page?'#page='+d.source_page:'')+'" target="_blank" rel="noopener noreferrer">Dish evidence ↗</a></article>';}
+function user(){try{return typeof currentUser!=='undefined'?currentUser:null;}catch(_){return null;}}
+function activeNeeds(){return [...new Set([...state.needs,...(state.groupOn?state.group:[])])];}
+function button(label,act,value='',cls='secondary'){return '<button type="button" class="'+cls+'" data-pro-action="'+act+'" data-value="'+esc(value)+'">'+label+'</button>';}
+function row(title,sub,act,value='',ico='arrow'){return '<button type="button" class="pr-row" data-pro-action="'+act+'" data-value="'+esc(value)+'"><span class="pr-row-text"><strong>'+esc(title)+'</strong>'+(sub?'<small>'+esc(sub)+'</small>':'')+'</span>'+icon(ico)+'</button>';}
+function badge(text,type=''){return '<span class="pr-badge '+type+'">'+esc(text)+'</span>';}
+function note(text){return '<p class="pr-note">'+esc(text)+'</p>';}
+function heading(text,sub){return '<div class="pr-heading"><h2>'+esc(text)+'</h2>'+(sub?'<p>'+esc(sub)+'</p>':'')+'</div>';}
+function field(label,id,html){return '<div class="field"><label for="'+id+'">'+esc(label)+'</label>'+html+'</div>';}
+function select(id,items,value){return '<select id="'+id+'">'+items.map(x=>'<option value="'+esc(x)+'"'+(String(x)===String(value)?' selected':'')+'>'+esc(x)+'</option>').join('')+'</select>';}
+const supportedViews=new Set(['home','needs','edit','venue','happy','happyDetail','recipes','recipe','about']);
+function go(next,id){if(!user())return;invalidateRecipeRound();if(!supportedViews.has(next))next='home';feature=next;view=next;detail=id||null;render();root.scrollTo(0,0);screen.scrollTop=0;syncProViewport();screen.querySelector('h1')?.focus({preventScroll:true});}
+function open(next='home'){
+ invalidateRecipeRound();
+ if(!supportedViews.has(next))next='home';
+ sync();if(!user()||!screen){root.openAccount?.();return;}
+ feature=next;view=next;detail=null;
+ const settings=document.getElementById('settingsModal');if(settings&&!settings.classList.contains('hidden'))root.closeSettings?.();
+ if(typeof root.closeWhereToEat==='function')root.closeWhereToEat();
+ root.showScreen('pro');render();screen.scrollTop=0;syncProViewport();void loadAccount();
+}
+function back(){if(state.happySelected){closeHappySnapshot();return;}const parent={edit:'needs',venue:'needs',happyDetail:'happy',recipe:'recipes'}[view];if(parent)return go(parent);if(view!=='home'&&view!==feature)return go('home');if(!root.tableRecBack?.())root.showScreen('profile');}
+let proIdleViewportHeight=0;
+function syncProViewport(){
+ const active=!!screen?.classList.contains('active'),body=document.body;
+ if(!active){body.classList.remove('pr-keyboard-open');return;}
+ const vv=root.visualViewport,finite=(n,f)=>Number.isFinite(n)?n:f;
+ const height=Math.max(160,finite(vv?.height,root.innerHeight||800)),top=Math.max(0,finite(vv?.offsetTop,0));
+ const editing=!!document.activeElement?.matches('input,textarea,select');
+ if(!editing)proIdleViewportHeight=height;else proIdleViewportHeight=Math.max(proIdleViewportHeight,root.innerHeight||height);
+ const keyboard=editing&&height<proIdleViewportHeight-120;
+ body.classList.toggle('pr-keyboard-open',keyboard);
+ const css=document.documentElement.style;
+ css.setProperty('--pr-viewport-top',top+'px');
+ const header=document.querySelector('.app>.topbar,.app>header'),headerHeight=Math.ceil(header?.getBoundingClientRect().height||0);
+ const nav=keyboard?0:Math.ceil(document.querySelector('.nav')?.getBoundingClientRect().height||0);
+ css.setProperty('--pr-header-height',headerHeight+'px');
+ css.setProperty('--pr-panel-height',Math.max(40,height-headerHeight-nav)+'px');
+}
+root.visualViewport?.addEventListener('resize',syncProViewport);
+root.visualViewport?.addEventListener('scroll',syncProViewport);
+root.addEventListener('resize',syncProViewport);
+document.addEventListener('focusin',syncProViewport);
+document.addEventListener('focusout',()=>root.setTimeout(syncProViewport,0));
+function clear(){
+ clearing=true;document.body.classList.remove('pr-keyboard-open');epoch++;closeHappySnapshot(false);disposeHappyMap();recipeRunning=false;clearTimeout(recipeTimer);recipeTimer=null;state=initial();diningContacts.clear();loaded=false;loadPromise=null;loading=false;access=false;revision=0;saveBusy=false;saveConflict=false;errorText='';VENUES=[];DEALS=[];RECIPES=[];
+ const wasActive=screen?.classList.contains('active');screen?.remove();screen=null;if(wasActive)root.showScreen('profile');
+ document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>n.remove());clearing=false;
+}
+function render(){
+ if(!screen)return;closeHappySnapshot(false);disposeHappyMap();
+ const body=loading?'<div class="pr-empty"><h2>Getting your table ready…</h2><p>Loading your private account.</p></div>':errorText?'<div class="pr-empty"><h2>We couldn’t load this right now.</h2><p>'+esc(errorText)+'</p>'+button('Try again','retry','','primary')+'</div>':(!access&&!['home','about','edit','needs'].includes(view))?lockedView():{home:homeView,needs:needsView,edit:editView,venue:venueView,happy:happyView,happyDetail:happyDetailView,recipes:recipesView,recipe:recipeView,about:aboutView}[view]();
+ screen.innerHTML='<div class="backline pr-backline">'+button(icon('back'),'back','','backbtn')+'<span class="muted">'+(view==='home'?'Profile':'TableRec Pro')+'</span></div><div class="pr-title"><h1 class="page-title" tabindex="-1">'+titles[view]+'</h1>'+(view==='home'?badge('PRO','pr-orange'):'')+'</div>'+body+'<div class="pr-feedback" role="status" aria-live="polite"></div>';
+ if(view==='happy'&&access&&!loading&&!errorText)void mountHappyMap();
+ if(view==='venue'&&access&&!loading&&!errorText)void loadDiningContact(venue(detail));
+ syncProViewport();
+ screen.querySelectorAll('[data-pro-action="nearbyDining"],[data-pro-action="searchDining"],#prDiningRadius').forEach(el=>{el.disabled=state.diningSearching;});
+ screen.querySelectorAll('#prPantry,#prCategory,#prStaples,[data-pro-action="findRecipes"],[data-pro-action="spinRecipes"]').forEach(el=>{el.disabled=recipeRunning||state.recipeSearching;});
+}
+function homeView(){
+ return '<div class="pr-membership"><div class="pr-member-top">'+badge(access?'PRO ACCESS ACTIVE':'TABLEREC PRO','pr-orange')+button('Membership details','go','about','linkbtn')+'</div><h2>More ways to find your favorite.</h2><p>Your dining needs live in Profile. Find Happy Hours in Discover and Cook at Home in Run It.</p></div><div class="pr-group">'+
+ row('Dining Needs','Private preferences and restaurant evidence','go','needs')+row('Happy Hours','Nearby specials with sources and schedules','go','happy')+row('Cook at home','Recipes matched to what’s in your kitchen','go','recipes')+'</div>'+note('Run It stays free and unlimited. No payments are collected in this build.');
+}
+function needsSummary(){const n=activeNeeds();return '<div class="pr-needs-summary"><span class="pr-eyebrow">YOUR SAVED DINING NEEDS</span><h2>'+esc(n.length?n.map(x=>x.replace(' (manual review)','')).join(' · '):state.dietNotes?'Additional needs saved':'Let’s make this your table')+'</h2>'+(state.dietNotes?note('Additional notes saved. These need individual review and are not automatically matched.'):'')+button(n.length||state.dietNotes?'Edit my needs':'Set my dining needs','go','edit','linkbtn')+'</div>';}
+function diningOptions(v){return dishesFor(v).map(d=>({dish:d,e:dishEvaluation(d,v)}));}
+function diningCounts(v){const rows=diningOptions(v);return {potential:rows.filter(x=>['supported','confirm'].includes(x.e.outcome)).length,conflicts:rows.filter(x=>x.e.outcome==='conflict').length,total:rows.length};}
+function diningVenueCard(v){const c=diningCounts(v);return '<button type="button" class="pr-restaurant" data-pro-action="venue" data-value="'+esc(v.id)+'"><span class="pr-restaurant-top"><strong>'+esc(v.name)+'</strong>'+icon('arrow')+'</span><span class="pr-meta">'+esc(v.area)+(v.distance==null?'':' · '+v.distance.toFixed(1)+' mi')+'</span><span class="pr-result-bottom">'+badge(c.potential?c.potential+' potential dish option'+(c.potential===1?'':'s'):'More information needed',c.potential?'pr-orange':'')+'</span><span class="pr-meta">'+(c.potential?'Published information fits your selected needs; confirm preparation.':c.conflicts?'Some published dishes conflict with your needs.':'Dish information does not establish a match for every need.')+'</span></button>';}
+function menuLibrary(){const menus=MENU_VENUES.filter(v=>diningCounts(v).total);return '<section class="pr-menu-library"><h2>Check a published menu</h2>'+note('These are menu references, not nearby restaurant recommendations. Choose a menu to compare every saved need. US brand recipes and local kitchen practices can differ.')+'<div class="pr-menu-grid">'+menus.map(v=>'<button type="button" class="pr-menu-card" data-pro-action="venue" data-value="'+v.id+'"><strong>'+esc(v.name)+'</strong><span>'+esc(v.area)+'</span><span>'+diningCounts(v).total+' published dishes / order options</span><b>Compare menu ↗</b></button>').join('')+'</div>'+note(DISHES.length+' dish/order records across '+menus.length+' brands or locations. Only restaurants with enough evidence for every selected need can have a potential match.')+'</section>';}
+function needsView(){
+ const ready=activeNeeds().length>0||!!state.dietNotes;
+ let places=state.diningResults||[];if(state.diningMode==='nearby')places=places.filter(v=>v.distance!=null&&v.distance<=state.diningRadius);
+ places=[...places].sort((a,b)=>Number(diningCounts(b).potential>0)-Number(diningCounts(a).potential>0)||(a.distance??Infinity)-(b.distance??Infinity)||a.name.localeCompare(b.name));
+ const potential=places.filter(v=>diningCounts(v).potential>0),unknown=places.filter(v=>!diningCounts(v).potential);
+ return needsSummary()+(!access?lockedView():
+ '<div class="pr-dining-start"><h2>Where could you eat?</h2><p>Find nearby restaurants and compare their published dishes with all your saved needs.</p>'+field('Distance from my TableRec browsing location','prDiningRadius','<select id="prDiningRadius">'+[1,3,5,10,15].map(n=>'<option value="'+n+'"'+(n===state.diningRadius?' selected':'')+'>'+n+' miles</option>').join('')+'</select>')+button(state.diningSearching?'Finding restaurants…':'Find restaurants for my needs','nearbyDining','','primary')+'</div>'+note('Dish evidence currently covers CAVA, Chipotle, Chick-fil-A, Five Guys and selected Austin restaurants. Coverage varies by dish and need. Nearby restaurants without sufficient evidence stay unknown. Always confirm ingredients, substitutions and shared preparation with the restaurant.')+
+ '<details class="pr-dining-manual"><summary>Looking for a particular restaurant?</summary><div class="search"><input id="prSearch" maxlength="150" aria-label="Search restaurants" placeholder="Restaurant name, city or address" value="'+esc(state.query)+'"></div>'+button('Search restaurants','searchDining','','secondary')+'</details>'+
+ '<section id="prDiningResults" tabindex="-1" aria-label="Restaurant results"><p role="status" aria-live="polite" class="pr-note">'+esc(state.diningMessage|| (ready?'Your saved needs will be applied to every dish comparison.':'Set your dining needs first to compare dishes.'))+'</p>'+(state.diningResults!==null&&!state.diningSearching?'<h2>'+potential.length+' restaurant'+(potential.length===1?'':'s')+' with potential options</h2><div class="pr-results">'+potential.map(diningVenueCard).join('')+'</div>'+(!potential.length?'<div class="pr-empty"><h3>No documented dish matches in these results yet.</h3><p>This does not mean there is nowhere you can eat. Try a wider radius or another restaurant; missing evidence stays unknown.</p></div>':'')+(unknown.length?'<section class="pr-dining-unknown"><h3>'+unknown.length+' more restaurant'+(unknown.length===1?'':'s')+' — more information needed</h3>'+note('These places are not confirmed matches. Missing menu evidence is different from a restaurant having no suitable food.')+'<div class="pr-results">'+(state.diningShowAll?unknown:unknown.slice(0,6)).map(diningVenueCard).join('')+'</div>'+(unknown.length>6?button(state.diningShowAll?'Show fewer':'Show all '+unknown.length+' restaurants','toggleDiningAll','','secondary'):'')+'</section>':''):'')+'</section>'+menuLibrary());
+}
+function locationPoint(v){const lat=v?.latitude,lng=v?.longitude;if(lat==null||lng==null||!Number.isFinite(+lat)||!Number.isFinite(+lng)||Math.abs(+lat)>90||Math.abs(+lng)>180)return null;return {latitude:+lat,longitude:+lng};}
+function diningPlace(v,i,origin){const point=locationPoint(v);return {id:'lookup:'+String(v.google_place_id||v.place_id||v.id||i),name:String(v.name||'Restaurant'),area:String(v.address||v.city||''),cuisine:String(v.cuisine||'Restaurant'),address:String(v.address||''),country_code:String(v.country_code||v.country||''),...(point||{}),distance:origin&&point?miles(origin.latitude,origin.longitude,point.latitude,point.longitude):null,data:{},lookup:true};}
+async function searchDining(nearby=false){
+ if(!access||state.diningSearching)return;
+ if(nearby&&!activeNeeds().length&&!state.dietNotes){go('edit');return;}
+ const query=state.query.trim();if(!nearby&&query.length<2){toast('Enter a restaurant name, city, or address.');return;}
+ const origin=locationPoint(browseCoords());if(nearby&&!origin){state.diningResults=null;state.diningMode=null;state.diningMessage='Set your location in TableRec, then try nearby restaurants again. You can also search a restaurant by name.';render();screen.querySelector('#prDiningResults')?.scrollIntoView?.({behavior:'smooth',block:'start'});return;}
+ const e=epoch,id=user()?.id,request=++state.diningRequest;state.diningSearching=true;state.diningResults=null;state.diningMode=nearby?'nearby':'search';state.diningOrigin=origin;state.diningError=false;state.diningMessage='Finding restaurants and comparing available dish information…';render();screen.querySelector('#prDiningResults')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+ try{
+  if(typeof root.tableRecInvokeRestaurant!=='function')throw Error('Restaurant search is unavailable. Try again shortly.');
+  const bodies=nearby?[{mode:'nearby',...origin,radiusMeters:Math.min(25000,Math.round(state.diningRadius*1609.344))},...['CAVA','Chipotle Mexican Grill','Chick-fil-A','Five Guys','CARVE American Grille','Bouldin Creek Cafe'].map(query=>({mode:'search',query,...origin}))]:[{mode:'search',query,...(origin||{})}];
+  // Only restaurant names and coordinates leave the app. Dietary needs stay local.
+  const responses=await Promise.allSettled(bodies.map(body=>root.tableRecInvokeRestaurant('nearby-restaurants',{body})));
+  if(epoch!==e||user()?.id!==id||request!==state.diningRequest)return;
+  let failed=0;const found=[];for(const r of responses){if(r.status!=='fulfilled'||r.value.error||r.value.data?.error){failed++;continue;}found.push(...(Array.isArray(r.value.data?.restaurants)?r.value.data.restaurants:[]));}
+  if(failed===responses.length)throw Error('Could not search restaurants. Please try again.');
+  const seen=new Set();state.diningResults=found.map((v,i)=>diningPlace(v,i,origin)).filter(v=>{const key=v.id;if(seen.has(key))return false;seen.add(key);return true;}).filter(v=>!nearby||(v.distance!=null&&v.distance<=state.diningRadius));
+  const count=state.diningResults.filter(v=>diningCounts(v).potential>0).length;
+  state.diningMessage=(nearby?'Within '+state.diningRadius+' miles of your TableRec browsing location. ':'')+state.diningResults.length+' restaurants found; '+count+' with potential dish options.'+(failed?' Some searches could not finish; these results are incomplete.':'')+' Published menu information does not verify local kitchen practices.';
+ }catch(err){if(epoch===e&&user()?.id===id&&request===state.diningRequest){state.diningResults=[];state.diningError=true;state.diningMessage=err.message;}}
+ finally{if(epoch===e&&user()?.id===id&&request===state.diningRequest){state.diningSearching=false;if(view==='needs'){render();const results=screen.querySelector('#prDiningResults');results?.scrollIntoView?.({behavior:'smooth',block:'start'});results?.focus?.({preventScroll:true});}}}
+}
+function editView(){
+ return heading('What matters at your table?','Select every need that applies. Your choices are private and never appear on your public profile.')+
+ CATALOG.map(g=>'<h3 class="pr-label">'+esc(g.title)+'</h3><div class="pr-group">'+g.items.map(n=>'<label class="pr-choice"><span>'+esc(n.replace(' (manual review)',''))+(n.includes('manual review')?'<small>Personal targets and individual review required</small>':'')+'</span><input type="checkbox" data-need="'+esc(n)+'"'+(state.needs.includes(n)?' checked':'')+'></label>').join('')+'</div>').join('')+
+ field('Other needs or specific ingredients','prDietNotes','<textarea id="prDietNotes" maxlength="1000" rows="3" placeholder="Specific tree nuts, oils, derivatives, certification needs, or personal targets…">'+esc(state.dietNotes)+'</textarea>')+
+ note('Free-text needs are a reminder for you and are not automatically matched. No catalog covers every condition. Wheat allergy and celiac disease are evaluated separately. Halal and kosher require scope-specific evidence.')+
+ '<label class="pr-consent"><input id="prDietConsent" type="checkbox"'+(state.needs.length||state.dietNotes?' checked':'')+'>I agree to store these dietary choices privately in my TableRec account. I can clear them at any time.</label>'+button('Save dining needs','saveNeeds','','primary')+button('Clear dining needs','clearNeeds','','linkbtn');
+}
+function diningContactView(v){
+ if(v.referenceOnly)return note('Choose a nearby location from restaurant results to call that business.');
+ const contact=diningContacts.get(v.id),maps='https://www.google.com/maps/search/?api=1&query='+encodeURIComponent(v.name+' '+v.address)+(v.lookup?'&query_place_id='+encodeURIComponent(v.id.slice(7)):'');
+ const phone=contact?.phone&&/^[+()0-9 .-]{7,40}$/.test(contact.phone)?contact.phone:null;
+ return '<section class="card pr-contact"><h3>Confirm with this location</h3><p>'+esc(v.address||v.area)+'</p><div id="prDiningContact" role="status">'+(phone?'<a class="primary linkbtn" href="tel:'+esc(phone.replace(/[^+0-9]/g,''))+'">Call '+esc(phone)+'</a>':note(contact?.loading?'Getting this location’s phone number…':contact?.error?'Phone lookup could not finish. Try again or open the location listing.':'No phone number is published for this location.'))+(contact?.error?button('Retry phone lookup','retryContact',v.id,'secondary'):'')+'</div><a class="linkbtn" href="'+esc(maps)+'" target="_blank" rel="noopener noreferrer">Location listing ↗</a>'+note('Location contact information: Google Maps. Call to confirm ingredients, substitutions and preparation.')+(contact?.attributions||[]).map(a=>'<p class="pr-note">'+esc(a.name)+' <a href="'+safeUrl(a.url)+'" target="_blank" rel="noopener noreferrer">Source ↗</a></p>').join('')+'</section>';
+}
+async function loadDiningContact(v,retry=false){
+ if(!v?.lookup||v.referenceOnly||!access)return;
+ if(diningContacts.has(v.id)&&!retry)return;
+ const e=epoch,id=user()?.id;diningContacts.set(v.id,{loading:true});
+ const host=screen?.querySelector('.pr-contact');if(host)host.outerHTML=diningContactView(v);
+ try{
+  const r=await client().functions.invoke('restaurant-contact',{body:{place_id:v.id.slice(7)}});
+  if(epoch!==e||user()?.id!==id)return;
+  if(r.error||r.data?.error||r.data?.place_id!==v.id.slice(7))throw Error('Contact unavailable');
+  diningContacts.set(v.id,{phone:r.data.phone,attributions:Array.isArray(r.data.attributions)?r.data.attributions:[]});
+ }catch{if(epoch!==e||user()?.id!==id)return;diningContacts.set(v.id,{error:true});}
+ if(view==='venue'&&detail===v.id){const host=screen?.querySelector('.pr-contact');if(host)host.outerHTML=diningContactView(v);}
+}
+function venueView(){
+ const v=venue(detail);if(!v)return needsView();const options=diningOptions(v),potential=options.filter(x=>['supported','confirm'].includes(x.e.outcome)),other=options.filter(x=>!['supported','confirm'].includes(x.e.outcome));
+ return heading(v.name,v.area+(v.distance==null?'':' · '+v.distance.toFixed(1)+' mi'))+(v.referenceOnly?note('PUBLISHED MENU REFERENCE · This is not a nearby recommendation or confirmation of availability at your location.'):'')+needsSummary()+
+ '<section class="pr-potential-dishes"><h2>What you could order</h2>'+note('These published dishes or documented order changes have potential for every selected need. Confirm with this location; TableRec cannot promise a kitchen can make an unlisted modification.')+(potential.length?potential.sort((a,b)=>Number(a.e.outcome==='confirm')-Number(b.e.outcome==='confirm')).map(x=>dishCard(x.dish,v)).join(''):'<div class="card"><h3>No documented dish matches yet.</h3><p>We do not have enough information to recommend a dish for all your needs here. Ask the restaurant about suitable options.</p></div>')+'</section>'+diningContactView(v)+
+ (other.length?'<details class="pr-dining-manual pr-other-dishes"><summary>Other reviewed dishes: conflicts or information gaps ('+other.length+')</summary>'+other.map(x=>dishCard(x.dish,v)).join('')+'</details>':!options.length?badge('MORE INFORMATION NEEDED'):'')+
+ (officialFor(v)?'<details class="pr-dining-manual"><summary>Official restaurant guidance & sources</summary>'+sourceCard(officialFor(v))+'</details>':'')+'<details class="pr-dining-manual"><summary>What should I ask the restaurant?</summary><div class="pr-group">'+['Confirm every ingredient, seasoning, sauce and substitution against your needs.','Ask about cooking oils, shared fryers, grills, utensils and preparation surfaces.','For halal or kosher, ask about current certification for this exact location and dish.'].map(t=>'<div class="pr-detail">'+esc(t)+'</div>').join('')+'</div></details>'+button('Back to restaurants','go','needs','primary')+(!v.lookup&&!v.referenceOnly?button('View restaurant','openRestaurant',v.id,'secondary'):'');
+}
+function filteredHappyDeals(){
+ const coords=state.happyCenter||browseCoords(),today=new Date().toISOString().slice(0,10);
+ return DEALS.filter(d=>d.active&&d.checked_on<=today&&d.expires_on>=today&&(!d.valid_until||Date.parse(d.valid_until)>Date.now())&&locationPoint(d))
+ .map(d=>({...d,distance:coords?miles(coords.latitude,coords.longitude,+d.latitude,+d.longitude):null}))
+ .filter(d=>state.happyBounds?withinHappyBounds(d,state.happyBounds):(d.distance===null||d.distance<=state.radius))
+ .sort((a,b)=>(a.distance??Infinity)-(b.distance??Infinity));
+}
+function withinHappyBounds(d,b){return d.latitude>=b.south&&d.latitude<=b.north&&(b.west<=b.east?d.longitude>=b.west&&d.longitude<=b.east:d.longitude>=b.west||d.longitude<=b.east);}
+function happyCards(){const deals=filteredHappyDeals();return deals.map((d,i)=>'<button type="button" id="prDeal-'+esc(d.id)+'" class="card pr-deal pr-deal-card" data-pro-action="happyDetail" data-value="'+esc(d.id)+'"><span class="pr-eyebrow">'+(i+1)+(d.discovered?' · WEBSITE REPORT':' · HAPPY HOUR')+(d.distance===null?'':' · '+d.distance.toFixed(1)+' MI')+'</span><strong class="pr-deal-name">'+esc(d.name)+'</strong><span class="pr-deal-summary">'+esc(d.offer)+'</span><small class="pr-deal-address">'+esc(d.address)+'</small><b class="pr-deal-cta">See times & specials ↗</b></button>').join('')+(!deals.length?'<div class="pr-empty"><h2>No sourced specials loaded here yet.</h2><p>'+(state.happyDiscoveryBusy?'Searching nearby websites. Results will appear here as they are found.':state.happyDiscovery?'No published Happy Hour details matched this area in the venues checked. This does not mean there are no Happy Hours here.':'Move the map and tap Search this area to find published Happy Hour details.')+'</p></div>':'');}
+function happyProviders(rows){return (Array.isArray(rows)?rows:[]).slice(0,10).map(a=>'<p class="pr-note">'+esc(a.provider||'')+' <a href="'+safeUrl(a.providerUri)+'" target="_blank" rel="noopener noreferrer">Data provider ↗</a></p>').join('');}
+function happySearchView(){return button(state.happyDiscoveryBusy?'Checking venues…':'Refresh this area','discoverHappy','','primary')+'<p class="pr-note" role="status" aria-live="polite">'+esc(state.happyDiscovery?.error||state.happyDiscovery?.message||(state.happyDiscoveryBusy?'Checking nearby venue websites…':'Move the map, then tap Search this area.'))+'</p>';}
+function paintHappySearch(){const host=screen?.querySelector('#prHappySearch');if(host){host.innerHTML=happySearchView();host.querySelector('button').disabled=state.happyDiscoveryBusy;}}
+function happyDiscoveryView(){const r=state.happyDiscovery;return '<section class="card"><h2>Discover in this area</h2>'+note('One search checks up to 180 candidate venues across the visible city or metro area. Published website details are needed to show a Happy Hour pin.')+(r?.next_cursor!=null?button('Check more nearby venues','moreHappy','','secondary'):'')+'<p class="pr-note" role="status">'+esc(r?.error||r?.message||'This map area has not been checked in this session.')+'</p>'+(r?.counts?'<p class="pr-note">Website checks: '+r.counts.checked+' · Published specials: '+r.counts.published+' · Hours only: '+r.counts.hours_only+' · Unconfirmed: '+r.counts.unconfirmed+'</p>':'')+(r?.other?.length?'<details><summary>Other checked venues — unconfirmed ('+r.other.length+')</summary>'+r.other.map(p=>'<div class="pr-detail"><strong>'+esc(p.name)+'</strong><p>'+esc(p.address)+'</p>'+happyProviders(p.attributions)+note(p.reason||({location_unconfirmed:'Happy Hour text found, but the page could not be tied to this exact location.',mentioned:'Happy Hour mentioned; hours and deals could not both be extracted.'}[p.status])||'No complete published offer found in the pages checked.')+(p.source_url?'<a href="'+safeUrl(p.source_url)+'" target="_blank" rel="noopener noreferrer">Website evidence ↗</a>':'')+'</div>').join('')+'</details>':'')+note('Venue information: Google Maps. Website failures and missing evidence do not establish that a venue has no specials.')+'</section>';}
+async function discoverHappy(more){
+ if(!access||state.happyDiscoveryBusy||view!=='happy')return;
+ const center=state.happyCenter||browseCoords();if(!locationPoint(center)){toast('Set your location or move the map first.');return;}
+ const startCursor=more?state.happyDiscovery?.next_cursor:0;if(startCursor==null)return;
+ const bounds=state.happyBounds?{...state.happyBounds}:null;
+ const e=epoch,id=user()?.id,request=++state.happyDiscoveryRequest;
+ const current=()=>epoch===e&&user()?.id===id&&request===state.happyDiscoveryRequest&&view==='happy';
+ state.happyDiscoveryBusy=true;
+ const paint=()=>{paintHappySearch();const host=screen?.querySelector('#prHappyDiscovery');if(host){host.innerHTML=happyDiscoveryView();host.querySelectorAll('button').forEach(b=>b.disabled=state.happyDiscoveryBusy);}};
+ const ingest=data=>{
+  if(!current())return;
+  const previous=state.happyDiscovery?.other||[];
+  const counts=state.happyDiscovery?.counts||{checked:0,published:0,hours_only:0,unconfirmed:0};
+  for(const p of data.results){counts.checked++;if(p.status==='published')counts.published++;else if(p.status==='hours_only')counts.hours_only++;else counts.unconfirmed++;}
+  for(const p of data.results){
+   if(!['published','hours_only'].includes(p.status)||!locationPoint(p)||typeof p.excerpt!=='string'||!p.source_url?.startsWith('https://'))continue;
+   const duplicate=DEALS.some(d=>!d.discovered&&locationPoint(d)&&norm(d.name).includes(norm(p.name).split(' ').slice(0,2).join(' '))&&miles(d.latitude,d.longitude,p.latitude,p.longitude)<.1);
+   if(duplicate)continue;
+   const report={id:'discovered:'+p.place_id,name:p.name,address:p.address,latitude:p.latitude,longitude:p.longitude,active:true,schedule:[],offer:(p.status==='hours_only'?'Published hours only; deal details could not be extracted. ':'')+p.excerpt,source_url:p.source_url,checked_on:p.checked_at.slice(0,10),expires_on:p.valid_until.slice(0,10),valid_until:p.valid_until,discovered:true,attributions:p.attributions};
+   DEALS=DEALS.filter(d=>d.id!==report.id);DEALS.push(report);
+  }
+  const other=[...previous,...data.results.filter(p=>!['published','hours_only'].includes(p.status))];
+  state.happyDiscovery={next_cursor:data.next_cursor,other,counts,message:'Checking venue websites across this map… '+(data.partial?'Some map sections could not be searched. ':'')+'Website reports are unconfirmed until you verify with the venue.'};
+  updateHappyViewport();paint();
+ };
+ const fetchPage=async cursor=>{
+  const r=await client().functions.invoke('discover-happy-hours-staging',{body:{latitude:center.latitude,longitude:center.longitude,radius:5000,cursor,...(bounds?{bounds}:{})}});
+  if(!current())return null;
+  if(r.error||r.data?.error||!Array.isArray(r.data?.results))throw Error(r.data?.error||'Discovery could not finish. Existing specials are still available.');
+  return r.data;
+ };
+ paint();
+ try{
+  // First request discovers/caches the venue pool. Remaining website inspections
+  // can be fetched in parallel and painted as each batch finishes.
+  const first=await fetchPage(startCursor);if(!first)return;
+  ingest(first);
+  const max=Math.min(180,first.venues_found||0);
+  const cursors=[];for(let cursor=startCursor+4;cursor<max;cursor+=4)cursors.push(cursor);
+  let nextIndex=0,completed=1,failed=0;
+  const worker=async()=>{
+   while(nextIndex<cursors.length&&current()){
+    const cursor=cursors[nextIndex++];
+    try{const data=await fetchPage(cursor);if(!data)return;ingest(data);}
+    catch(err){failed++;if(current())state.happyDiscovery={...state.happyDiscovery,error:'Some venue websites could not be checked. Try refreshing this area.'};}
+    completed++;
+    if(current()){state.happyDiscovery={...state.happyDiscovery,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed. ':'')+'Only sourced website reports appear as pins.'};paint();}
+   }
+  };
+  // Keep the map responsive while checking independent website batches concurrently.
+  await Promise.all(Array.from({length:Math.min(6,cursors.length)},()=>worker()));
+  if(current())state.happyDiscovery={...state.happyDiscovery,next_cursor:null,message:'Checked '+Math.min(max,completed*4)+' of '+max+' candidate venues. '+(failed?'Some checks failed; refresh to retry. ':'')+'Only source-linked reports appear as pins.'};
+ }catch(err){if(current())state.happyDiscovery={...state.happyDiscovery,error:err.message};}
+ finally{if(current()){state.happyDiscoveryBusy=false;paint();}}
+}
+function happyView(){return '<p class="pr-note">Move the map to explore. The list and published happy hour pins refresh automatically when you stop. Website reports must be confirmed with the venue.</p><div class="pr-happy-toolbar"><span>Move the map to explore</span>'+button('My area','resetMap','','linkbtn')+'</div><div id="prHappySearch">'+happySearchView()+'</div>'+
+ '<div class="pr-happy-explorer"><div class="pr-happy-map-pane"><div id="prHappyMap" class="pr-happy-map" role="region" tabindex="0" aria-label="Happy Hour map"><p class="muted">Loading map…</p></div><p id="prMapStatus" role="status" aria-live="polite" class="pr-note">Loading this area…</p></div><h2 class="pr-happy-list-title">Happy Hours in this area</h2><div id="prHappyResults" class="pr-happy-results" role="region" aria-label="Happy Hour restaurant list">'+happyCards()+'</div><div id="prHappyDiscovery">'+happyDiscoveryView()+'</div></div><div class="pr-coverage">'+badge('CENTRAL TEXAS')+'<span>'+DEALS.length+' source-linked locations · coverage is growing</span></div>'+note('All published schedules are included, even when Happy Hour is not active right now. Confirm current specials before traveling. Specials are not matched to dietary needs.');}
+function happyDetailView(){const d=DEALS.find(d=>d.id===detail);if(!d)return happyView();if(d.discovered)return '<div class="pr-eyebrow">AUTOMATIC WEBSITE REPORT · CONFIRM WITH VENUE</div>'+heading(d.name,d.address)+'<div class="card"><h3>Published hours & specials</h3><p>'+esc(d.offer)+'</p></div>'+note('Website text found '+d.checked_on+'. This is not a confirmation that the offer is available today. Check dates, restrictions and the exact location before traveling.')+button('Get directions','directions',d.id,'secondary')+'<a class="linkbtn" href="'+safeUrl(d.source_url)+'" target="_blank" rel="noopener noreferrer">Official website source ↗</a>'+happyProviders(d.attributions)+note('Venue information: Google Maps. Automatically found reports are temporary and cannot yet be saved.');return '<div class="pr-eyebrow">HAPPY HOUR · RESTAURANT DETAILS</div>'+heading(d.name,d.address)+'<div class="card"><h3 class="pr-label">Happy Hour times</h3>'+d.schedule.map(s=>'<div class="pr-detail"><strong>'+esc(s.days.map(n=>DAY[n-1]).join(' · '))+'</strong><p>'+clock(s.start)+'–'+clock(s.end)+'</p></div>').join('')+note('Local restaurant time · '+d.timezone)+'</div><div class="card"><h3 class="pr-label">Specials & restrictions</h3><p class="pr-preserve">'+esc(d.offer)+'</p></div>'+button(state.savedDeals.includes(d.id)?'Saved special':'Save special','deal',d.id,'primary')+button('Get directions','directions',d.id,'secondary')+note('Source checked '+d.checked_on+'. Schedules, availability and prices can change; confirm with the restaurant.')+'<a class="linkbtn" href="'+safeUrl(d.source_url)+'" target="_blank" rel="noopener noreferrer">Optional: view restaurant source ↗</a>';}
+let happySnapshotTrigger=null,happySnapshotOverflow=null;
+function openHappySnapshot(id){
+ if(!access||view!=='happy'||!DEALS.some(d=>d.id===id))return;
+ if(!state.happySelected){happySnapshotTrigger=document.activeElement;happySnapshotOverflow=document.body.style.overflow;}
+ state.happySelected=id;document.body.style.overflow='hidden';renderHappySnapshot();
+}
+function renderHappySnapshot(){
+ const d=DEALS.find(d=>d.id===state.happySelected);if(!d)return;
+ let host=screen.querySelector('#prHappySnapshot');if(!host){host=document.createElement('div');host.id='prHappySnapshot';screen.append(host);}
+ const oldDetail=detail;detail=d.id;const content=happyDetailView().replace('<h2>','<h2 id="prSnapshotTitle">');detail=oldDetail;
+ host.innerHTML='<div class="pr-snapshot-backdrop"><section class="pr-snapshot" role="dialog" aria-modal="true" aria-labelledby="prSnapshotTitle" tabindex="-1"><div class="pr-snapshot-top"><strong>Happy Hour snapshot</strong>'+button('Close ✕','closeHappy','','secondary')+'</div>'+content+'<div class="pr-feedback pr-snapshot-feedback" role="status" aria-live="polite"></div></section></div>';
+ host.querySelector('.pr-snapshot').focus();
+ screen.querySelectorAll('.pr-deal-card').forEach(b=>b.classList.toggle('pr-selected',b.dataset.value===d.id));
+}
+function closeHappySnapshot(restore=true){
+ if(!state.happySelected)return;state.happySelected=null;screen?.querySelector('#prHappySnapshot')?.remove();
+ document.body.style.overflow=happySnapshotOverflow??'';happySnapshotOverflow=null;
+ screen?.querySelectorAll('.pr-selected').forEach(b=>b.classList.remove('pr-selected'));
+ if(restore){const target=happySnapshotTrigger?.isConnected?happySnapshotTrigger:screen?.querySelector('#prHappyMap');target?.focus?.();}happySnapshotTrigger=null;
+}
+function disposeHappyMap(){happyMapVersion++;clearTimeout(happyMapTimer);clearTimeout(happyDiscoveryTimer);happyMapTimer=null;happyDiscoveryTimer=null;happyMapListener?.remove?.();happyMapListener=null;for(const marker of happyMarkers)marker.setMap?.(null);happyMarkers=[];happyMap?.dispose?.();happyMap=null;}
+function happyBoundsFromMap(map,host){
+ const b=map.getBounds?.();if(b){const ne=b.getNorthEast(),sw=b.getSouthWest();return {north:ne.lat(),east:ne.lng(),south:sw.lat(),west:sw.lng()};}
+ // The existing native HTTPS bridge publishes idle center/zoom. Its flat north-up
+ // map uses the same Mercator viewport; no deployment of the shared map page is required.
+ const c=map.getCenter(),z=map.getZoom?.()||11,w=256*2**z;
+ const x=(c.lng()+180)/360*w,lat=Math.max(-85.05112878,Math.min(85.05112878,c.lat()))*Math.PI/180;
+ const y=(.5-Math.log((1+Math.sin(lat))/(1-Math.sin(lat)))/(4*Math.PI))*w;
+ const width=host.clientWidth||400,height=host.clientHeight||300;
+ const lng=n=>((n/w*360)%360+360)%360-180;
+ const latitude=n=>Math.atan(Math.sinh(Math.PI*(1-2*n/w)))*180/Math.PI;
+ return {north:latitude(y-height/2),south:latitude(y+height/2),west:width>=w?-180:lng(x-width/2),east:width>=w?180:lng(x+width/2)};
+}
+function updateHappyViewport(version=happyMapVersion){
+ const host=screen?.querySelector('#prHappyMap'),map=happyMap;if(version!==happyMapVersion||!map||!host||view!=='happy')return;
+ const c=map.getCenter();if(!Number.isFinite(c.lat())||!Number.isFinite(c.lng()))return;
+ const prior=state.happyCenter;if(prior&&(Math.abs(prior.latitude-c.lat())>.0001||Math.abs(prior.longitude-c.lng())>.0001||state.happyZoom!==(map.getZoom?.()||11))){state.happyDiscoveryRequest++;state.happyDiscoveryBusy=false;state.happyDiscovery=null;}
+ state.happyCenter={latitude:c.lat(),longitude:c.lng()};state.happyZoom=map.getZoom?.()||11;state.happyBounds=happyBoundsFromMap(map,host);
+ paintHappySearch();const list=screen.querySelector('#prHappyResults');if(list)list.innerHTML=happyCards();const discovery=screen.querySelector('#prHappyDiscovery');if(discovery)discovery.innerHTML=happyDiscoveryView();
+ for(const marker of happyMarkers)marker.setMap?.(null);happyMarkers=[];
+ for(const [i,d] of filteredHappyDeals().entries()){
+  const m=new root.google.maps.Marker({map,position:{lat:+d.latitude,lng:+d.longitude},title:d.name,label:String(i+1)});happyMarkers.push(m);m.addListener('click',()=>{if(version===happyMapVersion)openHappySnapshot(d.id);});
+ }
+ const status=screen.querySelector('#prMapStatus');if(status)status.textContent=filteredHappyDeals().length+' sourced specials in this map area. List updates after you stop moving the map.';
+}
+function queueHappyViewport(version){clearTimeout(happyMapTimer);clearTimeout(happyDiscoveryTimer);happyMapTimer=setTimeout(()=>{updateHappyViewport(version);queueHappyAutoDiscovery(version);},180);}
+function queueHappyAutoDiscovery(version){
+ clearTimeout(happyDiscoveryTimer);
+ happyDiscoveryTimer=setTimeout(()=>{
+  if(version!==happyMapVersion||view!=='happy'||!access||!happyMap)return;
+  if(state.happyDiscoveryBusy){happyDiscoveryTimer=setTimeout(()=>queueHappyAutoDiscovery(version),1000);return;}
+  const b=state.happyBounds,c=state.happyCenter;
+  if(!b||!c||!Number.isFinite(b.north)||!Number.isFinite(b.south)||!Number.isFinite(b.east)||!Number.isFinite(b.west))return;
+  // Coarse grid key prevents duplicate paid searches from tiny map movements.
+  const key=[c.latitude,c.longitude,b.north-b.south,b.east-b.west].map(n=>Math.round(n*100)/100).join(':');
+  if(key===lastHappyAutoArea&&Date.now()-lastHappyAutoAt<600000)return;
+  if(Date.now()-lastHappyAutoAt<12000){happyDiscoveryTimer=setTimeout(()=>queueHappyAutoDiscovery(version),12000-(Date.now()-lastHappyAutoAt));return;}
+  lastHappyAutoArea=key;lastHappyAutoAt=Date.now();discoverHappy(false);
+ },750);
+}
+async function mountHappyMap(){
+ const host=document.getElementById('prHappyMap'),version=happyMapVersion;if(!host)return;
+ try{
+  if(typeof root.loadGoogleMaps!=='function')throw Error('Map unavailable');await root.loadGoogleMaps();if(version!==happyMapVersion||!host.isConnected)return;
+  const center=state.happyCenter||browseCoords()||{latitude:30.508,longitude:-97.75};
+  happyMap=new root.google.maps.Map(host,{center:{lat:+center.latitude,lng:+center.longitude},zoom:state.happyZoom||11,tilt:0,heading:0,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,clickableIcons:false,gestureHandling:'greedy'});
+  const map=happyMap;
+  if(root.google.maps.tableRecNativeBridge&&typeof map.receive==='function'){
+   const receive=map.receive.bind(map);map.receive=msg=>{receive(msg);if(msg.event==='state'&&!msg.requestId)queueHappyViewport(version);};
+  }else happyMapListener=map.addListener?.('idle',()=>queueHappyViewport(version));
+  await map.ready;if(version!==happyMapVersion)return;updateHappyViewport(version);queueHappyAutoDiscovery(version);
+ }catch{if(host.isConnected&&version===happyMapVersion){host.innerHTML='<div class="pr-empty"><h3>Map unavailable right now</h3><p>You can still open specials from the list.</p></div>';const status=screen.querySelector('#prMapStatus');if(status)status.textContent='Showing saved browsing-area results.';}}
+}
+function recipesView(){return libraryRecipesView();}
+function pantryParsed(text){return root.TableRecPantryInput?.parse(text)||{ingredients:[],unknown:[],unavailable:true};}
+function pantryItems(text){return pantryParsed(text).ingredients;}
+function pantryPreview(){const p=pantryParsed(state.pantryText);return p.ingredients.length?'<strong>We read '+p.ingredients.length+' ingredient'+(p.ingredients.length===1?'':'s')+'</strong><div class="pr-pantry-chips">'+p.ingredients.map(i=>'<span>'+esc(i)+'</span>').join('')+'</div>'+(p.unknown.length?note('Please review: '+p.unknown.join(' · ')+'. Use commas around unfamiliar or longer ingredient names if these do not look right.'):''):note('Ingredient names appear here as you type.');}
+function invalidateRecipeRound(){state.recipeRoundSerial++;recipeRunning=false;state.recipeRoundPick=null;}
+function openMatchedRecipe(id){const m=state.recipeMatches.find(m=>m.recipe.id===id);if(m){state.recipe={...m.recipe,pantry_match:{matched_count:m.matched_count,required_count:m.required_count,missing:m.missing,have:m.have}};go('recipe',id);}}
+async function spinPantryRecipes(){
+ if(!access||recipeRunning||state.recipeSearching||!state.recipeResultsReady||!state.recipeMatches.length)return;
+ const e=epoch,id=user()?.id,serial=++state.recipeRoundSerial;
+ // Prefer recipes with everything available, then the closest displayed matches.
+ const complete=state.recipeMatches.filter(m=>m.missing.length===0),pool=complete.length?complete:state.recipeMatches;
+ const fresh=pool.filter(m=>!state.recipeHistory.includes(m.recipe.id)),options=fresh.length?fresh:pool;
+ const pick=options[Math.floor(Math.random()*options.length)];recipeRunning=true;state.recipeRoundPick=null;render();
+ const stage=screen.querySelector('#prRecipeStage');stage?.scrollIntoView?.({behavior:'smooth',block:'center'});
+ const delays=root.matchMedia?.('(prefers-reduced-motion: reduce)').matches?[]:[85,90,100,115,135,160,195,245,315,400];
+ for(const delay of delays){
+  if(e!==epoch||id!==user()?.id||serial!==state.recipeRoundSerial||view!=='recipes'||!screen?.classList.contains('active')){if(e===epoch&&serial===state.recipeRoundSerial)recipeRunning=false;return;}
+  const name=screen.querySelector('#prRecipeStageName');if(name)name.textContent=pool[Math.floor(Math.random()*pool.length)].recipe.name;
+  await new Promise(resolve=>setTimeout(resolve,delay));
+ }
+ if(e!==epoch||id!==user()?.id||serial!==state.recipeRoundSerial||view!=='recipes'||!screen?.classList.contains('active')){if(e===epoch&&serial===state.recipeRoundSerial)recipeRunning=false;return;}
+ state.recipeRoundPick=pick.recipe.id;state.recipeHistory=[...state.recipeHistory.filter(x=>x!==pick.recipe.id),pick.recipe.id].slice(-12);recipeRunning=false;render();
+ screen.querySelector('#prRecipeStage')?.scrollIntoView?.({behavior:'smooth',block:'center'});screen.querySelector('#prOpenRecipePick')?.focus({preventScroll:true});
+}
+function recipeRoundView(){
+ if(!state.recipeMatches.length)return '';
+ const pick=state.recipeMatches.find(m=>m.recipe.id===state.recipeRoundPick);
+ if(!pick&&!recipeRunning)return '<p>'+button('Can’t choose? Run It','spinRecipes','','secondary')+'</p>';
+ return '<div id="prRecipeStage" class="card where-stage pr-recipe-stage '+(recipeRunning?'running':'')+'" aria-busy="'+recipeRunning+'"><div class="where-stage-label">'+(recipeRunning?'SHUFFLING YOUR MATCHES':pick?'TONIGHT, YOU’RE COOKING…':'LET TABLEREC CHOOSE')+'</div><div id="prRecipeStageName" class="where-stage-name">'+esc(pick?pick.recipe.name:recipeRunning?'RUNNING IT…':'What’s cooking?')+'</div><p class="where-stage-sub" role="status">'+(recipeRunning?'Choosing from recipes matched to your kitchen.':pick?(pick.missing.length?'Missing '+pick.missing.length+' ingredient'+(pick.missing.length===1?'':'s')+' — check before cooking.':'You have every required ingredient listed. Check quantities.'):'Your ingredients. A little help choosing.')+'</p>'+(pick?'<button type="button" id="prOpenRecipePick" class="primary" data-pro-action="matchedRecipe" data-value="'+esc(pick.recipe.id)+'">OPEN RECIPE</button>':'')+'</div><div class="pr-spin-footer">'+button(recipeRunning?'RUNNING…':pick?'RUN IT AGAIN':'RUN IT','spinRecipes','','primary')+'</div>';
+}
+function libraryRecipesView(){
+ const matches=state.recipeMatches,cats=['All',...state.recipeSummary.categories];
+ return (state.recipeError?'<p role="alert" class="pr-feedback">'+esc(state.recipeError)+'</p>':'')+'<div class="pr-pantry-form"'+(state.recipeResultsReady||state.recipeSearching?' hidden':'')+'><div class="pr-recipe-intro"><span class="pr-eyebrow">COOK AT HOME</span><h2>Your ingredients.<br>Tonight’s dinner.</h2><p>What’s in your kitchen? List your ingredients and we’ll find published recipes that fit.</p></div>'+field('Tell us what you have','prPantry','<textarea id="prPantry" rows="4" maxlength="2500" aria-describedby="prPantryHelp" placeholder="I have chicken, rice, broccoli, cheddar, milk and butter…">'+esc(state.pantryText)+'</textarea>')+'<p id="prPantryHelp" class="pr-note">Type ingredient names naturally, or separate them with commas or new lines. Review the names below before searching. Up to 40 names; check quantities and preparation.</p><div id="prPantryParsed" class="pr-pantry-parsed" role="status" aria-live="polite">'+pantryPreview()+'</div>'+'<div class="pr-pantry-options"><label><input id="prStaples" type="checkbox"'+(state.assumeStaples?' checked':'')+'>I also have water, salt and black pepper</label></div>'+field('Recipe collection','prRecipeCollection','<select id="prRecipeCollection"><option value="everyday"'+(state.recipeCollection==='everyday'?' selected':'')+'>Everyday favorites</option><option value="all"'+(state.recipeCollection==='all'?' selected':'')+'>All recipes</option></select>')+field('Recipe category','prCategory',select('prCategory',cats,state.category))+button(state.recipeSearching?'Finding your recipes…':'FIND MY RECIPES','findRecipes','','primary')+button('Choose a restaurant instead','restaurants','','linkbtn')+note('Recipes are not allergy- or medical-diet screened. Check every ingredient and preparation step yourself.')+
+ '</div><section id="prRecipeMatches" tabindex="-1" aria-label="Recipe search results">'+(state.recipeSearching?'<div class="pr-empty" role="status"><h2>Finding recipes that match your ingredients…</h2><p>Looking through published recipes for your kitchen.</p></div>':'')+(state.recipeResultsReady?'<div class="pr-match-heading" role="status"><h2>We found '+matches.length+' matching recipe'+(matches.length===1?'':'s')+'</h2><p>'+esc(state.recipeCollectionFallback?'All recipes — expanded search':state.recipeCollection==='everyday'?'Everyday favorites':'All recipes')+' · '+esc(state.pantryText)+'</p>'+button('Change ingredients or collection','editPantry','','secondary')+'</div>'+(state.recipeCollectionFallback?note('No everyday favorites fit this search. These options come from All Recipes and still use your ingredients.'): '')+(matches.some(m=>m.matched_count/m.required_count<0.5)?note('A few things to buy: some options use part of your pantry and need up to three more ingredients. Each card lists exactly what is missing.'): '')+recipeRoundView()+matches.map(m=>'<button type="button" class="card pr-recipe-match" data-pro-action="matchedRecipe" data-value="'+esc(m.recipe.id)+'"><span class="pr-eyebrow">'+(m.matched_count/m.required_count<0.5?'A FEW THINGS TO BUY · YOU HAVE '+m.matched_count+' OF '+m.required_count+' INGREDIENTS':m.missing.length?'YOU HAVE '+m.matched_count+' OF '+m.required_count+' INGREDIENTS':'YOU HAVE EVERYTHING')+'</span><strong>'+esc(m.recipe.name)+'</strong><span>'+esc(m.recipe.category)+'</span><span class="pr-have">Have: '+esc(m.used.join(', '))+'</span><span class="pr-missing">'+(m.missing.length?'Missing '+m.missing.length+': '+esc(m.missing.join(' · ')):'You have everything listed—check quantities.')+'</span>'+(m.unused.length?'<small>Not used: '+esc(m.unused.join(', '))+'</small>':'')+'<b>See recipe ↗</b></button>').join('')+(!matches.length?'<div class="pr-empty"><h3>No close matches yet.</h3><p>No published recipes fit yet, including options needing up to three more ingredients. Add kitchen ingredients, try another category, or try All recipes.</p></div>':''):'')+
+ '</section>'+ (state.savedRecipes.length?'<h3 class="pr-label">Your saved recipes</h3><div class="pr-group">'+state.savedRecipes.map(r=>row(r.name,r.category,'recipe',r.id)).join('')+'</div>':'');
+}
+async function findPantryRecipes(){
+ if(!access||state.recipeSearching)return;const input=screen.querySelector('#prPantry');if(input)state.pantryText=input.value;
+ const parsed=pantryParsed(state.pantryText),pantry=parsed.ingredients;
+ if(parsed.unavailable){toast('Ingredient input could not load. Please close and reopen the app.');return;}
+ if(!pantry.length||pantry.length>40||pantry.some(x=>x.length<2||x.length>60||!/[a-z]/i.test(x))){toast('Enter 1 to 40 ingredient names, separated by commas. Each can be 2 to 60 characters.');return;}
+ invalidateRecipeRound();const e=epoch,id=user()?.id,request=++state.recipeRequest;state.recipeError='';state.recipeSearching=true;state.recipeResultsReady=false;render();screen.querySelector('#prRecipeMatches')?.focus?.({preventScroll:true});screen.querySelector('#prRecipeMatches')?.scrollIntoView?.({behavior:'smooth',block:'start'});const button=screen.querySelector('[data-pro-action="findRecipes"]');if(button)button.disabled=true;
+ try{
+  const r=await client().rpc('match_pro_pantry_recipes_v3',{p_collection:state.recipeCollection,p_pantry:pantry,p_require_all:false,p_assume_staples:state.assumeStaples,p_category:state.category==='All'?null:state.category,p_limit:20});
+  if(e!==epoch||id!==user()?.id||request!==state.recipeRequest)return;if(r.error)throw Error('Recipe matching is unavailable. Your ingredients are still here—please try again.');
+  state.recipeMatches=Array.isArray(r.data?.matches)?r.data.matches.filter(m=>m.required_count>0&&m.matched_count>0&&(m.matched_count/m.required_count>=0.5||(Array.isArray(m.missing)&&m.missing.length<=3))):[];state.recipeCollectionFallback=!!r.data?.collection_fallback;state.recipeMatchCount=Number(r.data?.count)||0;state.recipeResultsReady=true;
+ }catch(err){if(e===epoch&&id===user()?.id&&request===state.recipeRequest){state.recipeError=err.message;}}
+ finally{if(e===epoch&&id===user()?.id&&request===state.recipeRequest){state.recipeSearching=false;if(view==='recipes'){render();if(state.recipeError){toast(state.recipeError);state.recipeError='';}screen.querySelector('#prRecipeMatches')?.scrollIntoView?.({behavior:'smooth',block:'start'});screen.querySelector('#prRecipeMatches')?.focus?.({preventScroll:true});}}}
+}
+function recipeView(){
+ const r=state.recipe?.id===detail?state.recipe:state.savedRecipes.find(x=>x.id===detail);if(!r)return recipesView();
+ return '<div class="pr-eyebrow">'+esc(r.category)+' · '+esc(r.time_text||'See recipe for timing')+'</div>'+heading(r.name,r.servings_text?'Serves '+r.servings_text:'Review quantities before cooking')+note('Check suitability for your own needs before cooking. Matches compare ingredient names, not quantities or prepared forms.')+(r.pantry_match?'<div class="card"><h3>From your kitchen</h3><p>Matched '+r.pantry_match.matched_count+' of '+r.pantry_match.required_count+' required ingredient names.</p><p>'+esc(r.pantry_match.missing.length?'Still needed: '+r.pantry_match.missing.join(' · '):'Check that you have the listed amounts and prepared forms.')+'</p>'+note('Optional ingredients are listed in the full recipe below.')+'</div>':'')+'<h3 class="pr-label">Ingredients</h3><div class="pr-group">'+(r.ingredients||[]).map(x=>'<div class="pr-detail">'+esc(x)+'</div>').join('')+'</div><h3 class="pr-label">Method</h3><div class="pr-group">'+(r.steps||[]).map((x,i)=>'<div class="pr-method"><b>'+(i+1)+'</b><p>'+esc(x)+'</p></div>').join('')+'</div>'+(r.notes?.length?note(r.notes.join(' ')):'')+button(r.generated?'Back to pantry ideas':'Back to ingredient matches','again','','primary')+button(state.savedRecipes.some(x=>x.id===r.id)?'Saved to your recipes':'Save recipe','saveRecipe',r.id,'primary')+(r.generated?'<p class="pr-note">AI-generated recipe idea. Review amounts, prepared forms and cooking instructions. Saved dietary needs have not been applied.</p>':'<p class="pr-note">'+esc(r.attribution||'Wikibooks Cookbook contributors')+' · <a href="'+safeUrl(r.source_url)+'" target="_blank" rel="noopener noreferrer">Original recipe</a> · <a href="https://creativecommons.org/licenses/by-sa/4.0/" target="_blank" rel="noopener noreferrer">CC BY-SA 4.0</a></p>');
+}
+function aboutView(){return note('Pro testing revision: happy-discovery-9 · '+DISHES.length+' dish/order records · '+(root.tableRecBuild?'Build '+root.tableRecBuild.number:'Web preview'))+heading(access?'Your Pro access is active':'A little more TableRec.','No payment is collected in this build.')+'<div class="pr-group"><div class="pr-detail"><strong>Built around your dining life</strong><p>Happy Hours in Discover. Dining Needs in Profile. Cook at home in Run It.</p></div><div class="pr-detail"><strong>Real coverage, clear limits</strong><p>Recipes use the attributed Wikibooks Cookbook collection. Happy Hours uses a growing collection of source-linked Central Texas locations. An initial official-brand dietary guide library is available; reviewed local dish suitability is not yet established.</p></div><div class="pr-detail"><strong>Your private account</strong><p>Preferences, saved recipes, and saved specials use private account storage. No purchase flow is active. Run It stays free and unlimited.</p></div></div>';}
+function lockedView(){return '<div class="pr-empty">'+icon('needs')+'<h2>A little more with Pro.</h2><p>Discover specials and find your next home-cooked favorite. Membership purchases are not open yet. You have not been charged.</p>'+button('Membership details','go','about','primary')+'</div>';}
+function safeUrl(url){try{const u=new URL(url);return ['https:','http:'].includes(u.protocol)?esc(u.href):'#';}catch{return '#';}}
+function browseCoords(){try{return typeof currentTableScoreCoords==='function'?currentTableScoreCoords():null;}catch{return null;}}
+function miles(a,b,c,d){const rad=x=>x*Math.PI/180;const h=Math.sin(rad(c-a)/2)**2+Math.cos(rad(a))*Math.cos(rad(c))*Math.sin(rad(d-b)/2)**2;return 3958.8*2*Math.atan2(Math.sqrt(h),Math.sqrt(1-h));}
+function clock(n){const h=Math.floor(n/60)%24,m=n%60;return (h%12||12)+(m?':'+String(m).padStart(2,'0'):'')+(h>=12?' PM':' AM');}
+function localOfferTime(d,now){const parts=new Intl.DateTimeFormat('en-US',{timeZone:d.timezone,weekday:'short',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(now);const get=k=>parts.find(p=>p.type===k)?.value;const day=DAY.indexOf(get('weekday'))+1;const minute=Number(get('hour'))*60+Number(get('minute'));return {day,minute};}
+function offerOpen(d,now){try{const {day,minute}=localOfferTime(d,now);return d.schedule.some(s=>s.days.includes(day)&&minute>=s.start&&minute<s.end);}catch{return false;}}
+function savedDocument(){return {version:1,savedDeals:state.savedDeals,savedRecipes:state.savedRecipes,trip:state.trip,journal:state.journal};}
+async function saveNotebook(){
+ if(saveConflict){toast('Your notebook changed on another device. Reload before saving.');return;}
+ if(saveBusy){savePending=true;return;}
+ const id=user()?.id,e=epoch;if(!id||!access)return;saveBusy=true;toast('Saving privately…');
+ try{do{savePending=false;const doc=savedDocument();const r=await client().rpc('save_pro_notebook',{p_document:doc,p_revision:revision});if(epoch!==e||user()?.id!==id)return;
+ if(r.error){if(r.error.code==='40001')saveConflict=true;throw Error(r.error.code==='40001'?'Your notebook changed on another device. Reload before saving.':'Save failed. Keep this screen open and tap Retry save.');}revision=r.data;}while(savePending);toast('Saved to your account');}
+ catch(err){if(epoch===e){toast(err.message);(screen?.querySelector('.pr-snapshot-feedback')||screen?.querySelector('.pr-feedback'))?.insertAdjacentHTML('beforeend',button(saveConflict?'Reload account':'Retry save',saveConflict?'reload':'retrySave','','linkbtn'));}}
+ finally{if(epoch===e)saveBusy=false;}
+}
+
+async function loadAccount(force=false){
+ if(loadPromise)return loadPromise;if(loaded&&!force){render();return;}
+ const id=user()?.id,e=epoch;if(!id)return;loading=true;errorText='';render();
+ loadPromise=(async()=>{try{
+ const c=client();if(!c)throw Error('Please sign in again.');
+ const [status,prefs]=await Promise.all([c.rpc('has_tablerec_pro'),c.from('user_dining_preferences').select('needs,notes').eq('user_id',id).maybeSingle()]);
+ if(epoch!==e||user()?.id!==id)return;if(status.error||prefs.error)throw Error('Check your connection and try again.');
+ access=status.data===true;state.needs=prefs.data?.needs||[];state.dietNotes=prefs.data?.notes||'';
+ if(access){const results=await Promise.all([
+ c.from('pro_notebooks').select('document,revision').eq('user_id',id).maybeSingle(),c.rpc('pro_recipe_summary'),
+ c.from('happy_hour_offers').select('*').eq('active',true).gte('expires_on',new Date().toISOString().slice(0,10)),
+ c.from('restaurants').select('id,name,cuisine,city,address').order('name').limit(500)]);
+ if(epoch!==e||user()?.id!==id)return;if(results.some(r=>r.error))throw Error('Some account data could not load. Try again.');
+ const [book,summary,deals,places]=results;const doc=book.data?.document||{};revision=book.data?.revision||0;saveConflict=false;
+ state.savedDeals=Array.isArray(doc.savedDeals)?doc.savedDeals:[];state.savedRecipes=Array.isArray(doc.savedRecipes)?doc.savedRecipes:[];state.trip=doc.trip||state.trip;state.journal=Array.isArray(doc.journal)?doc.journal:[];
+ state.recipeSummary=summary.data||{count:0,categories:[]};DEALS=deals.data||[];VENUES=(places.data||[]).map(v=>({...v,area:v.city||v.address||'Location not listed',cuisine:v.cuisine||'Restaurant',price:0,data:{}}));
+ }loaded=true;updateEntries();
+ }catch(err){if(epoch===e)errorText=err.message;}finally{if(epoch===e){loading=false;loadPromise=null;render();}}})();return loadPromise;
+}
+async function savePreferences(clear=false){const e=epoch,id=user()?.id;if(!id)return;if(!clear&&!screen.querySelector('#prDietConsent')?.checked){toast('Please agree to private storage before saving.');return;}
+ const needs=clear?[]:[...screen.querySelectorAll('[data-need]:checked')].map(x=>x.dataset.need);const notes=clear?'':screen.querySelector('#prDietNotes').value.trim();
+ const b=screen.querySelector('[data-pro-action="saveNeeds"]');if(b)b.disabled=true;
+ try{const r=clear?await client().from('user_dining_preferences').delete().eq('user_id',id):await client().from('user_dining_preferences').upsert({user_id:id,needs,notes,updated_at:new Date().toISOString()},{onConflict:'user_id'});if(epoch!==e||user()?.id!==id)return;if(r.error)throw Error('Your dining needs could not be saved. Try again.');state.needs=needs;state.dietNotes=notes;state.diningRequest++;state.diningSearching=false;state.diningResults=null;state.diningMessage='';go('needs');updateEntries();toast(clear?'Dining needs cleared':'Dining needs saved privately');}catch(err){if(epoch===e){toast(err.message);if(b)b.disabled=false;}}
+}
+function toast(s){const el=screen?.querySelector('.pr-snapshot-feedback')||screen?.querySelector('.pr-feedback');if(el)el.textContent=s;}
+function action(act,val){
+ if(act==='retrySave')return void saveNotebook();if(act==='reload')return void loadAccount(true);if(act==='back')return back();if(act==='go')return go(val);if(act==='retry')return void loadAccount(true);if(act==='venue')return go('venue',val);if(act==='recipe')return go('recipe',val);
+ if(act==='discoverHappy')return void discoverHappy(false);if(act==='moreHappy')return void discoverHappy(true);
+ if(act==='retryContact')return void loadDiningContact(venue(val),true);
+ if(act==='toggleDiningAll'){state.diningShowAll=!state.diningShowAll;render();return;}
+ if(act==='searchDining')return void searchDining();
+ if(act==='nearbyDining')return void searchDining(true);
+ if(act==='coveredArea'){state.happyCenter={latitude:30.43,longitude:-97.76};state.happyBounds=null;state.happyZoom=9;render();return;}
+ if(act==='happyDetail')return openHappySnapshot(val);if(act==='closeHappy')return closeHappySnapshot();if(act==='resetMap'){state.happyCenter=null;state.happyBounds=null;state.happyZoom=11;render();return;}
+ if(act==='saveNeeds')return void savePreferences();if(act==='clearNeeds')return void savePreferences(true);
+ if(act==='filter'){state.filter=val;render();return;}
+ if(act==='restaurants'){invalidateRecipeRound();root.showScreen('home');root.openWhereToEat?.();return;}
+ if(!access)return;
+ if(act==='collection'){if(recipeRunning)return;state.recipeCollection=val==='all'?'all':'everyday';state.category='All';render();return;}
+ if(act==='again')return go('recipes');
+ if(act==='editPantry'){invalidateRecipeRound();state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();screen.querySelector('#prPantry')?.focus();return;}
+ if(act==='findRecipes')return void findPantryRecipes();
+ if(act==='matchedRecipe'){if(!recipeRunning)openMatchedRecipe(val);return;}
+ if(act==='spinRecipes')return void spinPantryRecipes();
+ if(act==='openRestaurant'){if(typeof root.openRestaurantById==='function')root.openRestaurantById(val);return;}
+ if(act==='directions'){const d=DEALS.find(d=>d.id===val);if(d)root.open('https://www.google.com/maps/dir/?api=1&destination='+encodeURIComponent(d.address),'_blank','noopener,noreferrer');return;}
+ if(act==='deal'){state.savedDeals=state.savedDeals.includes(val)?state.savedDeals.filter(x=>x!==val):[...state.savedDeals,val];if(state.happySelected){renderHappySnapshot();void saveNotebook();return;}}
+ if(act==='saveRecipe'){const r=state.recipe?.id===val?state.recipe:state.savedRecipes.find(r=>r.id===val);if(r&&!state.savedRecipes.some(x=>x.id===val))state.savedRecipes.push(r);}
+ render();void saveNotebook();
+}
+function bind(){
+ screen.addEventListener('click',e=>{if(e.target.classList.contains('pr-snapshot-backdrop'))closeHappySnapshot();});
+ screen.addEventListener('keydown',e=>{if(!state.happySelected)return;if(e.key==='Escape'){e.preventDefault();e.stopPropagation();closeHappySnapshot();}else if(e.key==='Tab'){const nodes=[...screen.querySelectorAll('.pr-snapshot button,.pr-snapshot a[href],.pr-snapshot summary')];const first=nodes[0],last=nodes.at(-1);if(e.shiftKey&&(document.activeElement===first||document.activeElement.classList.contains('pr-snapshot'))){e.preventDefault();last?.focus();}else if(!e.shiftKey&&document.activeElement===last){e.preventDefault();first?.focus();}}});
+
+ screen.addEventListener('keydown',e=>{if(e.target.id==='prSearch'&&e.key==='Enter'){e.preventDefault();void searchDining();}});
+ screen.addEventListener('click',e=>{const b=e.target.closest('[data-pro-action]');if(b&&screen.contains(b))action(b.dataset.proAction,b.dataset.value);});
+ screen.addEventListener('input',e=>{if(e.target.id==='prPantry'){state.pantryText=e.target.value;const preview=screen.querySelector('#prPantryParsed');if(preview)preview.innerHTML=pantryPreview();invalidateRecipeRound();state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;const b=screen.querySelector('[data-pro-action="findRecipes"]');if(b){b.disabled=false;b.textContent='FIND MY RECIPES';}screen.querySelector('#prRecipeMatches')?.replaceChildren();return;}if(e.target.id==='prSearch'){state.query=e.target.value;}});
+ screen.addEventListener('change',e=>{
+  const t=e.target;
+  if(t.id==='prDiningRadius'){state.diningRadius=+t.value;state.diningRequest++;state.diningSearching=false;state.diningResults=null;state.diningMessage='';render();return;}
+  if(t.id==='prGroupOn'){state.groupOn=t.checked;render();}
+  if(recipeRunning)return;
+  if(t.id==='prRecipeCollection'){invalidateRecipeRound();state.recipeCollection=t.value==='all'?'all':'everyday';state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
+  if(t.id==='prCategory'){invalidateRecipeRound();state.category=t.value;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
+  if(t.id==='prStaples'){invalidateRecipeRound();state.assumeStaples=t.checked;state.recipeResultsReady=false;state.recipeRequest++;state.recipeSearching=false;render();return;}
+  if(t.id==='prRecipeQuery'){state.recipeQuery=t.value;return;}
+  if(t.id==='prRadius'){state.radius=+t.value;render();return;}
+  if(t.id==='prOpen'){state.openNow=t.value==='Active now';render();return;}
+  if(t.id==='prDay'){state.day=t.value;render();}
+  if(t.id==='prBudget'){state.budget=+t.value;render();}
+ });
+}
+function entry(title,sub,next,ico){const n=document.createElement('div');n.className='card pr-profile-entry';n.dataset.trProEntry=next;n.innerHTML='<button type="button"><span class="pr-feature-icon">'+icon(ico||next)+'</span><span class="pr-row-text"><span class="pr-feature-kicker">A LITTLE MORE WITH PRO</span><strong>'+esc(title)+'</strong><small>'+esc(sub)+'</small><span class="pr-feature-cta">'+(next==='happy'?'Find your next happy hour':next==='recipes'?'Cook with what you have':'Make it personal')+' ↗</span></span>'+icon('arrow')+'</button>';n.querySelector('button').addEventListener('click',()=>open(next));return n;}
+function updateEntries(){document.querySelectorAll('[data-tr-pro-entry]').forEach(n=>{const k=n.dataset.trProEntry;const b=n.querySelector('.pr-badge');if(b)b.textContent=loaded?(access?'PRO':'PRO · LOCKED'):'PRO';const kkr=n.querySelector('.pr-feature-kicker');if(kkr)kkr.textContent=loaded&&!access?'UNLOCK WITH TABLEREC PRO':'A LITTLE MORE WITH PRO';if(k==='needs'&&loaded){const small=n.querySelector('small');if(small)small.textContent=state.needs.length?state.needs.length+' private dining needs saved':'Allergies, medical needs, and dietary preferences';}});}
+function mountEntries(){
+ const add=(parent,title,sub,next,ico,anchor)=>{if(!parent||parent.querySelector('[data-tr-pro-entry="'+next+'"]'))return;const n=entry(title,sub,next,ico);if(anchor?.parentNode===parent)parent.insertBefore(n,anchor);else parent.append(n);};
+ const p=document.getElementById('profile');add(p,'Your Dining Needs','Allergies, medical needs, and dietary preferences','needs','needs',document.getElementById('profileBadgeFolderCard'));
+ const discover=document.getElementById('discover');add(discover,'Happy Hours','Good food. Better timing. Find nearby deals worth heading out for.','happy','happy',document.getElementById('locationCard'));
+ const run=document.querySelector('#whereToEatModal .tr-modal-scroll');add(run,'Cook at home','What’s in your kitchen? Find recipes and see what’s missing.','recipes','recipes',run?.firstElementChild);
+ updateEntries();
+}
+function sync(){
+ if(clearing||signingOut)return;syncProViewport();const u=user(),next=u?.id||null;if(next!==account){account=next;clear();}
+ mountEntries();if(!u)return;
+ if(!screen){screen=document.createElement('section');screen.id='pro';screen.className='screen pr-screen';(document.querySelector('.app')||document.body).append(screen);bind();}
+}
+const explorerStyle=document.createElement('style');explorerStyle.textContent='\n.pr-happy-explorer{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;margin-top:20px}.pr-happy-map-pane{min-width:0}.pr-happy-explorer .pr-happy-map{height:300px!important;min-height:300px}.pr-happy-results{max-height:540px;overflow:auto;padding:2px;overscroll-behavior:contain}.pr-deal-card{display:flex!important;flex-direction:column;gap:10px;width:100%;text-align:left;color:var(--ink);cursor:pointer;margin:0 0 12px!important;border:1px solid var(--line)}.pr-deal-card:hover,.pr-deal-card:focus-visible{border-color:var(--gold);background:var(--heroSoft)}.pr-deal-card .pr-eyebrow{margin:0}.pr-deal-name{font-size:21px;line-height:1.2}.pr-deal-card>span:not(.pr-eyebrow){font-size:13px;line-height:1.6;color:var(--muted)}.pr-deal-card small{font-size:12px;color:var(--muted)}.pr-deal-cta{font-size:12px;color:var(--gold)}.pr-pantry-options{display:grid;gap:12px;margin:16px 0 20px}.pr-pantry-options label{display:flex;align-items:center;gap:10px;font-size:13px;line-height:1.5}.pr-pantry-options input{width:20px!important;height:20px;flex:none}.pr-screen #prPantry{width:100%;resize:vertical;min-height:105px}.pr-match-heading{margin:25px 0 15px}.pr-match-heading p{font-size:13px;color:var(--muted)}.pr-recipe-match{display:flex;flex-direction:column;gap:10px;width:100%;text-align:left;color:var(--ink);border:1px solid var(--line);margin-bottom:12px}.pr-recipe-match>strong{font-size:22px;line-height:1.2}.pr-recipe-match>span,.pr-recipe-match>small{font-size:13px;line-height:1.6;overflow-wrap:anywhere}.pr-recipe-match .pr-eyebrow{font-size:10px;margin:0}.pr-have{color:var(--green)}.pr-missing{color:var(--muted)}.pr-recipe-match>b{font-size:12px;color:var(--gold)}\n@media(min-width:900px){.app:has(#pro.active .pr-happy-explorer){max-width:1200px}.pr-happy-explorer{grid-template-columns:minmax(0,1.2fr) minmax(320px,1fr);align-items:start}.pr-happy-explorer .pr-happy-map{height:clamp(440px,65vh,700px)!important}.pr-happy-results{max-height:clamp(440px,65vh,700px)}}\n';document.head.append(explorerStyle);
+const dishStyle=document.createElement('style');dishStyle.textContent='.pr-dish h2{font-size:22px;line-height:1.2;margin:0 0 12px}.pr-dish p{font-size:13px;line-height:1.6;color:var(--muted)}.pr-dish details{margin-top:14px}.pr-dish summary{font-size:13px;font-weight:800;cursor:pointer;padding:10px 0}.pr-dish .pr-evidence strong{display:block;margin-bottom:6px}.pr-dish a{overflow-wrap:anywhere}';document.head.append(dishStyle);
+const style=document.createElement('style');style.textContent="\n.pr-screen{padding-bottom:14px}.pr-screen *{min-width:0}.pr-screen h1,.pr-screen h2,.pr-screen h3{color:var(--ink)}.pr-screen .page-title{margin:0;font-size:28px;letter-spacing:-.8px}.pr-title{display:flex;align-items:center;gap:10px;margin:4px 0 18px}.pr-backline{font-size:12px;padding:12px 0 8px}.pr-backline button{padding:6px 8px 6px 0}.pr-screen svg,.pr-profile-entry svg{width:22px;height:22px;flex:none;vertical-align:middle}.pr-backline svg{width:24px;height:24px}.pr-screen .card{background:var(--card);box-shadow:none}.pr-heading{margin:12px 0 20px}.pr-heading h2{font-size:24px;line-height:1.15;letter-spacing:-.5px;margin:0 0 8px}.pr-heading p,.pr-membership p{font-size:14px;line-height:1.5;color:var(--muted);margin:0}.pr-membership{background:var(--heroSoft);border:1px solid var(--line);border-radius:20px;padding:20px;margin:12px 0 22px}.pr-membership h2{font-size:25px;line-height:1.12;letter-spacing:-.7px;margin:20px 0 10px;max-width:280px}.pr-member-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.pr-badge{display:inline-block;font-size:10px;font-weight:850;padding:5px 8px;border-radius:7px;background:var(--card2);color:var(--muted);line-height:1.3}.pr-orange{background:var(--gold);color:var(--accentText)}.pr-concern{background:var(--card2);color:var(--red);border:1px solid var(--red)}.pr-group{border:1px solid var(--line);border-radius:17px;overflow:hidden;background:var(--card);margin:12px 0 18px}.pr-group>.field{margin:14px}.pr-feature,.pr-row{display:flex;align-items:center;gap:13px;width:100%;padding:18px 15px;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--ink);text-align:left}.pr-feature:last-child,.pr-row:last-child{border-bottom:0}.pr-feature>svg,.pr-row>svg{width:16px;color:var(--muted)}.pr-feature-icon{width:42px;height:42px;display:grid;place-items:center;border-radius:13px;background:var(--card2);color:var(--gold);flex:none}.pr-row-text{flex:1;display:block}.pr-row-text strong{display:block;font-size:16px;font-weight:850}.pr-row-text small{display:block;color:var(--muted);font-size:12px;line-height:1.45;margin-top:5px}.pr-note{font-size:12px;line-height:1.55;color:var(--muted);margin:14px 2px}.pr-foot{font-size:12px;text-align:center;color:var(--muted);margin:26px 0}.pr-profile-entry{padding:0!important;background:var(--card)!important}.pr-profile-entry>button{display:flex;align-items:center;gap:12px;width:100%;padding:16px;background:transparent;border:0;color:var(--ink);text-align:left}.pr-profile-entry .pr-badge{font-size:8px;margin-left:5px;vertical-align:middle}.pr-profile-entry>button>svg{width:16px;color:var(--muted)}.pr-label{font-size:13px;font-weight:850;margin:25px 2px 10px;color:var(--muted)!important}.pr-choice,.pr-toggle{display:flex;gap:16px;align-items:center;justify-content:space-between;padding:15px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.4}.pr-choice:last-child{border-bottom:0}.pr-choice small,.pr-toggle small{display:block;font-size:11px;color:var(--muted);margin-top:3px}.pr-choice input,.pr-toggle input{width:22px;height:22px;accent-color:var(--gold);flex:none}.pr-screen input,.pr-screen select,.pr-screen textarea{color:var(--ink);background:var(--inputBg);border:1px solid var(--line);border-radius:12px;padding:12px;width:100%;font-size:16px;min-height:46px}.pr-screen input[type=checkbox]{width:22px;min-height:22px}.pr-segments{display:flex;gap:8px;margin:14px 0;overflow-x:auto;padding-bottom:3px}.pr-screen button{touch-action:manipulation}.pr-screen .primary{color:var(--accentText);min-height:48px}.pr-screen .primary svg{width:18px;margin-right:5px}.pr-screen .chip.active{color:var(--accentText)}.pr-restaurant{display:block;width:100%;text-align:left;border:1px solid var(--line);border-radius:18px;padding:17px;margin:10px 0;background:var(--card);color:var(--ink)}.pr-restaurant-top{display:flex;justify-content:space-between;align-items:center;gap:8px}.pr-restaurant-top strong{font-size:18px;letter-spacing:-.3px}.pr-restaurant-top svg{width:16px;color:var(--muted)}.pr-meta{display:block;color:var(--muted);font-size:12px;margin-top:6px}.pr-dish{display:block;font-size:14px;margin:17px 0 14px}.pr-result-bottom{display:flex;justify-content:space-between;align-items:center;gap:10px}.pr-result-bottom small{font-size:9px;color:var(--muted)}.pr-dish-title{font-size:21px;line-height:1.2;margin:2px 0 12px}.pr-evidence{padding:16px 0;border-top:1px solid var(--line)}.pr-evidence>div{display:flex;justify-content:space-between;gap:10px;align-items:center}.pr-evidence strong{font-size:14px}.pr-evidence p,.pr-detail p{font-size:13px;line-height:1.6;margin:8px 0;color:var(--muted)}.pr-evidence small{display:block;font-size:10px;line-height:1.6;color:var(--muted)}.pr-detail{padding:16px;border-bottom:1px solid var(--line);font-size:14px;line-height:1.5}.pr-detail:last-child{border-bottom:0}.pr-inline-fields{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pr-inline-fields .field{margin:0}.pr-group>.pr-inline-fields{padding:0 14px 14px}.pr-eyebrow{font-size:10px;font-weight:850;letter-spacing:.7px;color:var(--gold);margin-bottom:12px}.pr-deal h2{font-size:22px;margin:0 0 5px}.pr-deal p{color:var(--muted);font-size:14px}.pr-deal-bottom{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-top:24px}.pr-deal-bottom strong{font-size:24px}.pr-deal-bottom small{display:block;font-weight:400;font-size:12px;color:var(--muted);margin-top:4px}.pr-wheel-card{text-align:center;border:1px solid var(--line);background:var(--card);border-radius:20px;padding:25px 20px;margin-top:18px}.pr-wheel{width:132px;height:132px;background:var(--heroSoft);border:1px solid var(--line);border-radius:50%;margin:2px auto 24px;display:grid;place-items:center;color:var(--gold)}.pr-wheel svg{width:78px;height:78px}.pr-wheel-card h2{font-size:24px;letter-spacing:-.6px;margin:0}.pr-wheel-card p{font-size:13px;color:var(--muted);margin:10px 0 24px}.pr-spinning{animation:pr-spin .65s ease-in-out}.pr-method{display:flex;gap:14px;padding:16px;border-bottom:1px solid var(--line)}.pr-method:last-child{border:0}.pr-method b{background:var(--card2);color:var(--gold);width:28px;height:28px;border-radius:50%;display:grid;place-items:center;flex:none;font-size:12px}.pr-method p{font-size:14px;line-height:1.6;margin:2px 0}.pr-budget{display:grid;grid-template-columns:1fr 1fr;border:1px solid var(--line);border-radius:17px;background:var(--card2);padding:18px;gap:10px}.pr-budget small{display:block;font-size:9px;letter-spacing:.5px;color:var(--muted)}.pr-budget strong{display:block;font-size:30px;letter-spacing:-1px;margin-top:7px}.pr-stop{padding:16px;border-bottom:1px solid var(--line)}.pr-stop>.pr-inline-fields{margin-top:14px}.pr-stop>.linkbtn{padding:12px 0 0}.pr-add-stop{display:block;padding:16px;color:var(--gold);font-size:13px;font-weight:800}.pr-add-stop select{margin-top:8px;font-weight:400}.pr-journal-intro p{font-size:14px;line-height:1.5}.pr-empty{text-align:center;padding:40px 18px;color:var(--muted)}.pr-empty>svg{width:42px;height:42px;color:var(--gold)}.pr-empty h2{font-size:21px;color:var(--ink);letter-spacing:-.4px}.pr-empty p{font-size:14px;line-height:1.6}.pr-preserve{white-space:pre-wrap;overflow-wrap:anywhere;font-size:14px;line-height:1.6}.pr-feedback:not(:empty){margin:14px 0;padding:12px 14px;background:var(--card2);border-radius:12px;font-size:13px;color:var(--ink)}.pr-screen button:focus-visible,.pr-profile-entry button:focus-visible{outline:2px solid var(--gold);outline-offset:2px}.pr-screen h1:focus{outline:none}@keyframes pr-spin{to{transform:rotate(360deg)}}@media(prefers-reduced-motion:reduce){.pr-spinning{animation:none}}@media(min-width:600px){.pr-membership{padding:25px}.pr-feature{padding:20px}.pr-results{display:grid;grid-template-columns:1fr 1fr;gap:12px}.pr-restaurant{margin:0}}";document.head.append(style);
+const extra=document.createElement('style');extra.textContent=`
+.pr-profile-entry{border-radius:18px!important;margin:14px 0!important}.pr-feature-icon{background:var(--heroSoft)!important}.pr-recipe-intro{padding:8px 2px 14px}.pr-recipe-intro h2{font-size:30px;letter-spacing:-1px;line-height:1.1;margin:8px 0 12px}.pr-recipe-intro p{color:var(--muted);font-size:14px;line-height:1.6}.pr-coverage{display:flex;align-items:center;gap:8px;margin:20px 0 14px;flex-wrap:wrap}.pr-coverage>span:last-child{color:var(--muted);font-size:11px}.pr-source-card>p{font-size:13px;line-height:1.6;color:var(--muted)}.pr-source-card h2{font-size:22px;margin:0 0 12px}.pr-source-card>a{font-size:12px}.pr-source{font-size:11px;color:var(--muted);display:flex;align-items:center;justify-content:space-between;margin-top:14px;border-top:1px solid var(--line);padding-top:10px}.pr-consent{display:flex;gap:10px;font-size:12px;line-height:1.6;margin:18px 0}.pr-consent input{width:22px!important;flex:none}.pr-screen .pr-wheel{background:conic-gradient(from 15deg,var(--gold) 0 60deg,var(--card2) 60deg 120deg,var(--gold) 120deg 180deg,var(--card2) 180deg 240deg,var(--gold) 240deg 300deg,var(--card2) 300deg);width:160px;height:160px;box-shadow:inset 0 0 0 7px var(--card),0 0 0 1px var(--line);color:var(--ink)}.pr-wheel svg{background:var(--card);border-radius:50%;padding:15px;width:85px!important;height:85px!important}.pr-screen .pr-wheel-card{background:var(--heroSoft)}.pr-profile-entry>button{min-height:85px}.pr-profile-entry>button:hover{background:var(--heroSoft)}.pr-screen .pr-deal{padding:20px}.pr-screen .pr-deal h2{font-size:24px;line-height:1.15}.pr-screen .pr-deal>p{line-height:1.6}.pr-screen .pr-deal-bottom a{font-size:12px;text-align:right}.pr-screen .pr-deal button{min-height:40px}.pr-screen .pr-empty{padding:40px 16px}.pr-screen .pr-result-bottom{margin-top:15px}.pr-screen .linkbtn{min-height:40px}.pr-screen .pr-backline{position:sticky;top:0;z-index:5;background:var(--bg)}
+`;document.head.append(extra);
+const polish=document.createElement('style');polish.textContent=`
+.pr-profile-entry{position:relative;overflow:hidden;border:1.5px solid var(--gold)!important;box-shadow:0 5px 0 var(--line)!important;background:linear-gradient(120deg,var(--heroSoft),var(--card))!important}.pr-profile-entry:before{content:'';position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--gold)}.pr-profile-entry>button{padding:22px 18px!important;gap:16px!important}.pr-profile-entry .pr-feature-icon{width:56px;height:56px;border-radius:18px;border:1px solid var(--line);transform:rotate(-7deg)}.pr-profile-entry .pr-feature-icon svg{width:30px;height:30px;transform:rotate(7deg)}.pr-feature-kicker{display:block;font-size:9px;font-weight:950;letter-spacing:.12em;color:var(--gold);margin-bottom:7px}.pr-profile-entry .pr-row-text strong{font-size:23px;line-height:1.1;letter-spacing:-.6px}.pr-feature-cta{display:block;color:var(--gold);font-size:12px;font-weight:900;margin-top:12px}.pr-happy-map{height:270px;overflow:hidden;border-radius:18px;border:1px solid var(--line);margin-top:20px;background:var(--card2)}.pr-happy-map>.muted{padding:18px}.pr-map-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.pr-map-actions button{min-height:44px}.pr-collection{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0 12px}.pr-collection button{min-height:42px}.pr-recipe-stage{margin:22px 0 0;text-align:center;min-height:205px;padding:26px 20px!important;border:2px solid var(--gold)!important;border-radius:22px!important;background:var(--heroSoft)!important;box-shadow:0 6px 0 var(--line)!important}.pr-recipe-stage .where-stage-name{font-size:30px;line-height:1.15;min-height:72px;display:grid;place-items:center;overflow-wrap:anywhere}.pr-reel-neighbors{border-top:1px solid var(--line);padding-top:14px;margin-top:18px;font-size:12px;color:var(--muted);min-height:30px}.pr-spin-footer{padding:20px 0 5px}.pr-spin-footer button{width:100%;min-height:54px;font-weight:950;letter-spacing:.06em;font-size:15px}.pr-recipe-intro h2{font-size:34px}.pr-screen>.primary+.primary{margin-top:10px}@media(prefers-reduced-motion:reduce){.pr-recipe-stage.running .where-stage-name{animation:none}}
+`;document.head.append(polish);
+const snapshotStyle=document.createElement('style');snapshotStyle.textContent='\n.pr-happy-filterbar{display:grid;grid-template-columns:1fr 1fr 1.25fr;gap:8px}.pr-happy-filterbar label{font-size:11px}.pr-happy-filterbar select{width:100%;padding:9px 6px;font-size:12px}.pr-happy-toolbar{display:flex;align-items:center;justify-content:space-between;gap:8px;color:var(--muted);font-size:10px}.pr-happy-toolbar button{font-size:12px}.pr-happy-explorer{grid-template-columns:minmax(118px,.42fr) minmax(0,.58fr)!important;gap:9px;height:clamp(350px,54dvh,650px);align-items:stretch;margin-top:8px}.pr-happy-results{grid-column:1;grid-row:1;height:100%;max-height:none!important;min-height:0;overflow:auto;padding:0 2px 0 0}.pr-happy-map-pane{grid-column:2;grid-row:1;display:flex;flex-direction:column;min-height:0}.pr-happy-explorer .pr-happy-map{height:auto!important;min-height:0!important;flex:1;margin-top:0;border-radius:15px}.pr-happy-map-pane .pr-note{font-size:9px;line-height:1.4;margin:6px 1px 0}.pr-screen .pr-deal-card{padding:12px 9px!important;gap:7px;border-radius:14px!important}.pr-deal-card .pr-eyebrow{font-size:8px;line-height:1.5}.pr-deal-name{font-size:14px;line-height:1.25;overflow-wrap:anywhere}.pr-deal-card .pr-deal-summary{font-size:10px!important;line-height:1.5!important;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.pr-deal-address{display:none}.pr-deal-cta{font-size:10px}.pr-deal-card.pr-selected{border:2px solid var(--gold);background:var(--heroSoft)}.pr-happy-results .pr-empty{padding:20px 6px!important}.pr-happy-results .pr-empty h2{font-size:15px}.pr-happy-results .pr-empty p{font-size:11px}.pr-snapshot-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:flex-end;justify-content:center;background:rgba(24,18,14,.38);padding:12px 10px max(12px,env(safe-area-inset-bottom))}.pr-snapshot{width:min(100%,600px);max-height:78dvh;overflow:auto;background:var(--bg);border:1px solid var(--line);border-radius:24px;padding:18px;box-shadow:0 15px 60px rgba(0,0,0,.25);overscroll-behavior:contain;color:var(--ink)}.pr-snapshot-top{position:sticky;top:-18px;z-index:2;display:flex;align-items:center;justify-content:space-between;background:var(--bg);gap:12px;padding:0 0 12px}.pr-snapshot-top>strong{font-size:13px}.pr-snapshot-top button{padding:8px 12px;min-height:40px}.pr-snapshot .pr-heading h2{font-size:26px}.pr-snapshot .pr-detail p{margin:5px 0}.pr-snapshot>.primary,.pr-snapshot>.secondary{width:100%;margin-top:8px}.pr-snapshot a{overflow-wrap:anywhere}.pr-snapshot:focus{outline:none}\n@media(min-width:900px){.pr-happy-explorer{grid-template-columns:340px minmax(0,1fr)!important;height:65dvh}.pr-deal-name{font-size:20px}.pr-deal-card .pr-eyebrow{font-size:10px}.pr-deal-card .pr-deal-summary{font-size:13px!important}.pr-screen .pr-deal-card{padding:18px!important}.pr-deal-address{display:block!important}.pr-deal-cta{font-size:12px}.pr-snapshot-backdrop{align-items:center}.pr-happy-filterbar{max-width:640px}}\n';document.head.append(snapshotStyle);
+const flowStyle=document.createElement('style');flowStyle.textContent=`
+.pr-happy-explorer{display:flex!important;flex-direction:column;height:auto!important;gap:12px!important}.pr-happy-map-pane{display:block!important;flex:none;width:100%}.pr-happy-explorer .pr-happy-map{height:clamp(270px,42dvh,430px)!important;min-height:270px!important;width:100%}.pr-happy-results{height:auto!important;max-height:none!important;overflow:visible!important;width:100%}.pr-happy-list-title{font-size:21px;margin:10px 0 0}.pr-screen .pr-deal-card{padding:18px!important}.pr-deal-name{font-size:21px}.pr-deal-card .pr-deal-summary{font-size:14px!important;line-height:1.5!important;display:block}.pr-deal-address{display:block!important}.pr-deal-cta{font-size:12px}.pr-needs-summary,.pr-dining-start{padding:18px;border:1px solid var(--line);border-radius:18px;background:var(--heroSoft);margin:12px 0 18px}.pr-needs-summary h2{font-size:19px;line-height:1.4;overflow-wrap:anywhere}.pr-dining-start h2{font-size:25px}.pr-dining-start p{font-size:14px;color:var(--muted);line-height:1.5}.pr-dining-start .primary{width:100%}.pr-dining-manual,.pr-dining-unknown{margin:18px 0;padding:14px;border:1px solid var(--line);border-radius:14px}.pr-dining-manual summary,.pr-dining-unknown summary{cursor:pointer;font-weight:800;font-size:14px;line-height:1.5}.pr-restaurant .pr-result-bottom{margin-top:12px}#prDiningResults,#prRecipeMatches{scroll-margin-top:100px;outline:none}.pr-pantry-form[hidden]{display:none!important}.pr-match-heading h2{font-size:27px}.pr-match-heading p{overflow-wrap:anywhere}.pr-recipe-stage .primary{margin-top:12px;width:100%}
+`;document.head.append(flowStyle);
+const viewportStyle=document.createElement('style');viewportStyle.textContent=`
+.app:has(#pro.active){--pr-width:720px}.app:has(#pro.active .pr-happy-explorer){--pr-width:1200px}
+.app:has(#pro.active)>.topbar,.app:has(#pro.active)>header{position:fixed!important;top:var(--pr-viewport-top,0px)!important;left:max(0px,calc((100vw - var(--pr-width))/2));right:max(0px,calc((100vw - var(--pr-width))/2));margin:0;padding:calc(12px + env(safe-area-inset-top,0px)) 14px 14px!important;box-sizing:border-box;z-index:41;background:var(--bg)}
+#pro.active{position:fixed;top:calc(var(--pr-viewport-top,0px) + var(--pr-header-height,0px));left:max(0px,calc((100vw - var(--pr-width,720px))/2));right:max(0px,calc((100vw - var(--pr-width,720px))/2));height:var(--pr-panel-height,100dvh);overflow-y:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch;box-sizing:border-box;margin:0;padding:0 14px calc(20px + env(safe-area-inset-bottom,0px));background:var(--bg);z-index:12;scroll-padding-top:64px;scroll-padding-bottom:24px}
+#pro.active:has(.pr-snapshot-backdrop){z-index:50}
+#pro input,#pro textarea,#pro select{font-size:16px}
+#pro .pr-backline{position:sticky;top:0;z-index:5;background:var(--bg)}
+body.pr-keyboard-open:has(#pro.active) .nav{visibility:hidden;pointer-events:none}
+.pr-menu-library{margin-top:24px}.pr-menu-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));gap:12px}.pr-menu-card{display:flex;flex-direction:column;gap:8px;text-align:left;padding:16px;border:1px solid var(--line);border-radius:16px;background:var(--card);color:var(--ink);font:inherit}.pr-menu-card strong{font-size:19px}.pr-menu-card span{font-size:12px;color:var(--muted)}.pr-menu-card b{font-size:12px;color:var(--gold)}
+.pr-pantry-parsed{padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--heroSoft);margin:10px 0;font-size:13px;overflow-wrap:anywhere}.pr-pantry-chips{display:flex;flex-wrap:wrap;gap:6px;margin:10px 0}.pr-pantry-chips span{padding:5px 9px;border-radius:20px;background:var(--card);border:1px solid var(--line);font-size:12px}.pr-pantry-parsed .pr-note{margin-bottom:0}
+`;document.head.append(viewportStyle);
+const origRender=root.renderProfile;if(typeof origRender==='function')root.renderProfile=function(){const r=origRender.apply(this,arguments);sync();return r;};
+const origSignOut=root.signOut;if(typeof origSignOut==='function')root.signOut=async function(){signingOut=true;clear();account=null;try{return await origSignOut.apply(this,arguments);}finally{signingOut=false;sync();}};
+const origBack=root.tableRecBack;if(typeof origBack==='function')root.tableRecBack=function(){if(state.happySelected){closeHappySnapshot();return true;}const parent=({edit:'needs',venue:'needs',happyDetail:'happy',recipe:'recipes'})[view];if(screen?.classList.contains('active')&&parent){go(parent);return true;}return origBack.apply(this,arguments);};
+root.TableRecProPreview={open,close:back,sync,reload:()=>loadAccount(true)};
+setInterval(sync,1000);sync();
+})(window);

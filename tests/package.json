@@ -1,7 +1,14 @@
 {
   "name": "tablerec-prelaunch-checks",
   "private": true,
-  "scripts": {"test": "cd .. && node tests/prelaunch-smoke.cjs && node tests/intro-smoke.cjs && node tests/feedback-smoke.cjs"},
-  "devDependencies": {"jsdom": "26.1.0"},
-  "engines": {"node": ">=22"}
+  "scripts": {
+    "test": "cd .. && node tests/prelaunch-smoke.cjs && node tests/intro-smoke.cjs && node tests/feedback-smoke.cjs && node tests/launch-fixes-smoke.cjs && node tests/contributor-db.cjs && node tests/guest-services.cjs"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3.14",
+    "jsdom": "26.1.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
 }

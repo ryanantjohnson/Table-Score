@@ -1,0 +1,18 @@
+const assert=require('node:assert/strict');
+const {parse}=require('../native/pantry-input.js');
+const exact='Pasta milk cheese marinara beef chicken garlic flour sugar';
+assert.deepEqual(parse(exact),{ingredients:['pasta','milk','cheese','marinara','beef','chicken','garlic','flour','sugar'],unknown:[]});
+assert.deepEqual(parse('chicken breast brown rice olive oil black pepper').ingredients,['chicken breast','brown rice','olive oil','black pepper']);
+assert.deepEqual(parse('peanut butter milk chocolate chicken broth').ingredients,['peanut butter','milk chocolate','chicken broth']);
+assert.deepEqual(parse('half and half, cream of mushroom soup and ground beef').ingredients,['half and half','cream of mushroom soup','ground beef']);
+assert.deepEqual(parse('I have chicken, rice; broccoli\ncheddar and milk').ingredients,['chicken','rice','broccoli','cheddar','milk']);
+assert.deepEqual(parse('I have milk and lemon').ingredients,['milk','lemon']);
+assert.deepEqual(parse('MILK milk, Milk').ingredients,['milk']);
+assert.deepEqual(parse('cream of mushroom soup').ingredients,['cream of mushroom soup']);
+assert.deepEqual(parse('chicken leg quarters, saffron rice, homemade pesto').ingredients,['chicken leg quarters','saffron rice','homemade pesto'],'Unfamiliar comma-separated names must not be broken up');
+assert.deepEqual(parse('dragon fruit').unknown,['dragon fruit']);
+assert.deepEqual(parse('chicken and saffron, rice').ingredients,['chicken','saffron','rice']);
+assert.deepEqual(parse('jalapeños, crème fraîche').ingredients,['jalapenos','creme fraiche']);
+assert.deepEqual(parse('').ingredients,[]);
+assert.equal(parse('<script>alert(1)</script>').unknown.length,1,'Unknown text is preserved for review, not interpreted');
+console.log('PASS: exact tester pantry, longest ingredient phrases, comma/newline/and inputs, deduplication and unfamiliar names.');
